@@ -30,6 +30,24 @@ Downloaded content will be saved to `downloaded_site/<host>/` by default.
 
 ---
 
+## Web GUI (index) on Port 3000
+
+Website Downloader also provides a simple web GUI for generating commands and directly triggering downloads from your browser.
+
+### Start the Web GUI
+
+```sh
+node web-gui.js
+```
+
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
+
+- You can fill in all options in the web form.
+- Click Start Download to trigger the download directly from the browser.
+- The generated command and download status will be shown on the page.
+
+---
+
 ## Common Use Cases
 
 - **Download a full website:**
@@ -73,7 +91,6 @@ You can test which mode works best for your site by running:
 ```sh
 node bin/cli.js <website-url> --test-mode
 ```
-(This feature is under development.)
 
 ---
 

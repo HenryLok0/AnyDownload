@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Website Downloader Command Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+  <div class="max-w-5xl mx-auto bg-white rounded-lg shadow-lg p-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 id="title" class="text-2xl font-bold text-gray-800">Website Downloader Command Generator</h1>
+      <button id="langToggle" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">切換到中文</button>
+    </div>
+
+    <!-- Form Sections -->
+    <div class="space-y-8">
+      <!-- Basic Options -->
+      <div>
+        <h2 id="basicOptions" class="text-xl font-semibold text-gray-700">Basic Options</h2>
+        <div class="mt-2 space-y-4">
+          <div>
+            <label for="url" id="urlLabel" class="block text-sm font-medium text-gray-700">Website URL</label>
+            <input type="text" id="url" placeholder="https://example.com" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="output" id="outputLabel" class="block text-sm font-medium text-gray-700">Output Folder</label>
+            <input type="text" id="output" placeholder="downloaded_site" class="mt-1 w-full p-2 border rounded">
+          </div>
+        </div>
+      </div>
+
+      <!-- Download Options -->
+      <div>
+        <h2 id="downloadOptions" class="text-xl font-semibold text-gray-700">Download Options</h2>
+        <div class="mt-2 space-y-4">
+          <div class="flex items-center">
+            <input type="checkbox" id="recursive" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+            <label for="recursive" id="recursiveLabel" class="ml-2 text-sm text-gray-700">Recursive Download</label>
+          </div>
+          <div id="maxDepthDiv" class="hidden mt-2">
+            <label for="maxDepth" id="maxDepthLabel" class="block text-sm font-medium text-gray-700">Max Recursion Depth (default: 1)</label>
+            <input type="number" id="maxDepth" min="1" value="1" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="delay" id="delayLabel" class="block text-sm font-medium text-gray-700">Delay between downloads (ms, default: 1000)</label>
+            <input type="number" id="delay" min="0" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="concurrency" id="concurrencyLabel" class="block text-sm font-medium text-gray-700">Max Concurrent Downloads (default: 5)</label>
+            <input type="number" id="concurrency" min="1" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label id="typesLabel" class="block text-sm font-medium text-gray-700">Resource Types</label>
+            <div class="mt-2 flex flex-wrap gap-4">
+              <label class="inline-flex items-center"><input type="checkbox" name="type" value="html" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">HTML</span></label>
+              <label class="inline-flex items-center"><input type="checkbox" name="type" value="image" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">Image</span></label>
+              <label class="inline-flex items-center"><input type="checkbox" name="type" value="css" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">CSS</span></label>
+              <label class="inline-flex items-center"><input type="checkbox" name="type" value="js" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">JavaScript</span></label>
+              <label class="inline-flex items-center"><input type="checkbox" name="type" value="media" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">Media</span></label>
+              <label class="inline-flex items-center"><input type="checkbox" name="type" value="all" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">All</span></label>
+            </div>
+          </div>
+          <div class="flex items-center">
+            <input type="checkbox" id="open" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+            <label for="open" id="openLabel" class="ml-2 text-sm text-gray-700">Auto-open homepage after download</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtering Options -->
+      <div>
+        <h2 id="filteringOptions" class="text-xl font-semibold text-gray-700">Filtering Options</h2>
+        <div class="mt-2 space-y-4">
+          <div>
+            <label for="filter" id="filterLabel" class="block text-sm font-medium text-gray-700">Filter (regex)</label>
+            <input type="text" id="filter" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="glob" id="globLabel" class="block text-sm font-medium text-gray-700">Glob Pattern</label>
+            <input type="text" id="glob" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="mimetype" id="mimetypeLabel" class="block text-sm font-medium text-gray-700">MIME Type (e.g., image/png)</label>
+            <input type="text" id="mimetype" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="minSize" id="minSizeLabel" class="block text-sm font-medium text-gray-700">Minimum File Size (bytes)</label>
+            <input type="number" id="minSize" min="0" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="maxSize" id="maxSizeLabel" class="block text-sm font-medium text-gray-700">Maximum File Size (bytes)</label>
+            <input type="number" id="maxSize" min="0" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="whitelist" id="whitelistLabel" class="block text-sm font-medium text-gray-700">Whitelist Patterns (comma-separated)</label>
+            <input type="text" id="whitelist" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="blacklist" id="blacklistLabel" class="block text-sm font-medium text-gray-700">Blacklist Patterns (comma-separated)</label>
+            <input type="text" id="blacklist" class="mt-1 w-full p-2 border rounded">
+          </div>
+        </div>
+      </div>
+
+      <!-- Authentication Options -->
+      <div>
+        <h2 id="authOptions" class="text-xl font-semibold text-gray-700">Authentication Options</h2>
+        <div class="mt-2 space-y-4">
+          <div>
+            <label for="userAgent" id="userAgentLabel" class="block text-sm font-medium text-gray-700">User-Agent</label>
+            <input type="text" id="userAgent" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="cookie" id="cookieLabel" class="block text-sm font-medium text-gray-700">Cookie Header</label>
+            <input type="text" id="cookie" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="authUser" id="authUserLabel" class="block text-sm font-medium text-gray-700">HTTP Basic Auth Username</label>
+            <input type="text" id="authUser" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="authPass" id="authPassLabel" class="block text-sm font-medium text-gray-700">HTTP Basic Auth Password</label>
+            <input type="password" id="authPass" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="loginUrl" id="loginUrlLabel" class="block text-sm font-medium text-gray-700">Login Form URL</label>
+            <input type="text" id="loginUrl" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div>
+            <label for="loginForm" id="loginFormLabel" class="block text-sm font-medium text-gray-700">Login Form Data (JSON)</label>
+            <textarea id="loginForm" rows="3" class="mt-1 w-full p-2 border rounded"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced Options -->
+      <div>
+        <h2 id="advancedOptions" class="text-xl font-semibold text-gray-700">Advanced Options</h2>
+        <div class="mt-2 space-y-4">
+          <div class="flex items-center">
+            <input type="checkbox" id="ignoreRobots" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+            <label for="ignoreRobots" id="ignoreRobotsLabel" class="ml-2 text-sm text-gray-700">Ignore robots.txt</label>
+          </div>
+          <div class="flex items-center">
+            <input type="checkbox" id="verbose" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+            <label for="verbose" id="verboseLabel" class="ml-2 text-sm text-gray-700">Verbose Logging</label>
+          </div>
+          <div>
+            <label for="retry" id="retryLabel" class="block text-sm font-medium text-gray-700">Retry Count (default: 3)</label>
+            <input type="number" id="retry" min="1" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div class="flex items-center">
+            <input type="checkbox" id="headless" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+            <label for="headless" id="headlessLabel" class="ml-2 text-sm text-gray-700">Use Headless Browser</label>
+          </div>
+          <div>
+            <label for="browser" id="browserLabel" class="block text-sm font-medium text-gray-700">Browser Engine</label>
+            <select id="browser" class="mt-1 w-full p-2 border rounded">
+              <option value="default">Default</option>
+              <option value="puppeteer">Puppeteer</option>
+              <option value="playwright">Playwright</option>
+            </select>
+          </div>
+          <div>
+            <label for="proxy" id="proxyLabel" class="block text-sm font-medium text-gray-700">Proxy URL</label>
+            <input type="text" id="proxy" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div class="flex items-center">
+            <input type="checkbox" id="sitemap" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+            <label for="sitemap" id="sitemapLabel" class="ml-2 text-sm text-gray-700">Parse sitemap.xml</label>
+          </div>
+          <div>
+            <label for="schedule" id="scheduleLabel" class="block text-sm font-medium text-gray-700">Schedule (cron syntax, e.g., 0 0 * * *)</label>
+            <input type="text" id="schedule" class="mt-1 w-full p-2 border rounded">
+          </div>
+          <div class="flex items-center">
+            <input type="checkbox" id="gui" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+            <label for="gui" id="guiLabel" class="ml-2 text-sm text-gray-700">Launch Web GUI (instead of CLI)</label>
+          </div>
+          <div class="flex items-center">
+            <input type="checkbox" id="dynamic" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+            <label for="dynamic" id="dynamicLabel" class="ml-2 text-sm text-gray-700">Dynamic Mode (<code>--dynamic true</code>)</label>
+          </div>
+          <div class="flex items-center">
+            <input type="checkbox" id="testMode" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+            <label for="testMode" id="testModeLabel" class="ml-2 text-sm text-gray-700">Test Mode (<code>--test-mode</code>)</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generated Command -->
+    <div class="mt-6">
+      <button id="generate" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">開始下載</button>
+      <div id="outputCommand" class="mt-4 p-4 bg-gray-50 rounded border">
+        <p id="generatedCommandLabel" class="text-sm font-medium text-gray-700">Generated Command:</p>
+        <code id="commandText" class="text-sm text-gray-800 break-all">node bin/cli.js <span id="defaultUrl" style="color:transparent;">https://example.com</span></code>
+        <button id="copyCommand" class="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">Copy to Clipboard</button>
+      </div>
+      <div id="downloadStatus" class="mt-2"></div>
+    </div>
+
+    <!-- Options List -->
+    <div class="mt-8">
+      <h2 id="optionsList" class="text-xl font-semibold text-gray-700">Options List</h2>
+      <ul id="optionsListContent" class="mt-2 list-disc list-inside text-sm text-gray-700">
+        <!-- Options will be injected by JS -->
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // ...原本的 translations、optionListTranslations、updateOptionList、updateLanguage、generateCommand...
+
+    // 新增：前端直接觸發下載
+    async function startDownload() {
+      const opts = {
+        url: document.getElementById('url').value.trim(),
+        output: document.getElementById('output').value.trim(),
+        recursive: document.getElementById('recursive').checked,
+        maxDepth: document.getElementById('maxDepth').value,
+        delay: document.getElementById('delay').value,
+        concurrency: document.getElementById('concurrency').value,
+        type: Array.from(document.querySelectorAll('input[name="type"]:checked')).map(input => input.value),
+        open: document.getElementById('open').checked,
+        filter: document.getElementById('filter').value.trim(),
+        glob: document.getElementById('glob').value.trim(),
+        mimetype: document.getElementById('mimetype').value.trim(),
+        minSize: document.getElementById('minSize').value,
+        maxSize: document.getElementById('maxSize').value,
+        whitelist: document.getElementById('whitelist').value.trim(),
+        blacklist: document.getElementById('blacklist').value.trim(),
+        userAgent: document.getElementById('userAgent').value.trim(),
+        cookie: document.getElementById('cookie').value.trim(),
+        authUser: document.getElementById('authUser').value.trim(),
+        authPass: document.getElementById('authPass').value.trim(),
+        loginUrl: document.getElementById('loginUrl').value.trim(),
+        loginForm: document.getElementById('loginForm').value.trim(),
+        ignoreRobots: document.getElementById('ignoreRobots').checked,
+        verbose: document.getElementById('verbose').checked,
+        retry: document.getElementById('retry').value,
+        headless: document.getElementById('headless').checked,
+        browser: document.getElementById('browser').value,
+        proxy: document.getElementById('proxy').value.trim(),
+        sitemap: document.getElementById('sitemap').checked,
+        schedule: document.getElementById('schedule').value.trim(),
+        gui: document.getElementById('gui').checked,
+        dynamic: document.getElementById('dynamic').checked,
+        testMode: document.getElementById('testMode').checked
+      };
+      const statusDiv = document.getElementById('downloadStatus');
+      statusDiv.textContent = 'Downloading...';
+      statusDiv.className = 'mt-2 text-blue-600';
+      try {
+        const res = await fetch('/api/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(opts)
+        });
+        const data = await res.json();
+        if (data.success) {
+          statusDiv.textContent = '下載完成！儲存於：' + data.folder;
+          statusDiv.className = 'mt-2 text-green-600';
+        } else {
+          statusDiv.textContent = '下載失敗：' + (data.error || 'Unknown error');
+          statusDiv.className = 'mt-2 text-red-600';
+        }
+      } catch (e) {
+        statusDiv.textContent = '下載失敗：' + e.message;
+        statusDiv.className = 'mt-2 text-red-600';
+      }
+    }
+
+    // 修改「開始下載」按鈕事件
+    document.getElementById('generate').addEventListener('click', () => {
+      generateCommand();
+      startDownload();
+    });
+
+    const translations = {
+      en: {
+        title: "Website Downloader Command Generator",
+        langToggle: "Switch to Chinese",
+        basicOptions: "Basic Options",
+        urlLabel: "Website URL",
+        outputLabel: "Output Folder",
+        downloadOptions: "Download Options",
+        recursiveLabel: "Recursive Download",
+        maxDepthLabel: "Max Recursion Depth (default: 1)",
+        delayLabel: "Delay between downloads (ms, default: 1000)",
+        concurrencyLabel: "Max Concurrent Downloads (default: 5)",
+        typesLabel: "Resource Types",
+        openLabel: "Auto-open homepage after download",
+        filteringOptions: "Filtering Options",
+        filterLabel: "Filter (regex)",
+        globLabel: "Glob Pattern",
+        mimetypeLabel: "MIME Type (e.g., image/png)",
+        minSizeLabel: "Minimum File Size (bytes)",
+        maxSizeLabel: "Maximum File Size (bytes)",
+        whitelistLabel: "Whitelist Patterns (comma-separated)",
+        blacklistLabel: "Blacklist Patterns (comma-separated)",
+        authOptions: "Authentication Options",
+        userAgentLabel: "User-Agent",
+        cookieLabel: "Cookie Header",
+        authUserLabel: "HTTP Basic Auth Username",
+        authPassLabel: "HTTP Basic Auth Password",
+        loginUrlLabel: "Login Form URL",
+        loginFormLabel: "Login Form Data (JSON)",
+        advancedOptions: "Advanced Options",
+        ignoreRobotsLabel: "Ignore robots.txt",
+        verboseLabel: "Verbose Logging",
+        retryLabel: "Retry Count (default: 3)",
+        headlessLabel: "Use Headless Browser",
+        browserLabel: "Browser Engine",
+        proxyLabel: "Proxy URL",
+        sitemapLabel: "Parse sitemap.xml",
+        scheduleLabel: "Schedule (cron syntax, e.g., 0 0 * * *)",
+        guiLabel: "Launch Web GUI (instead of CLI)",
+        generate: "Generate Command",
+        generatedCommandLabel: "Generated Command:",
+        copyCommand: "Copy to Clipboard",
+        optionsList: "Options List",
+        copied: "Command copied to clipboard!",
+        copyFailed: "Failed to copy command. Please select and copy manually.",
+        urlRequired: "Please enter a website URL.",
+        dynamicLabel: "Dynamic Mode (--dynamic true)",
+        testModeLabel: "Test Mode (--test-mode)"
+      },
+      zh: {
+        title: "網站下載器命令生成器",
+        langToggle: "Switch to English",
+        basicOptions: "基本選項",
+        urlLabel: "網站網址",
+        outputLabel: "輸出資料夾",
+        downloadOptions: "下載選項",
+        recursiveLabel: "遞迴下載",
+        maxDepthLabel: "最大遞迴深度（默認：1）",
+        delayLabel: "下載間隔（毫秒，默認：1000）",
+        concurrencyLabel: "最大並發下載數（默認：5）",
+        typesLabel: "資源類型",
+        openLabel: "下載後自動打開首頁",
+        filteringOptions: "過濾選項",
+        filterLabel: "過濾器（正則表達式）",
+        globLabel: "Glob模式",
+        mimetypeLabel: "MIME類型（例如：image/png）",
+        minSizeLabel: "最小文件大小（字節）",
+        maxSizeLabel: "最大文件大小（字節）",
+        whitelistLabel: "白名單模式（逗號分隔）",
+        blacklistLabel: "黑名單模式（逗號分隔）",
+        authOptions: "認證選項",
+        userAgentLabel: "用戶代理",
+        cookieLabel: "Cookie標頭",
+        authUserLabel: "HTTP基本認證用戶名",
+        authPassLabel: "HTTP基本認證密碼",
+        loginUrlLabel: "登錄表單網址",
+        loginFormLabel: "登錄表單數據（JSON）",
+        advancedOptions: "高級選項",
+        ignoreRobotsLabel: "忽略robots.txt",
+        verboseLabel: "詳細日誌",
+        retryLabel: "重試次數（默認：3）",
+        headlessLabel: "使用無頭瀏覽器",
+        browserLabel: "瀏覽器引擎",
+        proxyLabel: "代理網址",
+        sitemapLabel: "解析sitemap.xml",
+        scheduleLabel: "計劃任務（cron語法，例如：0 0 * * *）",
+        guiLabel: "啟動網頁GUI（代替CLI）",
+        generate: "開始下載",
+        generatedCommandLabel: "生成的命令：",
+        copyCommand: "複製到剪貼板",
+        optionsList: "選項列表",
+        copied: "命令已複製到剪貼板！",
+        copyFailed: "複製命令失敗。請手動選擇並複製。",
+        urlRequired: "請輸入網站網址。",
+        dynamicLabel: "動態模式 (--dynamic true)",
+        testModeLabel: "測試模式 (--test-mode)"
+      }
+    };
+
+    const optionListTranslations = {
+      en: [
+        "<code>--output, -o &lt;folder&gt;</code>: Set custom output folder",
+        "<code>--recursive, -r</code>: Recursively download same-domain pages",
+        "<code>--max-depth, -m &lt;n&gt;</code>: Set recursion depth (default: 1)",
+        "<code>--delay, -d &lt;ms&gt;</code>: Delay between downloads in ms (default: 1000)",
+        "<code>--user-agent, -u &lt;ua&gt;</code>: Set custom User-Agent",
+        "<code>--cookie &lt;cookie&gt;</code>: Send custom Cookie header",
+        "<code>--ignore-robots</code>: Ignore robots.txt restrictions",
+        "<code>--verbose</code>: Show detailed logs",
+        "<code>--retry &lt;n&gt;</code>: Retry count for failed downloads (default: 3)",
+        "<code>--type &lt;type&gt;</code>: Download specific resource types (image, css, js, html, media, all)",
+        "<code>--open</code>: Auto-open homepage after download",
+        "<code>--concurrency &lt;n&gt;</code>: Set max concurrent downloads (default: 5)",
+        "<code>--filter &lt;regex&gt;</code>: Filter resource URLs with regex",
+        "<code>--glob &lt;pattern&gt;</code>: Filter resource URLs with glob pattern",
+        "<code>--mimetype &lt;type&gt;</code>: Filter by MIME type (e.g., image/png)",
+        "<code>--min-size &lt;bytes&gt;</code>: Filter by minimum file size",
+        "<code>--max-size &lt;bytes&gt;</code>: Filter by maximum file size",
+        "<code>--whitelist &lt;pattern&gt;</code>: Whitelist resource URLs (comma-separated)",
+        "<code>--blacklist &lt;pattern&gt;</code>: Blacklist resource URLs (comma-separated)",
+        "<code>--headless</code>: Use headless browser for dynamic sites",
+        "<code>--browser &lt;type&gt;</code>: Choose browser engine (puppeteer or playwright)",
+        "<code>--proxy &lt;url&gt;</code>: Download via HTTP/SOCKS proxy or Tor",
+        "<code>--auth-user &lt;user&gt;</code>: HTTP basic auth username",
+        "<code>--auth-pass &lt;pass&gt;</code>: HTTP basic auth password",
+        "<code>--login-url &lt;url&gt;</code>: Login form URL for session-based authentication",
+        "<code>--login-form &lt;json&gt;</code>: Login form data as JSON string",
+        "<code>--sitemap</code>: Enable sitemap.xml parsing for batch download",
+        "<code>--schedule &lt;cron&gt;</code>: Schedule automatic downloads (cron syntax)",
+        "<code>--gui</code>: Launch web GUI instead of CLI",
+        "<code>--dynamic true</code>: Use browser rendering for dynamic sites",
+        "<code>--test-mode</code>: Test which mode works best for your site"
+      ],
+      zh: [
+        "<code>--output, -o &lt;folder&gt;</code>：自訂輸出資料夾",
+        "<code>--recursive, -r</code>：遞迴下載同網域頁面",
+        "<code>--max-depth, -m &lt;n&gt;</code>：設定遞迴深度（預設：1）",
+        "<code>--delay, -d &lt;ms&gt;</code>：每次下載延遲毫秒數（預設：1000）",
+        "<code>--user-agent, -u &lt;ua&gt;</code>：自訂 User-Agent",
+        "<code>--cookie &lt;cookie&gt;</code>：自訂 Cookie 標頭",
+        "<code>--ignore-robots</code>：忽略 robots.txt 限制",
+        "<code>--verbose</code>：顯示詳細日誌",
+        "<code>--retry &lt;n&gt;</code>：失敗重試次數（預設：3）",
+        "<code>--type &lt;type&gt;</code>：下載指定資源類型（image, css, js, html, media, all）",
+        "<code>--open</code>：下載後自動開啟首頁",
+        "<code>--concurrency &lt;n&gt;</code>：最大同時下載數（預設：5）",
+        "<code>--filter &lt;regex&gt;</code>：以正則過濾資源網址",
+        "<code>--glob &lt;pattern&gt;</code>：以 glob 樣式過濾資源網址",
+        "<code>--mimetype &lt;type&gt;</code>：以 MIME 類型過濾（如 image/png）",
+        "<code>--min-size &lt;bytes&gt;</code>：最小檔案大小過濾",
+        "<code>--max-size &lt;bytes&gt;</code>：最大檔案大小過濾",
+        "<code>--whitelist &lt;pattern&gt;</code>：白名單資源網址（逗號分隔）",
+        "<code>--blacklist &lt;pattern&gt;</code>：黑名單資源網址（逗號分隔）",
+        "<code>--headless</code>：動態網站使用無頭瀏覽器",
+        "<code>--browser &lt;type&gt;</code>：選擇瀏覽器引擎（puppeteer 或 playwright）",
+        "<code>--proxy &lt;url&gt;</code>：透過 HTTP/SOCKS 代理或 Tor 下載",
+        "<code>--auth-user &lt;user&gt;</code>：HTTP 基本認證帳號",
+        "<code>--auth-pass &lt;pass&gt;</code>：HTTP 基本認證密碼",
+        "<code>--login-url &lt;url&gt;</code>：表單登入網址（需 session）",
+        "<code>--login-form &lt;json&gt;</code>：登入表單資料（JSON 字串）",
+        "<code>--sitemap</code>：啟用 sitemap.xml 批次下載",
+        "<code>--schedule &lt;cron&gt;</code>：排程自動下載（cron 語法）",
+        "<code>--gui</code>：啟動網頁 GUI（取代 CLI）",
+        "<code>--dynamic true</code>：動態模式，瀏覽器渲染",
+        "<code>--test-mode</code>：測試最佳下載模式"
+      ]
+    };
+
+    let currentLang = 'en';
+
+    function updateOptionList(lang) {
+      const list = optionListTranslations[lang].map(item => `<li>${item}</li>`).join('');
+      document.getElementById('optionsListContent').innerHTML = list;
+    }
+
+    function updateLanguage(lang) {
+      currentLang = lang;
+      document.getElementById('title').textContent = translations[lang].title;
+      document.getElementById('langToggle').textContent = translations[lang].langToggle;
+      document.getElementById('basicOptions').textContent = translations[lang].basicOptions;
+      document.getElementById('urlLabel').textContent = translations[lang].urlLabel;
+      document.getElementById('outputLabel').textContent = translations[lang].outputLabel;
+      document.getElementById('downloadOptions').textContent = translations[lang].downloadOptions;
+      document.getElementById('recursiveLabel').textContent = translations[lang].recursiveLabel;
+      document.getElementById('maxDepthLabel').textContent = translations[lang].maxDepthLabel;
+      document.getElementById('delayLabel').textContent = translations[lang].delayLabel;
+      document.getElementById('concurrencyLabel').textContent = translations[lang].concurrencyLabel;
+      document.getElementById('typesLabel').textContent = translations[lang].typesLabel;
+      document.getElementById('openLabel').textContent = translations[lang].openLabel;
+      document.getElementById('filteringOptions').textContent = translations[lang].filteringOptions;
+      document.getElementById('filterLabel').textContent = translations[lang].filterLabel;
+      document.getElementById('globLabel').textContent = translations[lang].globLabel;
+      document.getElementById('mimetypeLabel').textContent = translations[lang].mimetypeLabel;
+      document.getElementById('minSizeLabel').textContent = translations[lang].minSizeLabel;
+      document.getElementById('maxSizeLabel').textContent = translations[lang].maxSizeLabel;
+      document.getElementById('whitelistLabel').textContent = translations[lang].whitelistLabel;
+      document.getElementById('blacklistLabel').textContent = translations[lang].blacklistLabel;
+      document.getElementById('authOptions').textContent = translations[lang].authOptions;
+      document.getElementById('userAgentLabel').textContent = translations[lang].userAgentLabel;
+      document.getElementById('cookieLabel').textContent = translations[lang].cookieLabel;
+      document.getElementById('authUserLabel').textContent = translations[lang].authUserLabel;
+      document.getElementById('authPassLabel').textContent = translations[lang].authPassLabel;
+      document.getElementById('loginUrlLabel').textContent = translations[lang].loginUrlLabel;
+      document.getElementById('loginFormLabel').textContent = translations[lang].loginFormLabel;
+      document.getElementById('advancedOptions').textContent = translations[lang].advancedOptions;
+      document.getElementById('ignoreRobotsLabel').textContent = translations[lang].ignoreRobotsLabel;
+      document.getElementById('verboseLabel').textContent = translations[lang].verboseLabel;
+      document.getElementById('retryLabel').textContent = translations[lang].retryLabel;
+      document.getElementById('headlessLabel').textContent = translations[lang].headlessLabel;
+      document.getElementById('browserLabel').textContent = translations[lang].browserLabel;
+      document.getElementById('proxyLabel').textContent = translations[lang].proxyLabel;
+      document.getElementById('sitemapLabel').textContent = translations[lang].sitemapLabel;
+      document.getElementById('scheduleLabel').textContent = translations[lang].scheduleLabel;
+      document.getElementById('guiLabel').textContent = translations[lang].guiLabel;
+      document.getElementById('generate').textContent = translations[lang].generate;
+      document.getElementById('generatedCommandLabel').textContent = translations[lang].generatedCommandLabel;
+      document.getElementById('copyCommand').textContent = translations[lang].copyCommand;
+      document.getElementById('optionsList').textContent = translations[lang].optionsList;
+      document.getElementById('dynamicLabel').innerHTML = translations[lang].dynamicLabel;
+      document.getElementById('testModeLabel').innerHTML = translations[lang].testModeLabel;
+      updateOptionList(lang);
+    }
+
+    function generateCommand() {
+      const url = document.getElementById('url').value.trim();
+      let command = "node bin/cli.js";
+      let urlHtml = "";
+
+      if (url) {
+        command += " " + url;
+        urlHtml = url;
+      } else {
+        command += " <span id=\"defaultUrl\" style=\"color:transparent;\">https://example.com</span>";
+        urlHtml = "<span id=\"defaultUrl\" style=\"color:transparent;\">https://example.com</span>";
+      }
+
+      const output = document.getElementById('output').value.trim();
+      if (output) command += ` --output '${output}'`;
+
+      if (document.getElementById('recursive').checked) {
+        command += ' --recursive';
+        const maxDepth = document.getElementById('maxDepth').value;
+        if (maxDepth) command += ` --max-depth ${maxDepth}`;
+      }
+
+      const delay = document.getElementById('delay').value;
+      if (delay) command += ` --delay ${delay}`;
+
+      const concurrency = document.getElementById('concurrency').value;
+      if (concurrency) command += ` --concurrency ${concurrency}`;
+
+      const types = Array.from(document.querySelectorAll('input[name="type"]:checked')).map(input => input.value);
+      if (types.length > 0) command += types.map(type => ` --type ${type}`).join(' ');
+
+      if (document.getElementById('open').checked) command += ' --open';
+
+      const filter = document.getElementById('filter').value.trim();
+      if (filter) command += ` --filter '${filter}'`;
+
+      const glob = document.getElementById('glob').value.trim();
+      if (glob) command += ` --glob '${glob}'`;
+
+      const mimetype = document.getElementById('mimetype').value.trim();
+      if (mimetype) command += ` --mimetype '${mimetype}'`;
+
+      const minSize = document.getElementById('minSize').value;
+      if (minSize) command += ` --min-size ${minSize}`;
+
+      const maxSize = document.getElementById('maxSize').value;
+      if (maxSize) command += ` --max-size ${maxSize}`;
+
+      const whitelist = document.getElementById('whitelist').value.trim();
+      if (whitelist) command += ` --whitelist '${whitelist}'`;
+
+      const blacklist = document.getElementById('blacklist').value.trim();
+      if (blacklist) command += ` --blacklist '${blacklist}'`;
+
+      const userAgent = document.getElementById('userAgent').value.trim();
+      if (userAgent) command += ` --user-agent '${userAgent}'`;
+
+      const cookie = document.getElementById('cookie').value.trim();
+      if (cookie) command += ` --cookie '${cookie}'`;
+
+      const authUser = document.getElementById('authUser').value.trim();
+      if (authUser) command += ` --auth-user '${authUser}'`;
+
+      const authPass = document.getElementById('authPass').value.trim();
+      if (authPass) command += ` --auth-pass '${authPass}'`;
+
+      const loginUrl = document.getElementById('loginUrl').value.trim();
+      if (loginUrl) command += ` --login-url '${loginUrl}'`;
+
+      const loginForm = document.getElementById('loginForm').value.trim();
+      if (loginForm) command += ` --login-form '${loginForm}'`;
+
+      if (document.getElementById('ignoreRobots').checked) command += ' --ignore-robots';
+      if (document.getElementById('verbose').checked) command += ' --verbose';
+
+      const retry = document.getElementById('retry').value;
+      if (retry) command += ` --retry ${retry}`;
+
+      if (document.getElementById('headless').checked) command += ' --headless';
+
+      const browser = document.getElementById('browser').value;
+      if (browser !== 'default') command += ` --browser ${browser}`;
+
+      const proxy = document.getElementById('proxy').value.trim();
+      if (proxy) command += ` --proxy '${proxy}'`;
+
+      if (document.getElementById('sitemap').checked) command += ' --sitemap';
+
+      const schedule = document.getElementById('schedule').value.trim();
+      if (schedule) command += ` --schedule '${schedule}'`;
+
+      if (document.getElementById('gui').checked) command += ' --gui';
+
+      // New: dynamic and test-mode
+      if (document.getElementById('dynamic').checked) command += ' --dynamic true';
+      if (document.getElementById('testMode').checked) command += ' --test-mode';
+
+      // Render command with transparent default url if needed
+      if (!url) {
+        document.getElementById('commandText').innerHTML = 'node bin/cli.js <span id="defaultUrl" style="color:transparent;">https://example.com</span>' + command.replace('node bin/cli.js <span id="defaultUrl" style="color:transparent;">https://example.com</span>', '');
+      } else {
+        document.getElementById('commandText').textContent = command;
+      }
+    }
+
+    // Language Toggle
+    document.getElementById('langToggle').addEventListener('click', () => {
+      updateLanguage(currentLang === 'en' ? 'zh' : 'en');
+      generateCommand();
+    });
+
+    // Recursive Checkbox
+    document.getElementById('recursive').addEventListener('change', (e) => {
+      document.getElementById('maxDepthDiv').classList.toggle('hidden', !e.target.checked);
+      generateCommand();
+    });
+
+    // Generate Button
+    document.getElementById('generate').addEventListener('click', () => {
+      generateCommand();
+    });
+
+    // Copy Command
+    document.getElementById('copyCommand').addEventListener('click', () => {
+      // Copy only text, not HTML
+      const temp = document.createElement('textarea');
+      temp.value = document.getElementById('commandText').textContent;
+      document.body.appendChild(temp);
+      temp.select();
+      try {
+        document.execCommand('copy');
+        alert(translations[currentLang].copied);
+      } catch {
+        alert(translations[currentLang].copyFailed);
+      }
+      document.body.removeChild(temp);
+    });
+
+    // Real-time updates
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+      input.addEventListener('input', generateCommand);
+      input.addEventListener('change', generateCommand);
+    });
+
+    // Initialize
+    updateLanguage('en');
+    updateOptionList('en');
+    generateCommand();
+  </script>
+</body>
+</html>

@@ -82,6 +82,17 @@ async function getUrlIfMissing(url) {
     const host = new URL(url).host.replace(/[:\/\\]/g, '_');
     const folder = path.join(outputDir, host);
 
+    // 新增：如果資料夾已存在，先刪除
+    if (fs.existsSync(folder)) {
+        try {
+            await fs.remove(folder);
+            console.log(`已刪除舊的資料夾：${folder}`);
+        } catch (err) {
+            console.error(`刪除資料夾失敗：${folder}`, err);
+            process.exit(1);
+        }
+    }
+
     const spinner = ora(MSG.downloading + url).start();
     const startTime = Date.now();
 

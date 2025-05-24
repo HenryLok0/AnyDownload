@@ -9,7 +9,8 @@ const crypto = require('crypto');
 const mime = require('mime-types');
 const { pipeline } = require('stream');
 const { promisify } = require('util');
-const undici = require('undici'); // HTTP/2/3 support
+const undici = require('undici');
+const EventEmitter = require('events');
 
 const streamPipeline = promisify(pipeline);
 
@@ -52,8 +53,9 @@ function hashUrl(url) {
     return crypto.createHash('sha1').update(url).digest('hex');
 }
 
-class Downloader {
+class Downloader extends EventEmitter {
     constructor(options = {}) {
+        super();
         this.delay = options.delay || 1000;
         this.userAgent = options.userAgent;
         this.dynamic = options.dynamic || false;
@@ -74,10 +76,27 @@ class Downloader {
         this.type = options.type || 'all';
         this.gzip = options.gzip !== false;
         this.resourceHashSet = new Set();
+        this.filterRegex = options.filterRegex ? new RegExp(options.filterRegex) : null;
+        this.headless = options.headless !== false;
+        this.browserType = options.browserType || 'puppeteer';
+        this.paused = false;
+        this.cancelled = false;
+        this.resumeCallback = null;
+    }
+
+    pause() {
+        this.paused = true;
+    }
+    resume() {
+        this.paused = false;
+        if (this.resumeCallback) this.resumeCallback();
+    }
+    cancel() {
+        this.cancelled = true;
     }
 
     async downloadWebsite(url, depth = 0, baseDir = null) {
-        if (this.visited.has(url)) return;
+        if (this.visited.has(url) || this.cancelled) return;
         this.visited.add(url);
 
         const host = new URL(url).host.replace(/[:\/\\]/g, '_');
@@ -94,8 +113,8 @@ class Downloader {
         const $ = cheerio.load(html);
         let resources = [];
 
-        // 1. Images, CSS, JS
-        $('img[src],link[rel="stylesheet"][href],script[src]').each((_, el) => {
+        // 1. Images, CSS, JS, manifest, webp, avif
+        $('img[src],link[rel="stylesheet"][href],script[src],link[rel="manifest"][href]').each((_, el) => {
             const src = $(el).attr('src') || $(el).attr('href');
             if (src && !src.startsWith('data:')) resources.push(src);
             // srcset
@@ -106,12 +125,12 @@ class Downloader {
                 });
             }
         });
-        // 2. favicon
+        // favicon
         $('link[rel="icon"],link[rel="shortcut icon"],link[rel="apple-touch-icon"]').each((_, el) => {
             const href = $(el).attr('href');
             if (href && !href.startsWith('data:')) resources.push(href);
         });
-        // 3. Fonts
+        // Fonts
         $('link[rel="preload"][as="font"],style').each((_, el) => {
             if ($(el).attr('href')) resources.push($(el).attr('href'));
             // CSS @font-face
@@ -121,13 +140,26 @@ class Downloader {
                 fontUrls.forEach(fu => { if (!fu.startsWith('data:')) resources.push(fu); });
             }
         });
-        // 4. Video/Audio
+        // Video/Audio
         $('video[src],audio[src],source[src]').each((_, el) => {
             const src = $(el).attr('src');
             if (src && !src.startsWith('data:')) resources.push(src);
         });
+        // iframe, object, embed
+        $('iframe[src],object[data],embed[src]').each((_, el) => {
+            const src = $(el).attr('src') || $(el).attr('data');
+            if (src && !src.startsWith('data:')) resources.push(src);
+        });
+        // inline style background-image
+        $('[style]').each((_, el) => {
+            const style = $(el).attr('style');
+            const matches = [...style.matchAll(/url\(['"]?([^'")]+)['"]?\)/g)];
+            matches.forEach(m => {
+                if (m[1] && !m[1].startsWith('data:')) resources.push(m[1]);
+            });
+        });
 
-        // Filter duplicates and invalid resources
+        // 過濾重複、無效、已存在檔案、型態、正則
         resources = resources
             .map(r => normalizeUrl(r, url))
             .filter(r => !!r)
@@ -138,14 +170,22 @@ class Downloader {
                 // Resource type filter
                 if (this.type !== 'all') {
                     const ext = path.extname(r).toLowerCase();
-                    if (this.type === 'image' && !/\.(png|jpe?g|gif|svg|webp|bmp|ico)$/i.test(ext)) return false;
+                    if (this.type === 'image' && !/\.(png|jpe?g|gif|svg|webp|bmp|ico|avif)$/i.test(ext)) return false;
                     if (this.type === 'css' && ext !== '.css') return false;
                     if (this.type === 'js' && ext !== '.js') return false;
                     if (this.type === 'html' && !/\.html?$/i.test(ext)) return false;
                     if (this.type === 'media' && !/\.(mp4|mp3|ogg|wav|webm|m4a|aac)$/i.test(ext)) return false;
                 }
+                if (this.filterRegex && !this.filterRegex.test(r)) return false;
                 return true;
             });
+
+        // 續傳：已存在檔案直接略過
+        resources = resources.filter(r => {
+            const filename = getFilenameFromUrl(r);
+            const savePath = path.join(baseDir, filename);
+            return !fs.existsSync(savePath);
+        });
 
         // 5. Recursively fetch same-domain a[href]
         let pageLinks = [];
@@ -202,10 +242,19 @@ class Downloader {
                 return;
             }
             let filename = getFilenameFromUrl(abs);
+            const savePath = path.join(baseDir, filename);
             while (attempt < this.retry) {
+                if (this.cancelled) return;
+                if (this.paused) {
+                    await new Promise(resolve => this.resumeCallback = resolve);
+                }
                 try {
                     this.onResource(abs, idx + 1, resources.length);
-                    // Use undici for HTTP/2/3 and auto gzip
+                    // 續傳：已存在檔案直接略過
+                    if (fs.existsSync(savePath)) {
+                        bar.increment({ filename, success: ++this.successCount, fail: this.failCount, size: (this.downloadedBytes / 1024).toFixed(1) });
+                        return;
+                    }
                     const res = await undici.request(abs, {
                         method: 'GET',
                         headers: {
@@ -215,10 +264,8 @@ class Downloader {
                         },
                         maxRedirections: 5
                     });
-                    // Add extension based on Content-Type
                     const contentType = res.headers['content-type'] || '';
                     filename = getFilenameFromUrl(abs, contentType);
-                    const savePath = path.join(baseDir, filename);
                     const fileStream = fs.createWriteStream(savePath);
                     await streamPipeline(res.body, fileStream);
                     const stat = await fs.stat(savePath);
@@ -238,18 +285,22 @@ class Downloader {
                     attempt++;
                     if (attempt >= this.retry) {
                         this.failCount++;
+                        let msg = err.message;
+                        if (msg.includes('403')) msg += ' (Permission denied, maybe anti-bot)';
+                        if (msg.includes('429')) msg += ' (Too many requests, try slower)';
+                        if (msg.match(/cloudflare|captcha/i)) msg += ' (Cloudflare/captcha detected)';
                         bar.increment({ filename: 'fail', success: this.successCount, fail: this.failCount, size: (this.downloadedBytes / 1024).toFixed(1), speed: 0, eta: 0 });
-                        this.failedResources.push({ url: abs, error: err.message });
-                        this.onError && this.onError(`Failed: ${abs} (${err.message})`);
+                        this.failedResources.push({ url: abs, error: msg });
+                        this.onError && this.onError(`Failed: ${abs} (${msg})`);
                     }
                 }
             }
         };
 
-        // Concurrent download
+        // 限速與最大同時連線
         let resIdx = 0;
         const runBatch = async () => {
-            while (resIdx < resources.length) {
+            while (resIdx < resources.length && !this.cancelled) {
                 const batch = [];
                 for (let c = 0; c < this.concurrency && resIdx < resources.length; c++, resIdx++) {
                     batch.push(downloadResource(resources[resIdx], resIdx));
@@ -286,16 +337,20 @@ class Downloader {
     }
 
     async fetchDynamicHtml(url) {
-        const browser = await puppeteer.launch({ headless: 'new' });
-        const page = await browser.newPage();
-        await page.setUserAgent(this.userAgent);
-        if (this.cookie) {
-            await page.setExtraHTTPHeaders({ Cookie: this.cookie });
+        if (this.browserType === 'puppeteer') {
+            const browser = await puppeteer.launch({ headless: this.headless ? 'new' : false });
+            const page = await browser.newPage();
+            await page.setUserAgent(this.userAgent);
+            if (this.cookie) {
+                await page.setExtraHTTPHeaders({ Cookie: this.cookie });
+            }
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+            const html = await page.content();
+            await browser.close();
+            return html;
         }
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-        const html = await page.content();
-        await browser.close();
-        return html;
+        // 可擴充 Playwright
+        throw new Error('Only puppeteer supported now');
     }
 }
 

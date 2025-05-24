@@ -6,11 +6,13 @@ const path = require('path');
 const { exec } = require('child_process');
 const os = require('os');
 const fs = require('fs-extra');
-const inquirer = require('inquirer');
+const inquirerImport = require('inquirer');
 const cosmiconfig = require('cosmiconfig').cosmiconfigSync;
 const chalk = require('chalk');
 
-// English only messages
+// 兼容 inquirer v8/v9
+const inquirer = inquirerImport.prompt ? inquirerImport : inquirerImport.default;
+
 const MSG = {
     provideUrl: 'Please enter the website URL to download:',
     checking: 'Checking website type...',
@@ -31,10 +33,10 @@ const MSG = {
     disk: 'Checking disk space...',
     diskLow: 'Low disk space, aborting download.',
     openIndex: 'Open homepage in browser after download?',
-    homepage: 'Homepage path:'
+    homepage: 'Homepage path:',
+    pause: 'Press "p" to pause, "r" to resume, "c" to cancel.'
 };
 
-// Read CLI config
 let config = {};
 try {
     const explorer = cosmiconfig('websitedownloader');
@@ -42,86 +44,30 @@ try {
     if (result && result.config) config = result.config;
 } catch {}
 
-// yargs options
 const argv = yargs
     .usage('Usage: $0 <website-url> [options]')
-    .option('delay', {
-        alias: 'd',
-        type: 'number',
-        description: 'Delay between downloads (ms)',
-        default: config.delay || 1000
-    })
-    .option('user-agent', {
-        alias: 'u',
-        type: 'string',
-        description: 'User-Agent',
-        default: config['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    })
-    .option('auto', {
-        alias: 'A',
-        type: 'boolean',
-        description: 'Auto detect static/dynamic',
-        default: config.auto !== undefined ? config.auto : true
-    })
-    .option('recursive', {
-        alias: 'r',
-        type: 'boolean',
-        description: 'Recursively download same-domain pages',
-        default: config.recursive || false
-    })
-    .option('max-depth', {
-        alias: 'm',
-        type: 'number',
-        description: 'Max recursion depth',
-        default: config['max-depth'] || 1
-    })
-    .option('cookie', {
-        type: 'string',
-        description: 'Cookie',
-        default: config.cookie
-    })
-    .option('output', {
-        alias: 'o',
-        type: 'string',
-        description: 'Custom output folder',
-        default: config.output
-    })
-    .option('verbose', {
-        type: 'boolean',
-        description: 'Show verbose log',
-        default: config.verbose || false
-    })
-    .option('ignore-robots', {
-        type: 'boolean',
-        description: 'Ignore robots.txt',
-        default: config['ignore-robots'] || false
-    })
-    .option('retry', {
-        type: 'number',
-        description: 'Retry count for failed downloads',
-        default: config.retry || 3
-    })
-    .option('type', {
-        type: 'string',
-        description: 'Download only specific resource types (image,css,js,html,media,all)',
-        default: config.type || 'all'
-    })
-    .option('open', {
-        type: 'boolean',
-        description: 'Open homepage after download',
-        default: config.open || false
-    })
+    .option('delay', { alias: 'd', type: 'number', description: 'Delay between downloads (ms)', default: config.delay || 1000 })
+    .option('user-agent', { alias: 'u', type: 'string', description: 'User-Agent', default: config['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' })
+    .option('auto', { alias: 'A', type: 'boolean', description: 'Auto detect static/dynamic', default: config.auto !== undefined ? config.auto : true })
+    .option('recursive', { alias: 'r', type: 'boolean', description: 'Recursively download same-domain pages', default: config.recursive || false })
+    .option('max-depth', { alias: 'm', type: 'number', description: 'Max recursion depth', default: config['max-depth'] || 1 })
+    .option('cookie', { type: 'string', description: 'Cookie', default: config.cookie })
+    .option('output', { alias: 'o', type: 'string', description: 'Custom output folder', default: config.output })
+    .option('verbose', { type: 'boolean', description: 'Show verbose log', default: config.verbose || false })
+    .option('ignore-robots', { type: 'boolean', description: 'Ignore robots.txt', default: config['ignore-robots'] || false })
+    .option('retry', { type: 'number', description: 'Retry count for failed downloads', default: config.retry || 3 })
+    .option('type', { type: 'string', description: 'Download only specific resource types (image,css,js,html,media,all)', default: config.type || 'all' })
+    .option('open', { type: 'boolean', description: 'Open homepage after download', default: config.open || false })
+    .option('concurrency', { type: 'number', description: 'Max concurrent downloads', default: config.concurrency || 5 })
+    .option('filter', { type: 'string', description: 'Regex to filter resource URLs', default: config.filter })
+    .option('headless', { type: 'boolean', description: 'Use headless browser', default: config.headless !== false })
+    .option('browser', { type: 'string', description: 'Browser type (puppeteer/playwright)', default: config.browser || 'puppeteer' })
     .help()
     .argv;
 
-// Interactive URL input
 async function getUrlIfMissing(url) {
     if (url) return url;
-    const answer = await inquirer.prompt([{
-        type: 'input',
-        name: 'url',
-        message: MSG.provideUrl
-    }]);
+    const answer = await inquirer.prompt([{ type: 'input', name: 'url', message: MSG.provideUrl }]);
     return answer.url;
 }
 
@@ -139,13 +85,15 @@ async function getUrlIfMissing(url) {
     const spinner = ora(MSG.downloading + url).start();
     const startTime = Date.now();
 
-    // Disk space check
+    // Disk space check (僅在 Linux 下有效)
     spinner.text = MSG.disk;
     try {
-        const stat = await fs.statvfs ? await fs.statvfs(folder) : null;
-        if (stat && stat.f_bavail * stat.f_frsize < 100 * 1024 * 1024) {
-            spinner.fail(MSG.diskLow);
-            process.exit(1);
+        if (os.platform() === 'linux' && fs.statvfs) {
+            const stat = await fs.statvfs(folder);
+            if (stat && stat.f_bavail * stat.f_frsize < 100 * 1024 * 1024) {
+                spinner.fail(MSG.diskLow);
+                process.exit(1);
+            }
         }
     } catch {}
 
@@ -177,6 +125,27 @@ async function getUrlIfMissing(url) {
         fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
     }
 
+    // 報表
+    const reportFile = path.join(folder, 'report.html');
+    function writeReport(downloader) {
+        const html = `
+        <html><head><title>Download Report</title></head><body>
+        <h1>Download Report</h1>
+        <ul>
+            <li>Total: ${downloader.successCount + downloader.failCount}</li>
+            <li>Success: ${downloader.successCount}</li>
+            <li>Fail: ${downloader.failCount}</li>
+            <li>Total size: ${(downloader.downloadedBytes / 1024).toFixed(1)} KB</li>
+        </ul>
+        <h2>Failed Resources</h2>
+        <ul>
+            ${downloader.failedResources.map(r => `<li>${r.url} (${r.error})</li>`).join('')}
+        </ul>
+        </body></html>
+        `;
+        fs.writeFileSync(reportFile, html);
+    }
+
     const downloader = new Downloader({
         delay: argv.delay,
         userAgent: argv['user-agent'],
@@ -189,6 +158,10 @@ async function getUrlIfMissing(url) {
         retry: argv.retry,
         type: argv.type,
         gzip: true,
+        concurrency: argv.concurrency,
+        filterRegex: argv.filter,
+        headless: argv.headless,
+        browserType: argv.browser,
         onResource: (resourceUrl, idx, total, speed, eta) => {
             let barMsg = `(${idx}/${total}) ${resourceUrl}`;
             if (speed) barMsg += ` | ${chalk.cyan(speed + '/s')}`;
@@ -201,9 +174,31 @@ async function getUrlIfMissing(url) {
         }
     });
 
+    // CLI 暫停/繼續/取消
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.setEncoding('utf8');
+    console.log(MSG.pause);
+    process.stdin.on('data', key => {
+        if (key === 'p') {
+            downloader.pause();
+            spinner.text = 'Paused...';
+        } else if (key === 'r') {
+            downloader.resume();
+            spinner.text = 'Resumed...';
+        } else if (key === 'c') {
+            downloader.cancel();
+            spinner.fail('Cancelled by user.');
+            process.exit(0);
+        } else if (key === '\u0003') {
+            process.exit();
+        }
+    });
+
     try {
         await downloader.downloadWebsite(url);
         spinner.succeed(MSG.done);
+        writeReport(downloader);
         console.log(`${MSG.saved} ${folder}`);
         // Summary
         console.log(`\n${MSG.summary}`);
@@ -227,12 +222,13 @@ async function getUrlIfMissing(url) {
             openHome = answer.open;
         }
         if (openHome) {
+            const openPath = process.platform === 'win32' ? indexPath.replace(/\\/g, '/') : indexPath;
             if (process.platform === 'win32') {
-                exec(`start "" "${indexPath}"`);
+                exec(`start "" "${openPath}"`);
             } else if (process.platform === 'darwin') {
-                exec(`open "${indexPath}"`);
+                exec(`open "${openPath}"`);
             } else {
-                exec(`xdg-open "${indexPath}"`);
+                exec(`xdg-open "${openPath}"`);
             }
         }
         // Failed list
@@ -246,7 +242,6 @@ async function getUrlIfMissing(url) {
                 }
             });
         }
-        // Log summary
         if (argv.verbose) log('Download finished.');
     } catch (error) {
         spinner.fail('Download failed: ' + (error.message || error));

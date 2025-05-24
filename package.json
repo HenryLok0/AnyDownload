@@ -1,0 +1,29 @@
+{
+  "name": "website-downloader-cli",
+  "version": "1.0.0",
+  "description": "A CLI tool to download a full website including all images, CSS, and JavaScript files.",
+  "main": "src/downloader.js",
+  "bin": {
+    "website-downloader": "bin/cli.js"
+  },
+  "scripts": {
+    "start": "node bin/cli.js"
+  },
+  "keywords": [
+    "website",
+    "downloader",
+    "cli",
+    "nodejs"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "cheerio": "^1.0.0-rc.10",
+    "cli-progress": "^3.12.0",
+    "fs-extra": "^10.0.0",
+    "ora": "^8.2.0",
+    "puppeteer": "^24.9.0",
+    "yargs": "^17.7.2"
+  }
+}

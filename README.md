@@ -1,8 +1,6 @@
 # Website Downloader
 
-![npm](https://img.shields.io/npm/v/website-downloader-cli?style=flat-square)
 [![MIT License](https://img.shields.io/github/license/HenryLok0/Website-Downloader?color=blue)](https://github.com/HenryLok0/Website-Downloader/blob/main/LICENSE)
-![node](https://img.shields.io/node/v/website-downloader-cli?style=flat-square)
 
 A powerful command-line tool to download an entire website—including HTML, images, CSS, JS, fonts, and media—into a local folder for offline browsing.
 

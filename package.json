@@ -25,6 +25,7 @@
     "ora": "^8.2.0",
     "puppeteer": "^24.9.0",
     "yargs": "^17.7.2",
-    "mime-types": "^2.1.35"
+    "mime-types": "^2.1.35",
+    "inquirer": "^9.0.0"
   }
 }

@@ -159,7 +159,7 @@ class Downloader extends EventEmitter {
             });
         });
 
-        // 過濾重複、無效、已存在檔案、型態、正則
+        // Filter duplicate, invalid, existing files, types, regular expressions
         resources = resources
             .map(r => normalizeUrl(r, url))
             .filter(r => !!r)
@@ -180,7 +180,7 @@ class Downloader extends EventEmitter {
                 return true;
             });
 
-        // 續傳：已存在檔案直接略過
+        // Resume: Skip the existing file
         resources = resources.filter(r => {
             const filename = getFilenameFromUrl(r);
             const savePath = path.join(baseDir, filename);
@@ -250,7 +250,7 @@ class Downloader extends EventEmitter {
                 }
                 try {
                     this.onResource(abs, idx + 1, resources.length);
-                    // 續傳：已存在檔案直接略過
+                    // Resume: Skip the existing file
                     if (fs.existsSync(savePath)) {
                         bar.increment({ filename, success: ++this.successCount, fail: this.failCount, size: (this.downloadedBytes / 1024).toFixed(1) });
                         return;
@@ -297,7 +297,7 @@ class Downloader extends EventEmitter {
             }
         };
 
-        // 限速與最大同時連線
+        // Speed ​​limit and maximum simultaneous connections
         let resIdx = 0;
         const runBatch = async () => {
             while (resIdx < resources.length && !this.cancelled) {
@@ -349,7 +349,7 @@ class Downloader extends EventEmitter {
             await browser.close();
             return html;
         }
-        // 可擴充 Playwright
+        // Expandable Playwright
         throw new Error('Only puppeteer supported now');
     }
 }

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 const { Downloader, checkNeedDynamic } = require('../src/downloader');
 const yargs = require('yargs');
 const ora = require('ora').default;
@@ -10,7 +9,7 @@ const inquirerImport = require('inquirer');
 const cosmiconfig = require('cosmiconfig').cosmiconfigSync;
 const chalk = require('chalk');
 
-// 兼容 inquirer v8/v9
+// Compatible with inquirer v8/v9
 const inquirer = inquirerImport.prompt ? inquirerImport : inquirerImport.default;
 
 const MSG = {
@@ -82,7 +81,7 @@ async function getUrlIfMissing(url) {
     const host = new URL(url).host.replace(/[:\/\\]/g, '_');
     const folder = path.join(outputDir, host);
 
-    // 新增：如果資料夾已存在，先刪除
+    // New: If the folder already exists, delete it first
     if (fs.existsSync(folder)) {
         try {
             await fs.remove(folder);
@@ -96,7 +95,7 @@ async function getUrlIfMissing(url) {
     const spinner = ora(MSG.downloading + url).start();
     const startTime = Date.now();
 
-    // Disk space check (僅在 Linux 下有效)
+    // Disk space check (only available on Linux)
     spinner.text = MSG.disk;
     try {
         if (os.platform() === 'linux' && fs.statvfs) {
@@ -136,7 +135,7 @@ async function getUrlIfMissing(url) {
         fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
     }
 
-    // 報表
+    // Report
     const reportFile = path.join(folder, 'report.html');
     function writeReport(downloader) {
         const html = `
@@ -185,7 +184,7 @@ async function getUrlIfMissing(url) {
         }
     });
 
-    // CLI 暫停/繼續/取消
+    // CLI pause/resume/cancel
     process.stdin.setRawMode(true);
     process.stdin.resume();
     process.stdin.setEncoding('utf8');

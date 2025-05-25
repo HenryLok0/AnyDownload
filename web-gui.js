@@ -13,12 +13,12 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// 前端頁面
+// Frontend page
 app.get('/', (req, res) => {
   res.render('index');
 });
 
-// 新增：API 下載路由
+// Added: API download route
 app.post('/api/download', async (req, res) => {
   const opts = req.body;
   if (!opts.url) return res.json({ success: false, error: 'No URL' });
@@ -29,7 +29,7 @@ app.post('/api/download', async (req, res) => {
     const host = new URL(opts.url).host.replace(/[:\/\\]/g, '_');
     const folder = path.join(outputDir, host);
 
-    // 刪除舊資料夾
+    // Remove old folder
     if (fs.existsSync(folder)) await fs.remove(folder);
 
     const downloader = new Downloader({
@@ -42,7 +42,7 @@ app.post('/api/download', async (req, res) => {
       retry: Number(opts.retry) || 3,
       headless: opts.headless,
       dynamic: opts.dynamic,
-      type: Array.isArray(opts.type) ? opts.type[0] : opts.type // 只取一個類型（可依需求調整）
+      type: Array.isArray(opts.type) ? opts.type[0] : opts.type // Only take one type (adjust as needed)
     });
 
     await downloader.downloadWebsite(opts.url);
@@ -52,7 +52,7 @@ app.post('/api/download', async (req, res) => {
   }
 });
 
-// 啟動伺服器
+// Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Web GUI running at http://localhost:${PORT}`);

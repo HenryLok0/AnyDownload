@@ -1,656 +1,477 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Website Downloader Command Generator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>AnyDownload - 專業網站下載工具</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
-  <div class="max-w-5xl mx-auto bg-white rounded-lg shadow-lg p-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-      <h1 id="title" class="text-2xl font-bold text-gray-800">Website Downloader Command Generator</h1>
-      <button id="langToggle" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">切換到中文</button>
-    </div>
 
-    <!-- Form Sections -->
-    <div class="space-y-8">
-      <!-- Basic Options -->
-      <div>
-        <h2 id="basicOptions" class="text-xl font-semibold text-gray-700">Basic Options</h2>
-        <div class="mt-2 space-y-4">
-          <div>
-            <label for="url" id="urlLabel" class="block text-sm font-medium text-gray-700">Website URL</label>
-            <input type="text" id="url" placeholder="https://example.com" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="output" id="outputLabel" class="block text-sm font-medium text-gray-700">Output Folder</label>
-            <input type="text" id="output" placeholder="downloaded_site" class="mt-1 w-full p-2 border rounded">
-          </div>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+      <a class="navbar-brand" href="#">
+        <i class="bi bi-cloud-download"></i> AnyDownload
+      </a>
+      <div class="ms-auto d-flex align-items-center">
+        <div class="dropdown me-3">
+          <button class="btn btn-outline-light dropdown-toggle" type="button" id="languageDropdown"
+            data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-translate"></i> <span id="currentLang">繁體中文</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+            <li><a class="dropdown-item" href="#" data-lang="zh-TW">繁體中文</a></li>
+            <li><a class="dropdown-item" href="#" data-lang="en">English</a></li>
+          </ul>
         </div>
+        <button id="darkModeToggle" class="btn btn-outline-light">
+          <i class="bi bi-moon-fill"></i>
+        </button>
       </div>
+    </div>
+  </nav>
 
-      <!-- Download Options -->
-      <div>
-        <h2 id="downloadOptions" class="text-xl font-semibold text-gray-700">Download Options</h2>
-        <div class="mt-2 space-y-4">
-          <div class="flex items-center">
-            <input type="checkbox" id="recursive" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-            <label for="recursive" id="recursiveLabel" class="ml-2 text-sm text-gray-700">Recursive Download</label>
+  <div class="container main-container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="card">
+          <div class="card-header">
+            <h4 class="mb-0" data-i18n="downloadWebsite">下載網站</h4>
           </div>
-          <div id="maxDepthDiv" class="hidden mt-2">
-            <label for="maxDepth" id="maxDepthLabel" class="block text-sm font-medium text-gray-700">Max Recursion Depth (default: 1)</label>
-            <input type="number" id="maxDepth" min="1" value="1" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="delay" id="delayLabel" class="block text-sm font-medium text-gray-700">Delay between downloads (ms, default: 1000)</label>
-            <input type="number" id="delay" min="0" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="concurrency" id="concurrencyLabel" class="block text-sm font-medium text-gray-700">Max Concurrent Downloads (default: 5)</label>
-            <input type="number" id="concurrency" min="1" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label id="typesLabel" class="block text-sm font-medium text-gray-700">Resource Types</label>
-            <div class="mt-2 flex flex-wrap gap-4">
-              <label class="inline-flex items-center"><input type="checkbox" name="type" value="html" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">HTML</span></label>
-              <label class="inline-flex items-center"><input type="checkbox" name="type" value="image" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">Image</span></label>
-              <label class="inline-flex items-center"><input type="checkbox" name="type" value="css" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">CSS</span></label>
-              <label class="inline-flex items-center"><input type="checkbox" name="type" value="js" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">JavaScript</span></label>
-              <label class="inline-flex items-center"><input type="checkbox" name="type" value="media" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">Media</span></label>
-              <label class="inline-flex items-center"><input type="checkbox" name="type" value="all" class="h-4 w-4 text-blue-600 border-gray-300 rounded"><span class="ml-2 text-sm text-gray-700">All</span></label>
+          <div class="card-body">
+            <form id="downloadForm">
+              <div class="mb-4">
+                <label for="url" class="form-label" data-i18n="websiteUrl">網站網址</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                  <input type="url" class="form-control" id="url" name="url" required
+                    data-i18n-placeholder="websiteUrlPlaceholder" placeholder="https://example.com">
+                </div>
+              </div>
+
+              <div class="option-group">
+                <h5><i class="bi bi-gear"></i> <span data-i18n="basicOptions">基本選項</span></h5>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="output" class="form-label" data-i18n="outputFolder">輸出資料夾</label>
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="bi bi-folder"></i></span>
+                      <input type="text" class="form-control" id="output" name="output"
+                        data-i18n-placeholder="outputFolderPlaceholder" placeholder="downloaded_site">
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="type" class="form-label" data-i18n="resourceType">資源類型</label>
+                    <select class="form-select" id="type" name="type">
+                      <option value="all" data-i18n="allResources">所有資源</option>
+                      <option value="image" data-i18n="imagesOnly">僅圖片</option>
+                      <option value="css" data-i18n="cssOnly">僅 CSS</option>
+                      <option value="js" data-i18n="jsOnly">僅 JavaScript</option>
+                      <option value="html" data-i18n="htmlOnly">僅 HTML</option>
+                      <option value="media" data-i18n="mediaOnly">僅媒體檔案</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <h5><i class="bi bi-sliders"></i> <span data-i18n="advancedOptions">進階選項</span></h5>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="recursive" name="recursive">
+                      <label class="form-check-label" for="recursive">
+                        <i class="bi bi-arrow-repeat"></i> <span data-i18n="recursiveDownload">遞迴下載</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="dynamic" name="dynamic">
+                      <label class="form-check-label" for="dynamic">
+                        <i class="bi bi-lightning"></i> <span data-i18n="dynamicMode">動態模式</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="maxDepth" class="form-label" data-i18n="maxDepth">最大深度</label>
+                    <input type="number" class="form-control" id="maxDepth" name="maxDepth" value="1" min="1">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="concurrency" class="form-label" data-i18n="concurrency">並行下載數</label>
+                    <input type="number" class="form-control" id="concurrency" name="concurrency" value="5" min="1">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="delay" class="form-label" data-i18n="delay">延遲時間 (毫秒)</label>
+                    <input type="number" class="form-control" id="delay" name="delay" value="1000" min="0">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="retry" class="form-label" data-i18n="retry">重試次數</label>
+                    <input type="number" class="form-control" id="retry" name="retry" value="3" min="0">
+                  </div>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <h5><i class="bi bi-shield"></i> <span data-i18n="securityOptions">安全選項</span></h5>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="user-agent" class="form-label" data-i18n="userAgent">使用者代理</label>
+                    <input type="text" class="form-control" id="user-agent" name="user-agent" 
+                           data-i18n-placeholder="userAgentPlaceholder" placeholder="自訂 User-Agent">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="cookie" class="form-label" data-i18n="cookie">Cookie</label>
+                    <input type="text" class="form-control" id="cookie" name="cookie" 
+                           data-i18n-placeholder="cookiePlaceholder" placeholder="自訂 Cookie">
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="ignore-robots" name="ignore-robots">
+                      <label class="form-check-label" for="ignore-robots">
+                        <i class="bi bi-robot"></i> <span data-i18n="ignoreRobots">忽略 robots.txt</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="headless" name="headless">
+                      <label class="form-check-label" for="headless">
+                        <i class="bi bi-display"></i> <span data-i18n="headlessBrowser">無頭瀏覽器</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <h5><i class="bi bi-funnel"></i> <span data-i18n="filterOptions">過濾選項</span></h5>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="filter" class="form-label" data-i18n="urlFilter">URL 過濾器 (正則表達式)</label>
+                    <input type="text" class="form-control" id="filter" name="filter" 
+                           data-i18n-placeholder="filterPlaceholder" placeholder="正則表達式模式">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="glob" class="form-label" data-i18n="globPattern">Glob 模式</label>
+                    <input type="text" class="form-control" id="glob" name="glob" 
+                           data-i18n-placeholder="globPlaceholder" placeholder="Glob 模式">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="mimetype" class="form-label" data-i18n="mimeType">MIME 類型</label>
+                    <input type="text" class="form-control" id="mimetype" name="mimetype" 
+                           data-i18n-placeholder="mimeTypePlaceholder" placeholder="例如：image/png">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="whitelist" class="form-label" data-i18n="whitelist">白名單 URL</label>
+                    <input type="text" class="form-control" id="whitelist" name="whitelist" 
+                           data-i18n-placeholder="whitelistPlaceholder" placeholder="以逗號分隔的 URL">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="blacklist" class="form-label" data-i18n="blacklist">黑名單 URL</label>
+                    <input type="text" class="form-control" id="blacklist" name="blacklist" 
+                           data-i18n-placeholder="blacklistPlaceholder" placeholder="以逗號分隔的 URL">
+                  </div>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <h5><i class="bi bi-shield-lock"></i> <span data-i18n="authOptions">認證選項</span></h5>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="auth-user" class="form-label" data-i18n="authUser">認證使用者名稱</label>
+                    <input type="text" class="form-control" id="auth-user" name="auth-user" 
+                           data-i18n-placeholder="authUserPlaceholder" placeholder="HTTP 基本認證使用者名稱">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="auth-pass" class="form-label" data-i18n="authPass">認證密碼</label>
+                    <input type="password" class="form-control" id="auth-pass" name="auth-pass" 
+                           data-i18n-placeholder="authPassPlaceholder" placeholder="HTTP 基本認證密碼">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="login-url" class="form-label" data-i18n="loginUrl">登入網址</label>
+                    <input type="url" class="form-control" id="login-url" name="login-url" 
+                           data-i18n-placeholder="loginUrlPlaceholder" placeholder="登入表單網址">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="login-form" class="form-label" data-i18n="loginForm">登入表單資料</label>
+                    <input type="text" class="form-control" id="login-form" name="login-form" 
+                           data-i18n-placeholder="loginFormPlaceholder" placeholder="JSON 字串">
+                  </div>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <h5><i class="bi bi-clock"></i> <span data-i18n="scheduleOptions">排程選項</span></h5>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="sitemap" name="sitemap">
+                      <label class="form-check-label" for="sitemap">
+                        <i class="bi bi-sitemap"></i> <span data-i18n="enableSitemap">啟用站點地圖</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="schedule" class="form-label" data-i18n="schedule">排程 (Cron)</label>
+                    <input type="text" class="form-control" id="schedule" name="schedule" 
+                           data-i18n-placeholder="schedulePlaceholder" placeholder="Cron 語法">
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-download"></i> <span data-i18n="startDownload">開始下載</span>
+              </button>
+            </form>
+
+            <div id="downloadStatus" class="download-status" style="display: none;">
+              <div class="status-card">
+                <h5><i class="bi bi-graph-up"></i> <span data-i18n="downloadProgress">下載進度</span></h5>
+                <div class="progress">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                    style="width: 0%"></div>
+                </div>
+                <div class="download-info">
+                  <span id="currentFile" data-i18n="preparing">準備中...</span>
+                  <span id="progressText">0%</span>
+                </div>
+                <div class="download-info">
+                  <span id="downloadSpeed" data-i18n="speed">速度：0 KB/s</span>
+                  <span id="eta" data-i18n="eta">預計完成時間：--:--</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="flex items-center">
-            <input type="checkbox" id="open" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-            <label for="open" id="openLabel" class="ml-2 text-sm text-gray-700">Auto-open homepage after download</label>
-          </div>
         </div>
       </div>
-
-      <!-- Filtering Options -->
-      <div>
-        <h2 id="filteringOptions" class="text-xl font-semibold text-gray-700">Filtering Options</h2>
-        <div class="mt-2 space-y-4">
-          <div>
-            <label for="filter" id="filterLabel" class="block text-sm font-medium text-gray-700">Filter (regex)</label>
-            <input type="text" id="filter" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="glob" id="globLabel" class="block text-sm font-medium text-gray-700">Glob Pattern</label>
-            <input type="text" id="glob" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="mimetype" id="mimetypeLabel" class="block text-sm font-medium text-gray-700">MIME Type (e.g., image/png)</label>
-            <input type="text" id="mimetype" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="minSize" id="minSizeLabel" class="block text-sm font-medium text-gray-700">Minimum File Size (bytes)</label>
-            <input type="number" id="minSize" min="0" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="maxSize" id="maxSizeLabel" class="block text-sm font-medium text-gray-700">Maximum File Size (bytes)</label>
-            <input type="number" id="maxSize" min="0" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="whitelist" id="whitelistLabel" class="block text-sm font-medium text-gray-700">Whitelist Patterns (comma-separated)</label>
-            <input type="text" id="whitelist" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="blacklist" id="blacklistLabel" class="block text-sm font-medium text-gray-700">Blacklist Patterns (comma-separated)</label>
-            <input type="text" id="blacklist" class="mt-1 w-full p-2 border rounded">
-          </div>
-        </div>
-      </div>
-
-      <!-- Authentication Options -->
-      <div>
-        <h2 id="authOptions" class="text-xl font-semibold text-gray-700">Authentication Options</h2>
-        <div class="mt-2 space-y-4">
-          <div>
-            <label for="userAgent" id="userAgentLabel" class="block text-sm font-medium text-gray-700">User-Agent</label>
-            <input type="text" id="userAgent" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="cookie" id="cookieLabel" class="block text-sm font-medium text-gray-700">Cookie Header</label>
-            <input type="text" id="cookie" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="authUser" id="authUserLabel" class="block text-sm font-medium text-gray-700">HTTP Basic Auth Username</label>
-            <input type="text" id="authUser" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="authPass" id="authPassLabel" class="block text-sm font-medium text-gray-700">HTTP Basic Auth Password</label>
-            <input type="password" id="authPass" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="loginUrl" id="loginUrlLabel" class="block text-sm font-medium text-gray-700">Login Form URL</label>
-            <input type="text" id="loginUrl" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div>
-            <label for="loginForm" id="loginFormLabel" class="block text-sm font-medium text-gray-700">Login Form Data (JSON)</label>
-            <textarea id="loginForm" rows="3" class="mt-1 w-full p-2 border rounded"></textarea>
-          </div>
-        </div>
-      </div>
-
-      <!-- Advanced Options -->
-      <div>
-        <h2 id="advancedOptions" class="text-xl font-semibold text-gray-700">Advanced Options</h2>
-        <div class="mt-2 space-y-4">
-          <div class="flex items-center">
-            <input type="checkbox" id="ignoreRobots" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-            <label for="ignoreRobots" id="ignoreRobotsLabel" class="ml-2 text-sm text-gray-700">Ignore robots.txt</label>
-          </div>
-          <div class="flex items-center">
-            <input type="checkbox" id="verbose" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-            <label for="verbose" id="verboseLabel" class="ml-2 text-sm text-gray-700">Verbose Logging</label>
-          </div>
-          <div>
-            <label for="retry" id="retryLabel" class="block text-sm font-medium text-gray-700">Retry Count (default: 3)</label>
-            <input type="number" id="retry" min="1" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div class="flex items-center">
-            <input type="checkbox" id="headless" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-            <label for="headless" id="headlessLabel" class="ml-2 text-sm text-gray-700">Use Headless Browser</label>
-          </div>
-          <div>
-            <label for="browser" id="browserLabel" class="block text-sm font-medium text-gray-700">Browser Engine</label>
-            <select id="browser" class="mt-1 w-full p-2 border rounded">
-              <option value="default">Default</option>
-              <option value="puppeteer">Puppeteer</option>
-              <option value="playwright">Playwright</option>
-            </select>
-          </div>
-          <div>
-            <label for="proxy" id="proxyLabel" class="block text-sm font-medium text-gray-700">Proxy URL</label>
-            <input type="text" id="proxy" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div class="flex items-center">
-            <input type="checkbox" id="sitemap" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-            <label for="sitemap" id="sitemapLabel" class="ml-2 text-sm text-gray-700">Parse sitemap.xml</label>
-          </div>
-          <div>
-            <label for="schedule" id="scheduleLabel" class="block text-sm font-medium text-gray-700">Schedule (cron syntax, e.g., 0 0 * * *)</label>
-            <input type="text" id="schedule" class="mt-1 w-full p-2 border rounded">
-          </div>
-          <div class="flex items-center">
-            <input type="checkbox" id="gui" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-            <label for="gui" id="guiLabel" class="ml-2 text-sm text-gray-700">Launch Web GUI (instead of CLI)</label>
-          </div>
-          <div class="flex items-center">
-            <input type="checkbox" id="dynamic" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-            <label for="dynamic" id="dynamicLabel" class="ml-2 text-sm text-gray-700">Dynamic Mode (<code>--dynamic true</code>)</label>
-          </div>
-          <div class="flex items-center">
-            <input type="checkbox" id="testMode" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-            <label for="testMode" id="testModeLabel" class="ml-2 text-sm text-gray-700">Test Mode (<code>--test-mode</code>)</label>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Generated Command -->
-    <div class="mt-6">
-      <button id="generate" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">開始下載</button>
-      <div id="outputCommand" class="mt-4 p-4 bg-gray-50 rounded border">
-        <p id="generatedCommandLabel" class="text-sm font-medium text-gray-700">Generated Command:</p>
-        <code id="commandText" class="text-sm text-gray-800 break-all">node bin/cli.js <span id="defaultUrl" style="color:transparent;">https://example.com</span></code>
-        <button id="copyCommand" class="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">Copy to Clipboard</button>
-      </div>
-      <div id="downloadStatus" class="mt-2"></div>
-    </div>
-
-    <!-- Options List -->
-    <div class="mt-8">
-      <h2 id="optionsList" class="text-xl font-semibold text-gray-700">Options List</h2>
-      <ul id="optionsListContent" class="mt-2 list-disc list-inside text-sm text-gray-700">
-        <!-- Options will be injected by JS -->
-      </ul>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <script>
-    // ...原本的 translations、optionListTranslations、updateOptionList、updateLanguage、generateCommand...
-
-    // 新增：前端直接觸發下載
-    async function startDownload() {
-      const opts = {
-        url: document.getElementById('url').value.trim(),
-        output: document.getElementById('output').value.trim(),
-        recursive: document.getElementById('recursive').checked,
-        maxDepth: document.getElementById('maxDepth').value,
-        delay: document.getElementById('delay').value,
-        concurrency: document.getElementById('concurrency').value,
-        type: Array.from(document.querySelectorAll('input[name="type"]:checked')).map(input => input.value),
-        open: document.getElementById('open').checked,
-        filter: document.getElementById('filter').value.trim(),
-        glob: document.getElementById('glob').value.trim(),
-        mimetype: document.getElementById('mimetype').value.trim(),
-        minSize: document.getElementById('minSize').value,
-        maxSize: document.getElementById('maxSize').value,
-        whitelist: document.getElementById('whitelist').value.trim(),
-        blacklist: document.getElementById('blacklist').value.trim(),
-        userAgent: document.getElementById('userAgent').value.trim(),
-        cookie: document.getElementById('cookie').value.trim(),
-        authUser: document.getElementById('authUser').value.trim(),
-        authPass: document.getElementById('authPass').value.trim(),
-        loginUrl: document.getElementById('loginUrl').value.trim(),
-        loginForm: document.getElementById('loginForm').value.trim(),
-        ignoreRobots: document.getElementById('ignoreRobots').checked,
-        verbose: document.getElementById('verbose').checked,
-        retry: document.getElementById('retry').value,
-        headless: document.getElementById('headless').checked,
-        browser: document.getElementById('browser').value,
-        proxy: document.getElementById('proxy').value.trim(),
-        sitemap: document.getElementById('sitemap').checked,
-        schedule: document.getElementById('schedule').value.trim(),
-        gui: document.getElementById('gui').checked,
-        dynamic: document.getElementById('dynamic').checked,
-        testMode: document.getElementById('testMode').checked
-      };
-      const statusDiv = document.getElementById('downloadStatus');
-      statusDiv.textContent = 'Downloading...';
-      statusDiv.className = 'mt-2 text-blue-600';
-      try {
-        const res = await fetch('/api/download', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(opts)
-        });
-        const data = await res.json();
-        if (data.success) {
-          statusDiv.textContent = '下載完成！儲存於：' + data.folder;
-          statusDiv.className = 'mt-2 text-green-600';
-        } else {
-          statusDiv.textContent = '下載失敗：' + (data.error || 'Unknown error');
-          statusDiv.className = 'mt-2 text-red-600';
-        }
-      } catch (e) {
-        statusDiv.textContent = '下載失敗：' + e.message;
-        statusDiv.className = 'mt-2 text-red-600';
-      }
-    }
-
-    // 修改「開始下載」按鈕事件
-    document.getElementById('generate').addEventListener('click', () => {
-      generateCommand();
-      startDownload();
-    });
-
+    // Language switching functionality
     const translations = {
-      en: {
-        title: "Website Downloader Command Generator",
-        langToggle: "Switch to Chinese",
-        basicOptions: "Basic Options",
-        urlLabel: "Website URL",
-        outputLabel: "Output Folder",
-        downloadOptions: "Download Options",
-        recursiveLabel: "Recursive Download",
-        maxDepthLabel: "Max Recursion Depth (default: 1)",
-        delayLabel: "Delay between downloads (ms, default: 1000)",
-        concurrencyLabel: "Max Concurrent Downloads (default: 5)",
-        typesLabel: "Resource Types",
-        openLabel: "Auto-open homepage after download",
-        filteringOptions: "Filtering Options",
-        filterLabel: "Filter (regex)",
-        globLabel: "Glob Pattern",
-        mimetypeLabel: "MIME Type (e.g., image/png)",
-        minSizeLabel: "Minimum File Size (bytes)",
-        maxSizeLabel: "Maximum File Size (bytes)",
-        whitelistLabel: "Whitelist Patterns (comma-separated)",
-        blacklistLabel: "Blacklist Patterns (comma-separated)",
-        authOptions: "Authentication Options",
-        userAgentLabel: "User-Agent",
-        cookieLabel: "Cookie Header",
-        authUserLabel: "HTTP Basic Auth Username",
-        authPassLabel: "HTTP Basic Auth Password",
-        loginUrlLabel: "Login Form URL",
-        loginFormLabel: "Login Form Data (JSON)",
-        advancedOptions: "Advanced Options",
-        ignoreRobotsLabel: "Ignore robots.txt",
-        verboseLabel: "Verbose Logging",
-        retryLabel: "Retry Count (default: 3)",
-        headlessLabel: "Use Headless Browser",
-        browserLabel: "Browser Engine",
-        proxyLabel: "Proxy URL",
-        sitemapLabel: "Parse sitemap.xml",
-        scheduleLabel: "Schedule (cron syntax, e.g., 0 0 * * *)",
-        guiLabel: "Launch Web GUI (instead of CLI)",
-        generate: "Generate Command",
-        generatedCommandLabel: "Generated Command:",
-        copyCommand: "Copy to Clipboard",
-        optionsList: "Options List",
-        copied: "Command copied to clipboard!",
-        copyFailed: "Failed to copy command. Please select and copy manually.",
-        urlRequired: "Please enter a website URL.",
-        dynamicLabel: "Dynamic Mode (--dynamic true)",
-        testModeLabel: "Test Mode (--test-mode)"
+      'zh-TW': {
+        'title': 'AnyDownload - 專業網站下載工具',
+        'websiteUrl': '網站網址',
+        'outputFolder': '輸出資料夾',
+        'resourceType': '資源類型',
+        'downloadButton': '開始下載',
+        'advancedOptions': '進階選項',
+        'recursiveDownload': '遞迴下載',
+        'dynamicMode': '動態模式',
+        'maxDepth': '最大深度',
+        'concurrency': '並行下載數',
+        'delay': '延遲時間 (毫秒)',
+        'retry': '重試次數',
+        'securityOptions': '安全選項',
+        'userAgent': '使用者代理',
+        'userAgentPlaceholder': '自訂 User-Agent',
+        'cookie': 'Cookie',
+        'cookiePlaceholder': '自訂 Cookie',
+        'ignoreRobots': '忽略 robots.txt',
+        'headlessBrowser': '無頭瀏覽器',
+        'filterOptions': '過濾選項',
+        'urlFilter': 'URL 過濾器 (正則表達式)',
+        'filterPlaceholder': '正則表達式模式',
+        'globPattern': 'Glob 模式',
+        'globPlaceholder': 'Glob 模式',
+        'mimeType': 'MIME 類型',
+        'mimeTypePlaceholder': '例如：image/png',
+        'whitelist': '白名單 URL',
+        'whitelistPlaceholder': '以逗號分隔的 URL',
+        'blacklist': '黑名單 URL',
+        'blacklistPlaceholder': '以逗號分隔的 URL',
+        'authOptions': '認證選項',
+        'authUser': '認證使用者名稱',
+        'authUserPlaceholder': 'HTTP 基本認證使用者名稱',
+        'authPass': '認證密碼',
+        'authPassPlaceholder': 'HTTP 基本認證密碼',
+        'loginUrl': '登入網址',
+        'loginUrlPlaceholder': '登入表單網址',
+        'loginForm': '登入表單資料',
+        'loginFormPlaceholder': 'JSON 字串',
+        'scheduleOptions': '排程選項',
+        'enableSitemap': '啟用站點地圖',
+        'schedule': '排程 (Cron)',
+        'schedulePlaceholder': 'Cron 語法',
+        'preparing': '準備中...',
+        'downloading': '下載中...',
+        'complete': '下載完成！',
+        'error': '下載失敗：'
       },
-      zh: {
-        title: "網站下載器命令生成器",
-        langToggle: "Switch to English",
-        basicOptions: "基本選項",
-        urlLabel: "網站網址",
-        outputLabel: "輸出資料夾",
-        downloadOptions: "下載選項",
-        recursiveLabel: "遞迴下載",
-        maxDepthLabel: "最大遞迴深度（默認：1）",
-        delayLabel: "下載間隔（毫秒，默認：1000）",
-        concurrencyLabel: "最大並發下載數（默認：5）",
-        typesLabel: "資源類型",
-        openLabel: "下載後自動打開首頁",
-        filteringOptions: "過濾選項",
-        filterLabel: "過濾器（正則表達式）",
-        globLabel: "Glob模式",
-        mimetypeLabel: "MIME類型（例如：image/png）",
-        minSizeLabel: "最小文件大小（字節）",
-        maxSizeLabel: "最大文件大小（字節）",
-        whitelistLabel: "白名單模式（逗號分隔）",
-        blacklistLabel: "黑名單模式（逗號分隔）",
-        authOptions: "認證選項",
-        userAgentLabel: "用戶代理",
-        cookieLabel: "Cookie標頭",
-        authUserLabel: "HTTP基本認證用戶名",
-        authPassLabel: "HTTP基本認證密碼",
-        loginUrlLabel: "登錄表單網址",
-        loginFormLabel: "登錄表單數據（JSON）",
-        advancedOptions: "高級選項",
-        ignoreRobotsLabel: "忽略robots.txt",
-        verboseLabel: "詳細日誌",
-        retryLabel: "重試次數（默認：3）",
-        headlessLabel: "使用無頭瀏覽器",
-        browserLabel: "瀏覽器引擎",
-        proxyLabel: "代理網址",
-        sitemapLabel: "解析sitemap.xml",
-        scheduleLabel: "計劃任務（cron語法，例如：0 0 * * *）",
-        guiLabel: "啟動網頁GUI（代替CLI）",
-        generate: "開始下載",
-        generatedCommandLabel: "生成的命令：",
-        copyCommand: "複製到剪貼板",
-        optionsList: "選項列表",
-        copied: "命令已複製到剪貼板！",
-        copyFailed: "複製命令失敗。請手動選擇並複製。",
-        urlRequired: "請輸入網站網址。",
-        dynamicLabel: "動態模式 (--dynamic true)",
-        testModeLabel: "測試模式 (--test-mode)"
+      'en': {
+        'title': 'AnyDownload - Professional Website Downloader',
+        'websiteUrl': 'Website URL',
+        'outputFolder': 'Output Folder',
+        'resourceType': 'Resource Type',
+        'downloadButton': 'Start Download',
+        'advancedOptions': 'Advanced Options',
+        'recursiveDownload': 'Recursive Download',
+        'dynamicMode': 'Dynamic Mode',
+        'maxDepth': 'Max Depth',
+        'concurrency': 'Concurrency',
+        'delay': 'Delay (ms)',
+        'retry': 'Retry Count',
+        'securityOptions': 'Security Options',
+        'userAgent': 'User Agent',
+        'userAgentPlaceholder': 'Custom User-Agent',
+        'cookie': 'Cookie',
+        'cookiePlaceholder': 'Custom Cookie',
+        'ignoreRobots': 'Ignore robots.txt',
+        'headlessBrowser': 'Headless Browser',
+        'filterOptions': 'Filter Options',
+        'urlFilter': 'URL Filter (Regex)',
+        'filterPlaceholder': 'Regular expression pattern',
+        'globPattern': 'Glob Pattern',
+        'globPlaceholder': 'Glob pattern',
+        'mimeType': 'MIME Type',
+        'mimeTypePlaceholder': 'e.g., image/png',
+        'whitelist': 'Whitelist URLs',
+        'whitelistPlaceholder': 'Comma-separated URLs',
+        'blacklist': 'Blacklist URLs',
+        'blacklistPlaceholder': 'Comma-separated URLs',
+        'authOptions': 'Authentication Options',
+        'authUser': 'Auth Username',
+        'authUserPlaceholder': 'HTTP Basic Auth Username',
+        'authPass': 'Auth Password',
+        'authPassPlaceholder': 'HTTP Basic Auth Password',
+        'loginUrl': 'Login URL',
+        'loginUrlPlaceholder': 'Login Form URL',
+        'loginForm': 'Login Form Data',
+        'loginFormPlaceholder': 'JSON string',
+        'scheduleOptions': 'Schedule Options',
+        'enableSitemap': 'Enable Sitemap',
+        'schedule': 'Schedule (Cron)',
+        'schedulePlaceholder': 'Cron syntax',
+        'preparing': 'Preparing...',
+        'downloading': 'Downloading...',
+        'complete': 'Download Complete!',
+        'error': 'Download Failed: '
       }
     };
 
-    const optionListTranslations = {
-      en: [
-        "<code>--output, -o &lt;folder&gt;</code>: Set custom output folder",
-        "<code>--recursive, -r</code>: Recursively download same-domain pages",
-        "<code>--max-depth, -m &lt;n&gt;</code>: Set recursion depth (default: 1)",
-        "<code>--delay, -d &lt;ms&gt;</code>: Delay between downloads in ms (default: 1000)",
-        "<code>--user-agent, -u &lt;ua&gt;</code>: Set custom User-Agent",
-        "<code>--cookie &lt;cookie&gt;</code>: Send custom Cookie header",
-        "<code>--ignore-robots</code>: Ignore robots.txt restrictions",
-        "<code>--verbose</code>: Show detailed logs",
-        "<code>--retry &lt;n&gt;</code>: Retry count for failed downloads (default: 3)",
-        "<code>--type &lt;type&gt;</code>: Download specific resource types (image, css, js, html, media, all)",
-        "<code>--open</code>: Auto-open homepage after download",
-        "<code>--concurrency &lt;n&gt;</code>: Set max concurrent downloads (default: 5)",
-        "<code>--filter &lt;regex&gt;</code>: Filter resource URLs with regex",
-        "<code>--glob &lt;pattern&gt;</code>: Filter resource URLs with glob pattern",
-        "<code>--mimetype &lt;type&gt;</code>: Filter by MIME type (e.g., image/png)",
-        "<code>--min-size &lt;bytes&gt;</code>: Filter by minimum file size",
-        "<code>--max-size &lt;bytes&gt;</code>: Filter by maximum file size",
-        "<code>--whitelist &lt;pattern&gt;</code>: Whitelist resource URLs (comma-separated)",
-        "<code>--blacklist &lt;pattern&gt;</code>: Blacklist resource URLs (comma-separated)",
-        "<code>--headless</code>: Use headless browser for dynamic sites",
-        "<code>--browser &lt;type&gt;</code>: Choose browser engine (puppeteer or playwright)",
-        "<code>--proxy &lt;url&gt;</code>: Download via HTTP/SOCKS proxy or Tor",
-        "<code>--auth-user &lt;user&gt;</code>: HTTP basic auth username",
-        "<code>--auth-pass &lt;pass&gt;</code>: HTTP basic auth password",
-        "<code>--login-url &lt;url&gt;</code>: Login form URL for session-based authentication",
-        "<code>--login-form &lt;json&gt;</code>: Login form data as JSON string",
-        "<code>--sitemap</code>: Enable sitemap.xml parsing for batch download",
-        "<code>--schedule &lt;cron&gt;</code>: Schedule automatic downloads (cron syntax)",
-        "<code>--gui</code>: Launch web GUI instead of CLI",
-        "<code>--dynamic true</code>: Use browser rendering for dynamic sites",
-        "<code>--test-mode</code>: Test which mode works best for your site"
-      ],
-      zh: [
-        "<code>--output, -o &lt;folder&gt;</code>：自訂輸出資料夾",
-        "<code>--recursive, -r</code>：遞迴下載同網域頁面",
-        "<code>--max-depth, -m &lt;n&gt;</code>：設定遞迴深度（預設：1）",
-        "<code>--delay, -d &lt;ms&gt;</code>：每次下載延遲毫秒數（預設：1000）",
-        "<code>--user-agent, -u &lt;ua&gt;</code>：自訂 User-Agent",
-        "<code>--cookie &lt;cookie&gt;</code>：自訂 Cookie 標頭",
-        "<code>--ignore-robots</code>：忽略 robots.txt 限制",
-        "<code>--verbose</code>：顯示詳細日誌",
-        "<code>--retry &lt;n&gt;</code>：失敗重試次數（預設：3）",
-        "<code>--type &lt;type&gt;</code>：下載指定資源類型（image, css, js, html, media, all）",
-        "<code>--open</code>：下載後自動開啟首頁",
-        "<code>--concurrency &lt;n&gt;</code>：最大同時下載數（預設：5）",
-        "<code>--filter &lt;regex&gt;</code>：以正則過濾資源網址",
-        "<code>--glob &lt;pattern&gt;</code>：以 glob 樣式過濾資源網址",
-        "<code>--mimetype &lt;type&gt;</code>：以 MIME 類型過濾（如 image/png）",
-        "<code>--min-size &lt;bytes&gt;</code>：最小檔案大小過濾",
-        "<code>--max-size &lt;bytes&gt;</code>：最大檔案大小過濾",
-        "<code>--whitelist &lt;pattern&gt;</code>：白名單資源網址（逗號分隔）",
-        "<code>--blacklist &lt;pattern&gt;</code>：黑名單資源網址（逗號分隔）",
-        "<code>--headless</code>：動態網站使用無頭瀏覽器",
-        "<code>--browser &lt;type&gt;</code>：選擇瀏覽器引擎（puppeteer 或 playwright）",
-        "<code>--proxy &lt;url&gt;</code>：透過 HTTP/SOCKS 代理或 Tor 下載",
-        "<code>--auth-user &lt;user&gt;</code>：HTTP 基本認證帳號",
-        "<code>--auth-pass &lt;pass&gt;</code>：HTTP 基本認證密碼",
-        "<code>--login-url &lt;url&gt;</code>：表單登入網址（需 session）",
-        "<code>--login-form &lt;json&gt;</code>：登入表單資料（JSON 字串）",
-        "<code>--sitemap</code>：啟用 sitemap.xml 批次下載",
-        "<code>--schedule &lt;cron&gt;</code>：排程自動下載（cron 語法）",
-        "<code>--gui</code>：啟動網頁 GUI（取代 CLI）",
-        "<code>--dynamic true</code>：動態模式，瀏覽器渲染",
-        "<code>--test-mode</code>：測試最佳下載模式"
-      ]
-    };
+    function setLanguage(lang) {
+      document.documentElement.lang = lang;
+      document.getElementById('currentLang').textContent = lang === 'zh-TW' ? '繁體中文' : 'English';
 
-    let currentLang = 'en';
+      document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (translations[lang][key]) {
+          element.textContent = translations[lang][key];
+        }
+      });
 
-    function updateOptionList(lang) {
-      const list = optionListTranslations[lang].map(item => `<li>${item}</li>`).join('');
-      document.getElementById('optionsListContent').innerHTML = list;
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+        const key = element.getAttribute('data-i18n-placeholder');
+        if (translations[lang][key]) {
+          element.placeholder = translations[lang][key];
+        }
+      });
+
+      localStorage.setItem('language', lang);
     }
 
-    function updateLanguage(lang) {
-      currentLang = lang;
-      document.getElementById('title').textContent = translations[lang].title;
-      document.getElementById('langToggle').textContent = translations[lang].langToggle;
-      document.getElementById('basicOptions').textContent = translations[lang].basicOptions;
-      document.getElementById('urlLabel').textContent = translations[lang].urlLabel;
-      document.getElementById('outputLabel').textContent = translations[lang].outputLabel;
-      document.getElementById('downloadOptions').textContent = translations[lang].downloadOptions;
-      document.getElementById('recursiveLabel').textContent = translations[lang].recursiveLabel;
-      document.getElementById('maxDepthLabel').textContent = translations[lang].maxDepthLabel;
-      document.getElementById('delayLabel').textContent = translations[lang].delayLabel;
-      document.getElementById('concurrencyLabel').textContent = translations[lang].concurrencyLabel;
-      document.getElementById('typesLabel').textContent = translations[lang].typesLabel;
-      document.getElementById('openLabel').textContent = translations[lang].openLabel;
-      document.getElementById('filteringOptions').textContent = translations[lang].filteringOptions;
-      document.getElementById('filterLabel').textContent = translations[lang].filterLabel;
-      document.getElementById('globLabel').textContent = translations[lang].globLabel;
-      document.getElementById('mimetypeLabel').textContent = translations[lang].mimetypeLabel;
-      document.getElementById('minSizeLabel').textContent = translations[lang].minSizeLabel;
-      document.getElementById('maxSizeLabel').textContent = translations[lang].maxSizeLabel;
-      document.getElementById('whitelistLabel').textContent = translations[lang].whitelistLabel;
-      document.getElementById('blacklistLabel').textContent = translations[lang].blacklistLabel;
-      document.getElementById('authOptions').textContent = translations[lang].authOptions;
-      document.getElementById('userAgentLabel').textContent = translations[lang].userAgentLabel;
-      document.getElementById('cookieLabel').textContent = translations[lang].cookieLabel;
-      document.getElementById('authUserLabel').textContent = translations[lang].authUserLabel;
-      document.getElementById('authPassLabel').textContent = translations[lang].authPassLabel;
-      document.getElementById('loginUrlLabel').textContent = translations[lang].loginUrlLabel;
-      document.getElementById('loginFormLabel').textContent = translations[lang].loginFormLabel;
-      document.getElementById('advancedOptions').textContent = translations[lang].advancedOptions;
-      document.getElementById('ignoreRobotsLabel').textContent = translations[lang].ignoreRobotsLabel;
-      document.getElementById('verboseLabel').textContent = translations[lang].verboseLabel;
-      document.getElementById('retryLabel').textContent = translations[lang].retryLabel;
-      document.getElementById('headlessLabel').textContent = translations[lang].headlessLabel;
-      document.getElementById('browserLabel').textContent = translations[lang].browserLabel;
-      document.getElementById('proxyLabel').textContent = translations[lang].proxyLabel;
-      document.getElementById('sitemapLabel').textContent = translations[lang].sitemapLabel;
-      document.getElementById('scheduleLabel').textContent = translations[lang].scheduleLabel;
-      document.getElementById('guiLabel').textContent = translations[lang].guiLabel;
-      document.getElementById('generate').textContent = translations[lang].generate;
-      document.getElementById('generatedCommandLabel').textContent = translations[lang].generatedCommandLabel;
-      document.getElementById('copyCommand').textContent = translations[lang].copyCommand;
-      document.getElementById('optionsList').textContent = translations[lang].optionsList;
-      document.getElementById('dynamicLabel').innerHTML = translations[lang].dynamicLabel;
-      document.getElementById('testModeLabel').innerHTML = translations[lang].testModeLabel;
-      updateOptionList(lang);
+    // Initialize language
+    const savedLang = localStorage.getItem('language') || 'zh-TW';
+    setLanguage(savedLang);
+
+    // Language switch event
+    document.querySelectorAll('[data-lang]').forEach(element => {
+      element.addEventListener('click', (e) => {
+        e.preventDefault();
+        const lang = e.target.getAttribute('data-lang');
+        setLanguage(lang);
+      });
+    });
+
+    const socket = io();
+    const form = document.getElementById('downloadForm');
+    const status = document.getElementById('downloadStatus');
+    const progressBar = document.querySelector('.progress-bar');
+    const currentFile = document.getElementById('currentFile');
+    const progressText = document.getElementById('progressText');
+    const downloadSpeed = document.getElementById('downloadSpeed');
+    const eta = document.getElementById('eta');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+
+    // Dark mode toggle function
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+      const isDark = document.body.classList.contains('dark-mode');
+      localStorage.setItem('darkMode', isDark);
+      darkModeToggle.innerHTML = isDark ?
+        '<i class="bi bi-sun-fill"></i>' :
+        '<i class="bi bi-moon-fill"></i>';
     }
 
-    function generateCommand() {
-      const url = document.getElementById('url').value.trim();
-      let command = "node bin/cli.js";
-      let urlHtml = "";
-
-      if (url) {
-        command += " " + url;
-        urlHtml = url;
-      } else {
-        command += " <span id=\"defaultUrl\" style=\"color:transparent;\">https://example.com</span>";
-        urlHtml = "<span id=\"defaultUrl\" style=\"color:transparent;\">https://example.com</span>";
-      }
-
-      const output = document.getElementById('output').value.trim();
-      if (output) command += ` --output '${output}'`;
-
-      if (document.getElementById('recursive').checked) {
-        command += ' --recursive';
-        const maxDepth = document.getElementById('maxDepth').value;
-        if (maxDepth) command += ` --max-depth ${maxDepth}`;
-      }
-
-      const delay = document.getElementById('delay').value;
-      if (delay) command += ` --delay ${delay}`;
-
-      const concurrency = document.getElementById('concurrency').value;
-      if (concurrency) command += ` --concurrency ${concurrency}`;
-
-      const types = Array.from(document.querySelectorAll('input[name="type"]:checked')).map(input => input.value);
-      if (types.length > 0) command += types.map(type => ` --type ${type}`).join(' ');
-
-      if (document.getElementById('open').checked) command += ' --open';
-
-      const filter = document.getElementById('filter').value.trim();
-      if (filter) command += ` --filter '${filter}'`;
-
-      const glob = document.getElementById('glob').value.trim();
-      if (glob) command += ` --glob '${glob}'`;
-
-      const mimetype = document.getElementById('mimetype').value.trim();
-      if (mimetype) command += ` --mimetype '${mimetype}'`;
-
-      const minSize = document.getElementById('minSize').value;
-      if (minSize) command += ` --min-size ${minSize}`;
-
-      const maxSize = document.getElementById('maxSize').value;
-      if (maxSize) command += ` --max-size ${maxSize}`;
-
-      const whitelist = document.getElementById('whitelist').value.trim();
-      if (whitelist) command += ` --whitelist '${whitelist}'`;
-
-      const blacklist = document.getElementById('blacklist').value.trim();
-      if (blacklist) command += ` --blacklist '${blacklist}'`;
-
-      const userAgent = document.getElementById('userAgent').value.trim();
-      if (userAgent) command += ` --user-agent '${userAgent}'`;
-
-      const cookie = document.getElementById('cookie').value.trim();
-      if (cookie) command += ` --cookie '${cookie}'`;
-
-      const authUser = document.getElementById('authUser').value.trim();
-      if (authUser) command += ` --auth-user '${authUser}'`;
-
-      const authPass = document.getElementById('authPass').value.trim();
-      if (authPass) command += ` --auth-pass '${authPass}'`;
-
-      const loginUrl = document.getElementById('loginUrl').value.trim();
-      if (loginUrl) command += ` --login-url '${loginUrl}'`;
-
-      const loginForm = document.getElementById('loginForm').value.trim();
-      if (loginForm) command += ` --login-form '${loginForm}'`;
-
-      if (document.getElementById('ignoreRobots').checked) command += ' --ignore-robots';
-      if (document.getElementById('verbose').checked) command += ' --verbose';
-
-      const retry = document.getElementById('retry').value;
-      if (retry) command += ` --retry ${retry}`;
-
-      if (document.getElementById('headless').checked) command += ' --headless';
-
-      const browser = document.getElementById('browser').value;
-      if (browser !== 'default') command += ` --browser ${browser}`;
-
-      const proxy = document.getElementById('proxy').value.trim();
-      if (proxy) command += ` --proxy '${proxy}'`;
-
-      if (document.getElementById('sitemap').checked) command += ' --sitemap';
-
-      const schedule = document.getElementById('schedule').value.trim();
-      if (schedule) command += ` --schedule '${schedule}'`;
-
-      if (document.getElementById('gui').checked) command += ' --gui';
-
-      // New: dynamic and test-mode
-      if (document.getElementById('dynamic').checked) command += ' --dynamic true';
-      if (document.getElementById('testMode').checked) command += ' --test-mode';
-
-      // Render command with transparent default url if needed
-      if (!url) {
-        document.getElementById('commandText').innerHTML = 'node bin/cli.js <span id="defaultUrl" style="color:transparent;">https://example.com</span>' + command.replace('node bin/cli.js <span id="defaultUrl" style="color:transparent;">https://example.com</span>', '');
-      } else {
-        document.getElementById('commandText').textContent = command;
-      }
+    // Initialize dark mode
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.body.classList.add('dark-mode');
+      darkModeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
     }
 
-    // Language Toggle
-    document.getElementById('langToggle').addEventListener('click', () => {
-      updateLanguage(currentLang === 'en' ? 'zh' : 'en');
-      generateCommand();
-    });
+    darkModeToggle.addEventListener('click', toggleDarkMode);
 
-    // Recursive Checkbox
-    document.getElementById('recursive').addEventListener('change', (e) => {
-      document.getElementById('maxDepthDiv').classList.toggle('hidden', !e.target.checked);
-      generateCommand();
-    });
+    // Form submission handler
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
 
-    // Generate Button
-    document.getElementById('generate').addEventListener('click', () => {
-      generateCommand();
-    });
+      status.style.display = 'block';
+      progressBar.style.width = '0%';
+      progressText.textContent = '0%';
+      currentFile.textContent = translations[document.documentElement.lang]['preparing'];
 
-    // Copy Command
-    document.getElementById('copyCommand').addEventListener('click', () => {
-      // Copy only text, not HTML
-      const temp = document.createElement('textarea');
-      temp.value = document.getElementById('commandText').textContent;
-      document.body.appendChild(temp);
-      temp.select();
       try {
-        document.execCommand('copy');
-        alert(translations[currentLang].copied);
-      } catch {
-        alert(translations[currentLang].copyFailed);
+        const response = await fetch('/api/download', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        currentFile.textContent = translations[document.documentElement.lang]['error'] + error.message;
+        progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+        progressBar.classList.add('bg-danger');
       }
-      document.body.removeChild(temp);
     });
 
-    // Real-time updates
-    const inputs = document.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-      input.addEventListener('input', generateCommand);
-      input.addEventListener('change', generateCommand);
+    // Download progress handler
+    socket.on('download-progress', (data) => {
+      const { current, total, file, speed, eta: etaTime } = data;
+      const percent = Math.round((current / total) * 100);
+      const lang = document.documentElement.lang;
+
+      progressBar.style.width = `${percent}%`;
+      progressText.textContent = `${percent}%`;
+      currentFile.textContent = file;
+      downloadSpeed.textContent = translations[lang]['speed'] + speed;
+      eta.textContent = translations[lang]['eta'] + etaTime;
     });
 
-    // Initialize
-    updateLanguage('en');
-    updateOptionList('en');
-    generateCommand();
+    // Download complete handler
+    socket.on('download-complete', () => {
+      const lang = document.documentElement.lang;
+      progressBar.style.width = '100%';
+      progressText.textContent = '100%';
+      currentFile.textContent = translations[lang]['complete'];
+      progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+      progressBar.classList.add('bg-success');
+    });
   </script>
 </body>
+
 </html>

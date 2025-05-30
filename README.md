@@ -3,124 +3,88 @@
 [![Code Size](https://img.shields.io/github/languages/code-size/HenryLok0/AnyDownload?style=flat-square&logo=github)](https://github.com/HenryLok0/AnyDownload)
 [![MIT License](https://img.shields.io/github/license/HenryLok0/AnyDownload?style=flat-square)](LICENSE)
 
-AnyDownload is a command-line tool that lets you download an entire website—including HTML, images, CSS, JS, fonts, and media—into a local folder for offline browsing.
+> Download entire websites with a single command! Perfect for offline browsing, archiving, or learning web development.
 
----
+## Features
+
+- **Fast & Efficient**: Downloads websites quickly with concurrent connections
+- **Smart Detection**: Automatically detects static and dynamic websites
+- **Complete Downloads**: Grabs all resources (HTML, CSS, JS, images, fonts, media)
+- **Web GUI**: User-friendly interface for easy downloads
+- **Recursive Download**: Option to download linked pages
+- **Customizable**: Multiple options for fine-tuning downloads
+- **Mobile-Friendly**: Downloads responsive websites perfectly
 
 ## Quick Start
 
-### 1. Installation
+### Installation
 
-Clone the repository and install dependencies:
-```sh
+```bash
+# Clone the repository
 git clone https://github.com/HenryLok0/AnyDownload
+
+# Navigate to project directory
 cd AnyDownload
+
+# Install dependencies
 npm install
 ```
 
-### 2. Basic Usage
+### Basic Usage
 
-Download a website with the default settings:
-```sh
-node bin/cli.js <website-url>
+```bash
+# Download a website
+node bin/cli.js https://example.com
 ```
-Downloaded content will be saved to `downloaded_site/<host>/` by default.
 
----
+## Web Interface
 
-## Web GUI (index) on Port 3000
+Start the web GUI for a visual download experience:
 
-AnyDownload also provides a simple web GUI for generating commands and directly triggering downloads from your browser.
-
-### Start the Web GUI
-
-```sh
+```bash
 node web-gui.js
 ```
 
-Then open [http://localhost:3000](http://localhost:3000) in your browser.
+Then visit [http://localhost:3000](http://localhost:3000) in your browser.
 
-- You can fill in all options in the web form.
-- Click Start Download to trigger the download directly from the browser.
-- The generated command and download status will be shown on the page.
+## Common Examples
 
----
-
-## Common Use Cases
-
-- **Download a full website:**
-  ```sh
-  node bin/cli.js https://example.com
-  ```
-
-- **Specify output folder:**
-  ```sh
-  node bin/cli.js https://example.com --output mysite
-  ```
-
-- **Recursively download same-domain pages (depth 2):**
-  ```sh
-  node bin/cli.js https://example.com --recursive --max-depth 2
-  ```
-
-- **Download only images and CSS:**
-  ```sh
-  node bin/cli.js https://example.com --type image --type css
-  ```
-
-- **Use dynamic mode for JavaScript-heavy sites:**
-  ```sh
-  node bin/cli.js https://example.com --dynamic true
-  ```
-
-- **Show detailed logs:**
-  ```sh
-  node bin/cli.js https://example.com --verbose
-  ```
-
----
-
-## How to Choose the Best Download Mode
-
-- **Static sites:** Default mode is usually sufficient.
-- **Dynamic sites (Single Page Apps, content loaded by JavaScript):** Use `--dynamic true` for best results.
-
-You can test which mode works best for your site by running:
-```sh
-node bin/cli.js <website-url> --test-mode
+### Download a Full Website
+```bash
+node bin/cli.js https://example.com
 ```
 
----
+### Download with Custom Output
+```bash
+node bin/cli.js https://example.com --output mysite
+```
 
-## Main Options
+### Download with Depth Control
+```bash
+node bin/cli.js https://example.com --recursive --max-depth 2
+```
 
-| Option                | Description                                                        |
-|-----------------------|--------------------------------------------------------------------|
-| `--output, -o`        | Set custom output folder                                           |
-| `--recursive, -r`     | Recursively download same-domain pages                             |
-| `--max-depth, -m`     | Set recursion depth (default: 1)                                   |
-| `--type`              | Download only specific resource types (image, css, js, html, media, all) |
-| `--dynamic`           | Use browser rendering for dynamic sites                            |
-| `--headless`          | Use headless browser                                               |
-| `--user-agent, -u`    | Set custom User-Agent                                              |
-| `--cookie`            | Send custom Cookie header                                          |
-| `--delay, -d`         | Delay between downloads in ms (default: 1000)                      |
-| `--concurrency`       | Set max concurrent downloads (default: 5)                          |
-| `--verbose`           | Show detailed logs                                                 |
-| `--open`              | Auto-open homepage after download                                  |
+### Download Specific Resources
+```bash
+# Download only images and CSS
+node bin/cli.js https://example.com --type image --type css
+```
 
-For a full list of options, see the section below.
+### Dynamic Website Download
+```bash
+node bin/cli.js https://example.com --dynamic true
+```
 
----
+## Key Options
 
-## Interactive Controls
-
-During download, you can:
-- Press `p` to pause
-- Press `r` to resume
-- Press `c` to cancel
-
----
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--output, -o` | Custom output folder | `--output mysite` |
+| `--recursive, -r` | Download linked pages | `--recursive` |
+| `--max-depth, -m` | Set recursion depth | `--max-depth 2` |
+| `--type` | Resource types to download | `--type image --type css` |
+| `--dynamic` | Enable dynamic mode | `--dynamic true` |
+| `--verbose` | Show detailed logs | `--verbose` |
 
 ## Full Option List
 
@@ -154,45 +118,31 @@ During download, you can:
 - `--schedule <cron>`    Schedule automatic downloads (cron syntax)
 - `--gui`          Launch web GUI instead of CLI
 
----
+## Interactive Controls
 
-## API Usage
+During download:
+- Press `p` to pause
+- Press `r` to resume
+- Press `c` to cancel
 
-You can use AnyDownload as a Node.js module:
+## Docker Support
 
-```js
-const { Downloader } = require('./src/downloader');
-const downloader = new Downloader({ outputDir: 'myfolder', concurrency: 3 });
-await downloader.downloadWebsite('https://example.com');
-```
-
----
-
-## Docker Usage
-
-To run in Docker:
-
-```sh
+```bash
+# Build the image
 docker build -t AnyDownload .
+
+# Run the container
 docker run -v ${PWD}/downloaded_site:/app/downloaded_site AnyDownload node bin/cli.js https://example.com
 ```
 
----
-
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Support
 
-If you have questions or need help, please open an issue on GitHub.
-
-Thank you to all contributors and the open-source community for your support.
+Need help? Open an issue on GitHub or reach out to our community.

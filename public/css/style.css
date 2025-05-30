@@ -1,0 +1,387 @@
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #3498db;
+    --success-color: #2ecc71;
+    --danger-color: #e74c3c;
+    --warning-color: #f1c40f;
+    --light-bg: #f8f9fa;
+    --dark-bg: #1a1a1a;
+    --text-color: #333;
+    --card-bg: #fff;
+    --border-color: #dee2e6;
+    --input-bg: #fff;
+    --input-text: #333;
+    --placeholder-color: #6c757d;
+    --dropdown-bg: #fff;
+    --dropdown-text: #333;
+    --dropdown-hover-bg: #f8f9fa;
+    --dropdown-hover-text: #333;
+    --progress-text: #333;
+    --card-header-text: #333;
+}
+
+body {
+    background-color: var(--light-bg);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Dark Mode */
+body.dark-mode {
+    --light-bg: #1a1a1a;
+    --dark-bg: #2c3e50;
+    --text-color: #ffffff;
+    --card-bg: #2d2d2d;
+    --border-color: #404040;
+    --input-bg: #333333;
+    --input-text: #ffffff;
+    --placeholder-color: #a0a0a0;
+    --dropdown-bg: #333333;
+    --dropdown-text: #ffffff;
+    --dropdown-hover-bg: #404040;
+    --dropdown-hover-text: #ffffff;
+    --progress-text: #ffffff;
+    --card-header-text: #ffffff;
+}
+
+.navbar {
+    background-color: var(--primary-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: white !important;
+}
+
+.navbar-brand i {
+    margin-right: 0.5rem;
+}
+
+.main-container {
+    padding: 2rem 0;
+}
+
+.card {
+    border-radius: 1rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.card-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+/* Dropdown Menu Styles */
+.dropdown-menu {
+    background-color: var(--dropdown-bg);
+    border-color: var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    padding: 0.5rem;
+}
+
+.dropdown-item {
+    color: var(--dropdown-text);
+    padding: 0.75rem 1rem;
+    border-radius: 0.25rem;
+}
+
+.dropdown-item:hover {
+    background-color: var(--light-bg);
+}
+
+/* Form Label Styles */
+.form-label {
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+}
+
+/* Option Group Title Styles */
+.option-group {
+    background: var(--card-bg);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+}
+
+.option-group h5 {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 600;
+}
+
+.option-group .row {
+    margin-bottom: 1rem;
+}
+
+/* Progress Bar Text Styles */
+.progress {
+    height: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+}
+
+.progress-bar {
+    background-color: var(--secondary-color);
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--progress-text);
+    font-weight: 500;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Download Info Styles */
+.download-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Form Control Styles */
+.form-control, .form-select {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    background-color: var(--input-bg);
+    color: var(--input-text);
+}
+
+.form-control::placeholder {
+    color: var(--placeholder-color);
+    opacity: 0.8;
+}
+
+/* Toggle Switch Styles */
+.form-check {
+    margin-bottom: 1rem;
+    padding-left: 2.5rem;
+}
+
+.form-check-input {
+    width: 2.5rem;
+    height: 1.25rem;
+    margin-left: -2.5rem;
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+}
+
+.form-check-input:checked {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.form-check-label {
+    padding-top: 0.25rem;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+/* Status Card Styles */
+.status-card {
+    background: var(--card-bg);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.status-card h5 {
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+/* Card Header Styles */
+.card-header h4 {
+    color: var(--card-header-text);
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Animation Effects */
+@keyframes progress-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.progress-bar-animated {
+    background: linear-gradient(45deg, var(--secondary-color), #2980b9, var(--secondary-color));
+    background-size: 200% 200%;
+    animation: progress-animation 2s ease infinite;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .main-container {
+        padding: 1rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .option-group {
+        padding: 1rem;
+    }
+    
+    .option-group h5 {
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+    }
+}
+
+.btn-primary {
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+    background-color: var(--secondary-color);
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+}
+
+.alert {
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+/* 深色模式下的表單元素 */
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--input-text);
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+}
+
+body.dark-mode .option-group {
+    background: var(--dark-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .card {
+    background-color: var(--card-bg);
+}
+
+body.dark-mode .card-header {
+    background-color: var(--card-bg);
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .status-card {
+    background: var(--dark-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .download-info {
+    color: var(--text-color);
+}
+
+/* 動畫效果 */
+@keyframes progress-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.progress-bar-animated {
+    background: linear-gradient(45deg, var(--secondary-color), #2980b9, var(--secondary-color));
+    background-size: 200% 200%;
+    animation: progress-animation 2s ease infinite;
+}
+
+/* 響應式調整 */
+@media (max-width: 768px) {
+    .card {
+        margin: 1rem;
+    }
+    
+    .option-group {
+        padding: 1rem;
+    }
+    
+    .btn-primary {
+        width: 100%;
+    }
+
+    .download-info {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+/* 表單標籤樣式 */
+.form-label {
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+/* 卡片標題樣式 */
+.card-header h4 {
+    color: var(--card-header-text);
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Input Group Styles */
+.input-group {
+    margin-bottom: 1rem;
+}
+
+.input-group-text {
+    padding: 0.75rem 1rem;
+}
+
+/* Download status */
+.download-status {
+    margin-top: 2rem;
+} 

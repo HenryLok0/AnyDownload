@@ -1,11 +1,9 @@
-# Website Downloader
+# AnyDownload
 
-[中文說明 (Traditional Chinese)](./README.Tc.md)
+[![Code Size](https://img.shields.io/github/languages/code-size/HenryLok0/AnyDownload?style=flat-square&logo=github)](https://github.com/HenryLok0/AnyDownload)
+[![MIT License](https://img.shields.io/github/license/HenryLok0/AnyDownload?style=flat-square)](LICENSE)
 
-[![Code Size](https://img.shields.io/github/languages/code-size/HenryLok0/Website-Downloader?style=flat-square&logo=github)](https://github.com/HenryLok0/Website-Downloader)
-[![MIT License](https://img.shields.io/github/license/HenryLok0/Website-Downloader?style=flat-square)](LICENSE)
-
-Website Downloader is a command-line tool that lets you download an entire website—including HTML, images, CSS, JS, fonts, and media—into a local folder for offline browsing.
+AnyDownload is a command-line tool that lets you download an entire website—including HTML, images, CSS, JS, fonts, and media—into a local folder for offline browsing.
 
 ---
 
@@ -15,8 +13,8 @@ Website Downloader is a command-line tool that lets you download an entire websi
 
 Clone the repository and install dependencies:
 ```sh
-git clone https://github.com/HenryLok0/Website-Downloader
-cd Website-Downloader
+git clone https://github.com/HenryLok0/AnyDownload
+cd AnyDownload
 npm install
 ```
 
@@ -32,7 +30,7 @@ Downloaded content will be saved to `downloaded_site/<host>/` by default.
 
 ## Web GUI (index) on Port 3000
 
-Website Downloader also provides a simple web GUI for generating commands and directly triggering downloads from your browser.
+AnyDownload also provides a simple web GUI for generating commands and directly triggering downloads from your browser.
 
 ### Start the Web GUI
 
@@ -160,7 +158,7 @@ During download, you can:
 
 ## API Usage
 
-You can use Website Downloader as a Node.js module:
+You can use AnyDownload as a Node.js module:
 
 ```js
 const { Downloader } = require('./src/downloader');
@@ -175,8 +173,8 @@ await downloader.downloadWebsite('https://example.com');
 To run in Docker:
 
 ```sh
-docker build -t website-downloader .
-docker run -v ${PWD}/downloaded_site:/app/downloaded_site website-downloader node bin/cli.js https://example.com
+docker build -t AnyDownload .
+docker run -v ${PWD}/downloaded_site:/app/downloaded_site AnyDownload node bin/cli.js https://example.com
 ```
 
 ---

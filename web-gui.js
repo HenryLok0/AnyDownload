@@ -5,9 +5,14 @@ const path = require('path');
 const fs = require('fs-extra');
 const { Downloader } = require('./src/downloader');
 
+// Create Express app
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // View engine setup
 app.set('view engine', 'ejs');
@@ -15,7 +20,6 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
 
 // Routes
 app.get('/', (req, res) => {

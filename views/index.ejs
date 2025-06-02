@@ -17,16 +17,9 @@
         <i class="bi bi-cloud-download"></i> AnyDownload
       </a>
       <div class="ms-auto d-flex align-items-center">
-        <div class="dropdown me-3">
-          <button class="btn btn-outline-light dropdown-toggle" type="button" id="languageDropdown"
-            data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-translate"></i> <span id="currentLang">繁體中文</span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
-            <li><a class="dropdown-item" href="#" data-lang="zh-TW">繁體中文</a></li>
-            <li><a class="dropdown-item" href="#" data-lang="en">English</a></li>
-          </ul>
-        </div>
+        <button id="languageToggle" class="btn btn-outline-light me-3">
+          <i class="bi bi-translate"></i> <span id="currentLang">繁體中文</span>
+        </button>
         <button id="darkModeToggle" class="btn btn-outline-light">
           <i class="bi bi-moon-fill"></i>
         </button>
@@ -223,6 +216,97 @@
                 </div>
               </div>
 
+              <div class="option-group">
+                <h5><i class="bi bi-speedometer2"></i> <span data-i18n="performanceOptions">效能選項</span></h5>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="speed-limit" class="form-label" data-i18n="speedLimit">下載速度限制 (KB/s)</label>
+                    <input type="number" class="form-control" id="speed-limit" name="speed-limit" value="0" min="0">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="parallel-limit" class="form-label" data-i18n="parallelLimit">並行下載限制</label>
+                    <input type="number" class="form-control" id="parallel-limit" name="parallel-limit" value="5" min="1">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="timeout" class="form-label" data-i18n="timeout">請求超時 (毫秒)</label>
+                    <input type="number" class="form-control" id="timeout" name="timeout" value="30000" min="0">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="max-file-size" class="form-label" data-i18n="maxFileSize">最大檔案大小 (MB)</label>
+                    <input type="number" class="form-control" id="max-file-size" name="max-file-size" value="0" min="0">
+                  </div>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <h5><i class="bi bi-gear-wide-connected"></i> <span data-i18n="networkOptions">網路選項</span></h5>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="proxy" class="form-label" data-i18n="proxy">代理伺服器</label>
+                    <input type="text" class="form-control" id="proxy" name="proxy" 
+                           data-i18n-placeholder="proxyPlaceholder" placeholder="http://proxy.example.com:8080">
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="validate-ssl" name="validate-ssl" checked>
+                      <label class="form-check-label" for="validate-ssl">
+                        <i class="bi bi-shield-check"></i> <span data-i18n="validateSSL">SSL 驗證</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="follow-redirects" name="follow-redirects" checked>
+                      <label class="form-check-label" for="follow-redirects">
+                        <i class="bi bi-arrow-repeat"></i> <span data-i18n="followRedirects">跟隨重定向</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="max-redirects" class="form-label" data-i18n="maxRedirects">最大重定向次數</label>
+                    <input type="number" class="form-control" id="max-redirects" name="max-redirects" value="5" min="0">
+                  </div>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <h5><i class="bi bi-tools"></i> <span data-i18n="advancedFeatures">進階功能</span></h5>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="resume" name="resume">
+                      <label class="form-check-label" for="resume">
+                        <i class="bi bi-arrow-clockwise"></i> <span data-i18n="resumeDownload">續傳下載</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="keep-original-urls" name="keep-original-urls">
+                      <label class="form-check-label" for="keep-original-urls">
+                        <i class="bi bi-link-45deg"></i> <span data-i18n="keepOriginalUrls">保留原始 URL</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="clean-urls" name="clean-urls">
+                      <label class="form-check-label" for="clean-urls">
+                        <i class="bi bi-brush"></i> <span data-i18n="cleanUrls">清理 URL</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="ignore-errors" name="ignore-errors">
+                      <label class="form-check-label" for="ignore-errors">
+                        <i class="bi bi-x-circle"></i> <span data-i18n="ignoreErrors">忽略錯誤</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <button type="submit" class="btn btn-primary w-100">
                 <i class="bi bi-download"></i> <span data-i18n="startDownload">開始下載</span>
               </button>
@@ -258,6 +342,8 @@
     const translations = {
       'zh-TW': {
         'title': 'AnyDownload - 專業網站下載工具',
+        'downloadWebsite': '下載網站',
+        'basicOptions': '基本選項',
         'websiteUrl': '網站網址',
         'outputFolder': '輸出資料夾',
         'resourceType': '資源類型',
@@ -300,13 +386,33 @@
         'enableSitemap': '啟用站點地圖',
         'schedule': '排程 (Cron)',
         'schedulePlaceholder': 'Cron 語法',
+        'performanceOptions': '效能選項',
+        'speedLimit': '下載速度限制 (KB/s)',
+        'parallelLimit': '並行下載限制',
+        'timeout': '請求超時 (毫秒)',
+        'maxFileSize': '最大檔案大小 (MB)',
+        'networkOptions': '網路選項',
+        'proxy': '代理伺服器',
+        'proxyPlaceholder': 'http://proxy.example.com:8080',
+        'validateSSL': 'SSL 驗證',
+        'followRedirects': '跟隨重定向',
+        'maxRedirects': '最大重定向次數',
+        'advancedFeatures': '進階功能',
+        'resumeDownload': '續傳下載',
+        'keepOriginalUrls': '保留原始 URL',
+        'cleanUrls': '清理 URL',
+        'ignoreErrors': '忽略錯誤',
         'preparing': '準備中...',
         'downloading': '下載中...',
         'complete': '下載完成！',
-        'error': '下載失敗：'
+        'error': '下載失敗：',
+        'speed': '速度：',
+        'eta': '預計完成時間：'
       },
       'en': {
         'title': 'AnyDownload - Professional Website Downloader',
+        'downloadWebsite': 'Download Website',
+        'basicOptions': 'Basic Options',
         'websiteUrl': 'Website URL',
         'outputFolder': 'Output Folder',
         'resourceType': 'Resource Type',
@@ -349,10 +455,28 @@
         'enableSitemap': 'Enable Sitemap',
         'schedule': 'Schedule (Cron)',
         'schedulePlaceholder': 'Cron syntax',
+        'performanceOptions': 'Performance Options',
+        'speedLimit': 'Download Speed Limit (KB/s)',
+        'parallelLimit': 'Parallel Download Limit',
+        'timeout': 'Request Timeout (ms)',
+        'maxFileSize': 'Maximum File Size (MB)',
+        'networkOptions': 'Network Options',
+        'proxy': 'Proxy Server',
+        'proxyPlaceholder': 'http://proxy.example.com:8080',
+        'validateSSL': 'SSL Validation',
+        'followRedirects': 'Follow Redirects',
+        'maxRedirects': 'Maximum Redirects',
+        'advancedFeatures': 'Advanced Features',
+        'resumeDownload': 'Resume Download',
+        'keepOriginalUrls': 'Keep Original URLs',
+        'cleanUrls': 'Clean URLs',
+        'ignoreErrors': 'Ignore Errors',
         'preparing': 'Preparing...',
         'downloading': 'Downloading...',
         'complete': 'Download Complete!',
-        'error': 'Download Failed: '
+        'error': 'Download Failed: ',
+        'speed': 'Speed: ',
+        'eta': 'ETA: '
       }
     };
 
@@ -381,13 +505,11 @@
     const savedLang = localStorage.getItem('language') || 'zh-TW';
     setLanguage(savedLang);
 
-    // Language switch event
-    document.querySelectorAll('[data-lang]').forEach(element => {
-      element.addEventListener('click', (e) => {
-        e.preventDefault();
-        const lang = e.target.getAttribute('data-lang');
-        setLanguage(lang);
-      });
+    // Language toggle event
+    document.getElementById('languageToggle').addEventListener('click', () => {
+      const currentLang = document.documentElement.lang;
+      const newLang = currentLang === 'zh-TW' ? 'en' : 'zh-TW';
+      setLanguage(newLang);
     });
 
     const socket = io();

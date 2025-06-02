@@ -11,6 +11,10 @@ const { pipeline } = require('stream');
 const { promisify } = require('util');
 const undici = require('undici');
 const EventEmitter = require('events');
+const { SitemapStream, streamToPromise } = require('sitemap');
+const { createGzip } = require('zlib');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const rateLimit = require('express-rate-limit');
 
 const streamPipeline = promisify(pipeline);
 
@@ -82,6 +86,27 @@ class Downloader extends EventEmitter {
         this.paused = false;
         this.cancelled = false;
         this.resumeCallback = null;
+        this.proxy = options.proxy || null;
+        this.speedLimit = options.speedLimit || 0;
+        this.resumeDownload = options.resumeDownload || false;
+        this.sitemapEnabled = options.sitemapEnabled || false;
+        this.rateLimit = options.rateLimit || null;
+        this.timeout = options.timeout || 30000;
+        this.maxFileSize = options.maxFileSize || 0;
+        this.retryDelay = options.retryDelay || 1000;
+        this.validateSSL = options.validateSSL !== false;
+        this.followRedirects = options.followRedirects !== false;
+        this.maxRedirects = options.maxRedirects || 5;
+        this.keepOriginalUrls = options.keepOriginalUrls || false;
+        this.cleanUrls = options.cleanUrls || false;
+        this.ignoreErrors = options.ignoreErrors || false;
+        this.parallelLimit = options.parallelLimit || 5;
+        this.downloadQueue = [];
+        this.activeDownloads = 0;
+        this.totalSize = 0;
+        this.startTime = Date.now();
+        this.lastProgressUpdate = Date.now();
+        this.progressInterval = options.progressInterval || 1000;
     }
 
     pause() {
@@ -95,6 +120,119 @@ class Downloader extends EventEmitter {
         this.cancelled = true;
     }
 
+    async generateSitemap() {
+        if (!this.sitemapEnabled) return;
+        
+        const sitemap = new SitemapStream({ hostname: this.baseUrl });
+        const pipeline = sitemap.pipe(createGzip());
+        
+        for (const url of this.visited) {
+            sitemap.write({ url, changefreq: 'daily', priority: 0.7 });
+        }
+        
+        sitemap.end();
+        const data = await streamToPromise(pipeline);
+        await fs.writeFile(path.join(this.outputDir, 'sitemap.xml.gz'), data);
+    }
+
+    async downloadWithResume(url, filePath) {
+        if (!this.resumeDownload) {
+            return this.downloadResource(url, filePath);
+        }
+
+        const fileExists = await fs.pathExists(filePath);
+        if (!fileExists) {
+            return this.downloadResource(url, filePath);
+        }
+
+        const stat = await fs.stat(filePath);
+        const headers = { 'Range': `bytes=${stat.size}-` };
+        
+        try {
+            const response = await axios.get(url, { headers, responseType: 'stream' });
+            const writer = fs.createWriteStream(filePath, { flags: 'a' });
+            await streamPipeline(response.data, writer);
+        } catch (error) {
+            if (error.response?.status === 416) {
+                // File already complete
+                return;
+            }
+            throw error;
+        }
+    }
+
+    async downloadWithSpeedLimit(url, filePath) {
+        if (!this.speedLimit) {
+            return this.downloadResource(url, filePath);
+        }
+
+        const response = await axios.get(url, { responseType: 'stream' });
+        const writer = fs.createWriteStream(filePath);
+        const reader = response.data;
+        
+        let downloaded = 0;
+        const startTime = Date.now();
+        
+        reader.on('data', (chunk) => {
+            downloaded += chunk.length;
+            const elapsed = (Date.now() - startTime) / 1000;
+            const speed = downloaded / elapsed;
+            
+            if (speed > this.speedLimit) {
+                const delay = (downloaded / this.speedLimit) - elapsed;
+                if (delay > 0) {
+                    reader.pause();
+                    setTimeout(() => reader.resume(), delay * 1000);
+                }
+            }
+        });
+        
+        await streamPipeline(reader, writer);
+    }
+
+    async downloadWithProxy(url, filePath) {
+        if (!this.proxy) {
+            return this.downloadResource(url, filePath);
+        }
+
+        const proxyConfig = {
+            target: url,
+            changeOrigin: true,
+            ...this.proxy
+        };
+
+        const proxyMiddleware = createProxyMiddleware(proxyConfig);
+        // Implementation of proxy download logic
+    }
+
+    async validateResource(url, filePath) {
+        if (!this.validateSSL) return true;
+        
+        try {
+            const response = await axios.head(url);
+            const contentType = response.headers['content-type'];
+            const contentLength = response.headers['content-length'];
+            
+            if (this.maxFileSize && contentLength > this.maxFileSize) {
+                throw new Error('File size exceeds limit');
+            }
+            
+            return true;
+        } catch (error) {
+            if (this.ignoreErrors) return false;
+            throw error;
+        }
+    }
+
+    async cleanUrl(url) {
+        if (!this.cleanUrls) return url;
+        
+        const parsed = new URL(url);
+        parsed.search = ''; // Remove query parameters
+        parsed.hash = ''; // Remove hash
+        return parsed.toString();
+    }
+
     async downloadWebsite(url, depth = 0, baseDir = null) {
         if (this.visited.has(url) || this.cancelled) return;
         this.visited.add(url);
@@ -102,6 +240,10 @@ class Downloader extends EventEmitter {
         const host = new URL(url).host.replace(/[:\/\\]/g, '_');
         baseDir = baseDir || path.join(this.outputDir, host);
         await fs.ensureDir(baseDir);
+
+        if (this.sitemapEnabled) {
+            await this.generateSitemap();
+        }
 
         let html;
         if (this.dynamic) {

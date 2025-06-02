@@ -46,6 +46,99 @@ body.dark-mode {
     --card-header-text: #ffffff;
 }
 
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--input-text);
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: var(--input-bg);
+    border-color: var(--secondary-color);
+    color: var(--input-text);
+}
+
+body.dark-mode .form-control::placeholder {
+    color: var(--placeholder-color);
+}
+
+body.dark-mode .option-group {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .option-group h5 {
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .card-header {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .card-header h4 {
+    color: var(--text-color);
+}
+
+body.dark-mode .status-card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .download-info {
+    color: var(--text-color);
+}
+
+body.dark-mode .form-label {
+    color: var(--text-color);
+}
+
+body.dark-mode .form-check-label {
+    color: var(--text-color);
+}
+
+body.dark-mode .input-group-text {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+body.dark-mode .btn-outline-light {
+    color: var(--text-color);
+    border-color: var(--text-color);
+}
+
+body.dark-mode .btn-outline-light:hover {
+    background-color: var(--text-color);
+    color: var(--dark-bg);
+}
+
+body.dark-mode .navbar {
+    background-color: var(--dark-bg) !important;
+}
+
+body.dark-mode .dropdown-menu {
+    background-color: var(--dropdown-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .dropdown-item {
+    color: var(--dropdown-text);
+}
+
+body.dark-mode .dropdown-item:hover {
+    background-color: var(--dropdown-hover-bg);
+    color: var(--dropdown-hover-text);
+}
+
 .navbar {
     background-color: var(--primary-color);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -287,89 +380,6 @@ body.dark-mode {
     background-color: #f8d7da;
     border-color: #f5c6cb;
     color: #721c24;
-}
-
-/* 深色模式下的表單元素 */
-body.dark-mode .form-control,
-body.dark-mode .form-select {
-    background-color: var(--input-bg);
-    border-color: var(--border-color);
-    color: var(--input-text);
-}
-
-body.dark-mode .form-control:focus,
-body.dark-mode .form-select:focus {
-    background-color: var(--input-bg);
-    color: var(--input-text);
-}
-
-body.dark-mode .option-group {
-    background: var(--dark-bg);
-    border-color: var(--border-color);
-}
-
-body.dark-mode .card {
-    background-color: var(--card-bg);
-}
-
-body.dark-mode .card-header {
-    background-color: var(--card-bg);
-    border-bottom-color: var(--border-color);
-}
-
-body.dark-mode .status-card {
-    background: var(--dark-bg);
-    border-color: var(--border-color);
-}
-
-body.dark-mode .download-info {
-    color: var(--text-color);
-}
-
-/* 動畫效果 */
-@keyframes progress-animation {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-.progress-bar-animated {
-    background: linear-gradient(45deg, var(--secondary-color), #2980b9, var(--secondary-color));
-    background-size: 200% 200%;
-    animation: progress-animation 2s ease infinite;
-}
-
-/* 響應式調整 */
-@media (max-width: 768px) {
-    .card {
-        margin: 1rem;
-    }
-    
-    .option-group {
-        padding: 1rem;
-    }
-    
-    .btn-primary {
-        width: 100%;
-    }
-
-    .download-info {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-}
-
-/* 表單標籤樣式 */
-.form-label {
-    color: var(--text-color);
-    font-weight: 500;
-}
-
-/* 卡片標題樣式 */
-.card-header h4 {
-    color: var(--card-header-text);
-    font-weight: 600;
-    margin: 0;
 }
 
 /* Input Group Styles */

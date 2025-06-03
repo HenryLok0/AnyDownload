@@ -107,20 +107,42 @@ const urlArgument = program.args[0]; // Get the URL argument if provided
 
 // If --gui is enabled, start the web GUI and open browser
 if (options.gui) {
-    console.log('Starting web GUI...'); // Log message
+    console.log('Starting web GUI...');
     // Use spawn to run the web-gui.js as a detached process
     const { spawn } = require('child_process');
-    const guiProcess = spawn('node', ['web-gui.js'], { // Execute web-gui.js as a child process
-        detached: true, // Detach the child process from the parent
-        stdio: 'ignore' // Ignore stdio for the child process
+    const webGuiPath = path.join(__dirname, '..', 'web-gui.js');
+    console.log('Web GUI path:', webGuiPath);
+    
+    // Create a promise to wait for the server to start
+    const serverStarted = new Promise((resolve) => {
+        const guiProcess = spawn('node', [webGuiPath], {
+            detached: true,
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
+
+        let port = 3000;
+        guiProcess.stdout.on('data', (data) => {
+            const output = data.toString();
+            console.log(output);
+            if (output.includes('Web GUI running at http://localhost:')) {
+                const match = output.match(/http:\/\/localhost:(\d+)/);
+                if (match) {
+                    port = parseInt(match[1]);
+                    resolve(port);
+                }
+            }
+        });
+
+        guiProcess.stderr.on('data', (data) => {
+            console.error(data.toString());
+        });
+
+        guiProcess.unref();
     });
 
-    // Unref the child process to allow the parent to exit
-    guiProcess.unref();
-
-    // Wait 2 seconds to ensure the server is up, then open the browser
-    setTimeout(() => {
-        const url = 'http://localhost:3000';
+    // Wait for server to start and then open browser
+    serverStarted.then((port) => {
+        const url = `http://localhost:${port}`;
         console.log(`Opening browser at ${url}...`);
         let command;
         if (process.platform === 'win32') {
@@ -135,7 +157,7 @@ if (options.gui) {
                 console.error(`Failed to open browser: ${error}`);
             }
         });
-    }, 2000); // 2-second delay
+    });
 
     // Exit the main process immediately
     process.exit(0);
@@ -181,7 +203,7 @@ if (options.gui) {
             timeout: parseInt(options.timeout),
             maxFileSize: parseInt(options.maxFileSize) * 1024 * 1024,
             retryDelay: parseInt(options.retryDelay),
-            validateSSL: options.validateSsl,
+            validateSSL: options.validateSSL,
             followRedirects: options.followRedirects,
             maxRedirects: parseInt(options.maxRedirects),
             keepOriginalUrls: options.keepOriginalUrls,

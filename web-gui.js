@@ -100,4 +100,14 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Web GUI running at http://localhost:${PORT}`);
     console.log('Press Ctrl+C to stop the server');
+}).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${PORT} is in use, trying port ${PORT + 1}...`);
+        server.listen(PORT + 1, () => {
+            console.log(`Web GUI running at http://localhost:${PORT + 1}`);
+            console.log('Press Ctrl+C to stop the server');
+        });
+    } else {
+        console.error('Server error:', err);
+    }
 });

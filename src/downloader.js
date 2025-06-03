@@ -18,7 +18,22 @@ const rateLimit = require('express-rate-limit');
 
 const streamPipeline = promisify(pipeline);
 
+function isValidUrl(url) {
+    if (typeof url !== 'string') {
+        return false;
+    }
+    try {
+        new URL(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 async function checkNeedDynamic(url, userAgent) {
+    if (!isValidUrl(url)) {
+        throw new Error('Invalid URL');
+    }
     try {
         const res = await axios.get(url, {
             headers: { 'User-Agent': userAgent }
@@ -34,6 +49,9 @@ async function checkNeedDynamic(url, userAgent) {
 }
 
 function normalizeUrl(u, base) {
+    if (typeof u !== 'string' || typeof base !== 'string') {
+        return null;
+    }
     try {
         return new URL(u, base).href;
     } catch {
@@ -234,6 +252,8 @@ class Downloader extends EventEmitter {
     }
 
     async downloadWebsite(url, depth = 0, baseDir = null) {
+        // Debug: print url received by downloadWebsite
+        console.log('[DEBUG] url received in downloadWebsite:', url); // Debug output
         if (this.visited.has(url) || this.cancelled) return;
         this.visited.add(url);
 
@@ -247,8 +267,10 @@ class Downloader extends EventEmitter {
 
         let html;
         if (this.dynamic) {
+            console.log('[DEBUG] Dynamic mode enabled, fetching dynamic HTML...'); // Debug output
             html = await this.fetchDynamicHtml(url);
         } else {
+            console.log('[DEBUG] Static mode enabled, fetching static HTML...'); // Debug output
             html = await this.fetchStaticHtml(url);
         }
 
@@ -301,6 +323,9 @@ class Downloader extends EventEmitter {
             });
         });
 
+        // Debug: print raw resources found by Cheerio before filtering
+        console.log('[DEBUG] Raw resources found before filtering:', resources); // Debug output
+
         // Filter duplicate, invalid, existing files, types, regular expressions
         resources = resources
             .map(r => normalizeUrl(r, url))
@@ -329,6 +354,9 @@ class Downloader extends EventEmitter {
             return !fs.existsSync(savePath);
         });
 
+        // Debug: print resources after filtering, before adding to queue
+        console.log('[DEBUG] Resources after filtering:', resources); // Debug output
+
         // 5. Recursively fetch same-domain a[href]
         let pageLinks = [];
         if (this.recursive && depth < this.maxDepth) {
@@ -340,6 +368,9 @@ class Downloader extends EventEmitter {
                 }
             });
         }
+
+        // Debug: print page links after filtering
+        console.log('[DEBUG] Page links after filtering:', pageLinks); // Debug output
 
         // Fix all resource paths in HTML
         resources.forEach(resource => {
@@ -479,6 +510,7 @@ class Downloader extends EventEmitter {
     }
 
     async fetchDynamicHtml(url) {
+        console.log('[DEBUG] Inside fetchDynamicHtml for URL:', url); // Debug output: entering function
         if (this.browserType === 'puppeteer') {
             const browser = await puppeteer.launch({ headless: this.headless ? 'new' : false });
             const page = await browser.newPage();
@@ -487,8 +519,15 @@ class Downloader extends EventEmitter {
                 await page.setExtraHTTPHeaders({ Cookie: this.cookie });
             }
             await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+
+            // Wait for a fixed duration (less reliable)
+            console.log('[DEBUG] Waiting for 5 seconds...'); // Debug output
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
+            console.log('[DEBUG] Finished waiting.'); // Debug output
+
             const html = await page.content();
             await browser.close();
+            console.log('[DEBUG] Successfully fetched dynamic HTML. Length:', html.length); // Debug output: success and HTML length
             return html;
         }
         // Expandable Playwright

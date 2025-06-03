@@ -69,6 +69,8 @@ try {
 program
     .version(version)
     .description('A powerful website downloader')
+    .argument('[url]', 'URL to download')
+    .option('--gui', 'Start the web graphical interface')
     .option('-o, --output <dir>', 'Custom output folder', config.output || 'downloaded_site')
     .option('-r, --recursive', 'Recursively download same-domain pages', config.recursive || false)
     .option('-m, --max-depth <number>', 'Set recursion depth', config['max-depth'] || 1)
@@ -95,8 +97,51 @@ program
     .option('--keep-original-urls', 'Keep original URLs', config.keepOriginalUrls || false)
     .option('--clean-urls', 'Clean URLs', config.cleanUrls || false)
     .option('--ignore-errors', 'Ignore errors', config.ignoreErrors || false)
-    .option('--parallel-limit <number>', 'Parallel download limit', config.parallelLimit || 5)
-    .action(async (url) => {
+    .option('--parallel-limit <number>', 'Parallel download limit', config.parallelLimit || 5);
+
+// Parse arguments first
+program.parse(process.argv);
+
+const options = program.opts();
+const urlArgument = program.args[0]; // Get the URL argument if provided
+
+// If --gui is enabled, start the web GUI and open browser
+if (options.gui) {
+    console.log('Starting web GUI...'); // Log message
+    // Use spawn to run the web-gui.js as a detached process
+    const { spawn } = require('child_process');
+    const guiProcess = spawn('node', ['web-gui.js'], { // Execute web-gui.js as a child process
+        detached: true, // Detach the child process from the parent
+        stdio: 'ignore' // Ignore stdio for the child process
+    });
+
+    // Unref the child process to allow the parent to exit
+    guiProcess.unref();
+
+    // Wait 2 seconds to ensure the server is up, then open the browser
+    setTimeout(() => {
+        const url = 'http://localhost:3000';
+        console.log(`Opening browser at ${url}...`);
+        let command;
+        if (process.platform === 'win32') {
+            command = `start "" "${url}"`;
+        } else if (process.platform === 'darwin') {
+            command = `open "${url}"`;
+        } else {
+            command = `xdg-open "${url}"`;
+        }
+        exec(command, (error) => {
+            if (error) {
+                console.error(`Failed to open browser: ${error}`);
+            }
+        });
+    }, 2000); // 2-second delay
+
+    // Exit the main process immediately
+    process.exit(0);
+} else {
+    // Original download logic
+    async function runDownload(url) {
         if (!url) {
             const answer = await inquirer.prompt([{ type: 'input', name: 'url', message: MSG.provideUrl }]);
             url = answer.url;
@@ -107,7 +152,11 @@ program
             process.exit(1);
         }
 
-        const options = program.opts();
+        // Ensure URL has protocol
+        if (typeof url === 'string' && !url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+
         const downloader = new Downloader({
             ...options,
             userAgent: options['user-agent'] || config['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -157,14 +206,17 @@ program
             console.log(`${MSG.size}: ${(downloader.downloadedBytes / 1024).toFixed(1)} KB`);
             console.log(`${MSG.time}: ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
             
-            // Homepage path
-            const indexPath = path.join(options.output, 'index.html');
+            // Homepage path (fix: use host subfolder)
+            const urlObj = new URL(url); // Parse the URL
+            const hostDir = urlObj.host.replace(/[:\/\\]/g, '_'); // Replace invalid chars
+            const indexPath = path.join(options.output, hostDir, 'index.html'); // Correct homepage path
             console.log(`${MSG.homepage} ${indexPath}`);
             
             // Open homepage
             let openHome = options.open;
-            if (!options.open) {
-                const answer = await inquirer.prompt([{
+            // Check if options.open is explicitly set (true or false), otherwise prompt
+            if (options.open === undefined) {
+                 const answer = await inquirer.prompt([{
                     type: 'confirm',
                     name: 'open',
                     message: MSG.openIndex,
@@ -174,13 +226,21 @@ program
             }
             
             if (openHome) {
-                const openPath = process.platform === 'win32' ? indexPath.replace(/\\/g, '/') : indexPath;
-                if (process.platform === 'win32') {
-                    exec(`start "" "${openPath}"`);
-                } else if (process.platform === 'darwin') {
-                    exec(`open "${openPath}"`);
+                // Check if index.html exists
+                if (!fs.existsSync(indexPath)) {
+                    console.log('[DEBUG] index.html not found, cannot open homepage.'); // Debug output
                 } else {
-                    exec(`xdg-open "${openPath}"`);
+                    // Windows: use original path, do not replace backslash
+                    if (process.platform === 'win32') {
+                        console.log('[DEBUG] Opening homepage on Windows:', indexPath); // Debug output
+                        exec(`start "" "${indexPath}"`);
+                    } else if (process.platform === 'darwin') {
+                        console.log('[DEBUG] Opening homepage on macOS:', indexPath); // Debug output
+                        exec(`open "${indexPath}"`);
+                    } else {
+                        console.log('[DEBUG] Opening homepage on Linux:', indexPath); // Debug output
+                        exec(`xdg-open "${indexPath}"`);
+                    }
                 }
             }
             
@@ -199,6 +259,9 @@ program
             spinner.fail('Download failed: ' + (error.message || error));
             process.exit(1);
         }
-    });
+    }
+    // Run the download logic with the provided URL argument
+    runDownload(urlArgument);
+}
 
-program.parse(process.argv);
+// Removed original program.parse(process.argv) call here

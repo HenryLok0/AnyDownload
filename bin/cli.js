@@ -228,17 +228,29 @@ if (options.gui) {
             console.log(`${MSG.size}: ${(downloader.downloadedBytes / 1024).toFixed(1)} KB`);
             console.log(`${MSG.time}: ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
             
-            // Homepage path (fix: use host subfolder)
-            const urlObj = new URL(url); // Parse the URL
-            const hostDir = urlObj.host.replace(/[:\/\\]/g, '_'); // Replace invalid chars
-            const indexPath = path.join(options.output, hostDir, 'index.html'); // Correct homepage path
-            console.log(`${MSG.homepage} ${indexPath}`);
-            
-            // Open homepage
+            // Homepage path (fix: use host subfolder and auto-detect html file)
+            const urlObj = new URL(url);
+            const hostDir = urlObj.host.replace(/[:\/\\]/g, '_');
+            const outputDir = path.join(options.output, hostDir);
+
+            // Try to find the main HTML file
+            let homepageFile = path.join(outputDir, 'index.html');
+            if (!fs.existsSync(homepageFile)) {
+                // Find the first .html file in the output directory
+                const htmlFiles = fs.readdirSync(outputDir)
+                    .filter(f => f.endsWith('.html'));
+                if (htmlFiles.length > 0) {
+                    homepageFile = path.join(outputDir, htmlFiles[0]);
+                } else {
+                    homepageFile = null;
+                }
+            }
+
+            console.log(`${MSG.homepage} ${homepageFile || '[Not found]'}`);
+
             let openHome = options.open;
-            // Check if options.open is explicitly set (true or false), otherwise prompt
             if (options.open === undefined) {
-                 const answer = await inquirer.prompt([{
+                const answer = await inquirer.prompt([{
                     type: 'confirm',
                     name: 'open',
                     message: MSG.openIndex,
@@ -246,24 +258,17 @@ if (options.gui) {
                 }]);
                 openHome = answer.open;
             }
-            
-            if (openHome) {
-                // Check if index.html exists
-                if (!fs.existsSync(indexPath)) {
-                    console.log('[DEBUG] index.html not found, cannot open homepage.'); // Debug output
+
+            if (openHome && homepageFile && fs.existsSync(homepageFile)) {
+                if (process.platform === 'win32') {
+                    exec(`start "" "${homepageFile}"`);
+                } else if (process.platform === 'darwin') {
+                    exec(`open "${homepageFile}"`);
                 } else {
-                    // Windows: use original path, do not replace backslash
-                    if (process.platform === 'win32') {
-                        console.log('[DEBUG] Opening homepage on Windows:', indexPath); // Debug output
-                        exec(`start "" "${indexPath}"`);
-                    } else if (process.platform === 'darwin') {
-                        console.log('[DEBUG] Opening homepage on macOS:', indexPath); // Debug output
-                        exec(`open "${indexPath}"`);
-                    } else {
-                        console.log('[DEBUG] Opening homepage on Linux:', indexPath); // Debug output
-                        exec(`xdg-open "${indexPath}"`);
-                    }
+                    exec(`xdg-open "${homepageFile}"`);
                 }
+            } else if (openHome) {
+                console.log('[DEBUG] No homepage HTML file found to open.');
             }
             
             // Failed list

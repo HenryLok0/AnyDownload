@@ -49,12 +49,33 @@ async function checkNeedDynamic(url, userAgent) {
 }
 
 function normalizeUrl(u, base) {
+    // console.log('[DEBUG] normalizeUrl input - u:', u, 'base:', base); // More verbose input debug
     if (typeof u !== 'string' || typeof base !== 'string') {
+        // console.log('[DEBUG] normalizeUrl: Invalid input type - u:', typeof u, 'base:', typeof base); // Debug input type
+        // console.log('[DEBUG] normalizeUrl returning null: Invalid input type for u or base', 'u:', u, 'base:', base); // Debug null return
         return null;
     }
     try {
-        return new URL(u, base).href;
-    } catch {
+        // Use the base URL to resolve relative and protocol-relative URLs
+        const absoluteUrl = new URL(u, base).href;
+        // console.log('[DEBUG] normalizeUrl: Original:', u, 'Base:', base, 'Normalized:', absoluteUrl); // Debug normalized URL
+        // Basic validation after normalization
+        if (!absoluteUrl.startsWith('http://') && !absoluteUrl.startsWith('https://')) {
+             console.log('[DEBUG] normalizeUrl WARNING: Normalized URL does not start with http/https:', absoluteUrl, 'Original:', u, 'Base:', base); // Warning for unexpected normalization
+             // Depending on desired behavior, might return null or the current absoluteUrl
+             // For now, return null if it's not a web URL, as we only download web resources
+             return null; // Treat as invalid if not http/https
+        }
+        // Temporarily remove isValidUrl check
+        // if (!isValidUrl(absoluteUrl)) {
+        //      console.log('[DEBUG] normalizeUrl: Normalized URL is invalid (isValidUrl check):', absoluteUrl, 'Original:', u); // Debug invalid normalized URL
+        //      // console.log('[DEBUG] normalizeUrl returning null: Normalized URL is invalid', 'Normalized:', absoluteUrl, 'Original:', u); // Debug null return
+        //      return null;
+        // }
+        return absoluteUrl;
+    } catch (e) {
+        console.log('[DEBUG] normalizeUrl: Error normalizing URL:', u, 'Base:', base, 'Error:', e.message); // Debug normalization error
+        // console.log('[DEBUG] normalizeUrl returning null: Error normalizing URL', 'Original:', u, 'Base:', base, 'Error:', e.message); // Debug null return
         return null;
     }
 }
@@ -323,39 +344,82 @@ class Downloader extends EventEmitter {
             });
         });
 
-        // Debug: print raw resources found by Cheerio before filtering
-        console.log('[DEBUG] Raw resources found before filtering:', resources); // Debug output
+        // Debug: print raw resources found by Cheerio before initial processing
+        console.log('[DEBUG] Raw resources found by Cheerio before initial processing:', resources.length, resources); // Debug output
 
-        // Filter duplicate, invalid, existing files, types, regular expressions
+        // Process and filter resources - Manual collection of raw resources for debugging
+        let rawCollectedResources = [];
+        console.log('[DEBUG] Starting manual raw resource collection...'); // Marker before manual loop
+        for (const resource of resources) {
+            rawCollectedResources.push(resource);
+        }
+        console.log('[DEBUG] Manual raw resource collection finished.', rawCollectedResources.length, rawCollectedResources); // Marker after manual loop
+
+        // Temporarily assign rawCollectedResources back to resources for the rest of the flow
+        resources = rawCollectedResources;
+
+        // Debug: print resources after manual raw collection
+        console.log('[DEBUG] Resources after manual raw collection:', resources.length, resources); // Debug output
+
+        // Process and filter resources
+        // Restore basic filtering chain
         resources = resources
             .map(r => normalizeUrl(r, url))
-            .filter(r => !!r)
             .filter(r => {
-                const hash = hashUrl(r);
-                if (this.resourceHashSet.has(hash)) return false;
-                this.resourceHashSet.add(hash);
-                // Resource type filter
-                if (this.type !== 'all') {
-                    const ext = path.extname(r).toLowerCase();
-                    if (this.type === 'image' && !/\.(png|jpe?g|gif|svg|webp|bmp|ico|avif)$/i.test(ext)) return false;
-                    if (this.type === 'css' && ext !== '.css') return false;
-                    if (this.type === 'js' && ext !== '.js') return false;
-                    if (this.type === 'html' && !/\.html?$/i.test(ext)) return false;
-                    if (this.type === 'media' && !/\.(mp4|mp3|ogg|wav|webm|m4a|aac)$/i.test(ext)) return false;
-                }
-                if (this.filterRegex && !this.filterRegex.test(r)) return false;
-                return true;
+                if (!r) console.log('[DEBUG] Filtered invalid or null URL after normalization:', r); // Debug invalid URL filter
+                return !!r; // Remove null, undefined, empty string
+            })
+            .filter(r => {
+                 const hash = hashUrl(r);
+                 if (this.resourceHashSet.has(hash)) {
+                     console.log('[DEBUG] Filtered duplicate resource:', r); // Debug duplicate filter
+                     return false;
+                 }
+                 this.resourceHashSet.add(hash);
+                 return true;
             });
+
+        console.log('[DEBUG] Resources after normalize, invalid, and duplicate filter:', resources.length, resources); // Debug output
+
+        // Now apply type and regex filters
+        resources = resources.filter(r => {
+            // Resource type filter
+            if (this.type !== 'all') {
+                const ext = path.extname(r).toLowerCase();
+                const isFiltered = (this.type === 'image' && !/\.(png|jpe?g|gif|svg|webp|bmp|ico|avif)$/i.test(ext)) ||
+                                   (this.type === 'css' && ext !== '.css') ||
+                                   (this.type === 'js' && ext !== '.js') ||
+                                   (this.type === 'html' && !/\.html?$/i.test(ext)) ||
+                                   (this.type === 'media' && !/\.(mp4|mp3|ogg|wav|webm|m4a|aac)$/i.test(ext));
+                if (isFiltered) console.log('[DEBUG] Filtered resource by type:', r, 'Type:', this.type); // Debug type filter
+                return !isFiltered;
+            }
+            return true;
+        });
+
+        console.log('[DEBUG] Resources after type filter:', resources.length, resources); // Debug output
+
+        resources = resources.filter(r => {
+            if (this.filterRegex && !this.filterRegex.test(r)) {
+                console.log('[DEBUG] Filtered resource by regex:', r, 'Regex:', this.filterRegex.source); // Debug regex filter
+                return false;
+            }
+            return true;
+        });
+
+        console.log('[DEBUG] Resources after regex filter:', resources.length, resources); // Debug output
 
         // Resume: Skip the existing file
         resources = resources.filter(r => {
             const filename = getFilenameFromUrl(r);
             const savePath = path.join(baseDir, filename);
-            return !fs.existsSync(savePath);
+            const exists = fs.existsSync(savePath);
+            if (exists) console.log('[DEBUG] Filtered existing file (resume): ', r); // Debug resume filter
+            return !exists;
         });
 
-        // Debug: print resources after filtering, before adding to queue
-        console.log('[DEBUG] Resources after filtering:', resources); // Debug output
+        // Debug: print resources after final filtering:
+        console.log('[DEBUG] Resources after final filtering:', resources.length, resources); // Debug output
 
         // 5. Recursively fetch same-domain a[href]
         let pageLinks = [];
@@ -364,7 +428,14 @@ class Downloader extends EventEmitter {
                 const href = $(el).attr('href');
                 const abs = normalizeUrl(href, url);
                 if (abs && abs.startsWith(new URL(url).origin) && !this.visited.has(abs)) {
+                    // Check if page link is filtered by regex
+                    if (this.filterRegex && !this.filterRegex.test(abs)) {
+                         console.log('[DEBUG] Filtered page link by regex:', abs, 'Regex:', this.filterRegex.source); // Debug regex filter for page links
+                         return;
+                    }
                     pageLinks.push(abs);
+                } else if (abs && !abs.startsWith(new URL(url).origin)) {
+                    console.log('[DEBUG] Filtered page link (external domain):', abs); // Debug external domain filter
                 }
             });
         }
@@ -385,6 +456,7 @@ class Downloader extends EventEmitter {
                 if (!srcset) return;
                 let newSrcset = srcset.split(',').map(item => {
                     let [s, size] = item.trim().split(' ');
+                    // Use original normalizeUrl for fixing paths in HTML to match saved filenames
                     if (normalizeUrl(s, url) === abs) s = filename;
                     return size ? `${s} ${size}` : s;
                 }).join(', ');
@@ -399,6 +471,7 @@ class Downloader extends EventEmitter {
             format: 'Downloading [{bar}] {percentage}% | {value}/{total} | {filename} | {speed}/s | ETA: {eta}s | {success} ok, {fail} fail, {size} KB',
             hideCursor: true
         }, cliProgress.Presets.shades_classic);
+        // Update total based on the simplified resources list
         bar.start(resources.length, 0, { filename: '', success: 0, fail: 0, size: 0, speed: 0, eta: 0 });
 
         let idx = 0;
@@ -414,6 +487,7 @@ class Downloader extends EventEmitter {
                 this.onError && this.onError(`Invalid URL: ${resource}`);
                 return;
             }
+            // Use getFilenameFromUrl with the normalized URL
             let filename = getFilenameFromUrl(abs);
             const savePath = path.join(baseDir, filename);
             while (attempt < this.retry) {

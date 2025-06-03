@@ -307,6 +307,42 @@
                 </div>
               </div>
 
+              <!-- 登入設定 -->
+              <div class="login-section mb-3">
+                <h6><i class="fas fa-sign-in-alt me-2"></i> <span data-i18n="loginSettings">登入設定</span></h6>
+                <div class="alert alert-info" role="alert">
+                  <i class="bi bi-info-circle-fill me-2"></i>
+                  <span data-i18n="loginNotice">注意：如果網站需要登入才能訪問，請填寫以下資訊。如果不需要登入，可以留空。</span>
+                </div>
+                <div id="loginError" class="alert alert-danger" role="alert" style="display: none;">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  <span data-i18n="loginError">登入失敗：請確認登入資訊是否正確，或網站是否需要其他認證方式。</span>
+                </div>
+                <div id="loginIncomplete" class="alert alert-warning" role="alert" style="display: none;">
+                  <i class="bi bi-exclamation-circle-fill me-2"></i>
+                  <span data-i18n="loginIncomplete">請填寫完整的登入資訊（登入網址、使用者名稱和密碼）</span>
+                </div>
+                <div id="invalidCredentials" class="alert alert-danger" role="alert" style="display: none;">
+                  <i class="bi bi-x-circle-fill me-2"></i>
+                  <span data-i18n="invalidCredentials">登入失敗：使用者名稱或密碼錯誤</span>
+                </div>
+                <div class="mb-2">
+                  <label for="loginUrl" class="form-label" data-i18n="loginPageUrl">登入頁面網址</label>
+                  <input type="url" class="form-control" id="loginUrl" data-i18n-placeholder="loginPageUrlPlaceholder" placeholder="https://example.com/login">
+                  <small class="form-text text-muted" data-i18n="loginPageUrlHelp">需要登入的網站登入頁面網址</small>
+                </div>
+                <div class="mb-2">
+                  <label for="username" class="form-label" data-i18n="username">使用者名稱</label>
+                  <input type="text" class="form-control" id="username" data-i18n-placeholder="usernamePlaceholder" placeholder="請輸入使用者名稱">
+                  <small class="form-text text-muted" data-i18n="usernameHelp">登入使用的使用者名稱</small>
+                </div>
+                <div class="mb-2">
+                  <label for="password" class="form-label" data-i18n="password">密碼</label>
+                  <input type="password" class="form-control" id="password" data-i18n-placeholder="passwordPlaceholder" placeholder="請輸入密碼">
+                  <small class="form-text text-muted" data-i18n="passwordHelp">登入使用的密碼</small>
+                </div>
+              </div>
+
               <button type="submit" class="btn btn-primary w-100">
                 <i class="bi bi-download"></i> <span data-i18n="startDownload">開始下載</span>
               </button>
@@ -407,7 +443,25 @@
         'complete': '下載完成！',
         'error': '下載失敗：',
         'speed': '速度：',
-        'eta': '預計完成時間：'
+        'eta': '預計完成時間：',
+        'loginSettings': '登入設定',
+        'loginPageUrl': '登入頁面網址',
+        'loginPageUrlHelp': '需要登入的網站登入頁面網址',
+        'loginFormMapping': '登入表單欄位映射 (JSON)',
+        'loginFormMappingHelp': '指定登入表單中的使用者名稱和密碼欄位選擇器',
+        'loginCredentials': '登入憑證 (JSON)',
+        'loginCredentialsPlaceholder': '{"username": "user", "password": "pass"}',
+        'loginCredentialsHelp': '登入使用的使用者名稱和密碼',
+        'username': '使用者名稱',
+        'usernamePlaceholder': '請輸入使用者名稱',
+        'usernameHelp': '登入使用的使用者名稱',
+        'password': '密碼',
+        'passwordPlaceholder': '請輸入密碼',
+        'passwordHelp': '登入使用的密碼',
+        'loginNotice': '注意：如果網站需要登入才能訪問，請填寫以下資訊。如果不需要登入，可以留空。',
+        'loginError': '登入失敗：請確認登入資訊是否正確，或網站是否需要其他認證方式。',
+        'loginIncomplete': '請填寫完整的登入資訊（登入網址、使用者名稱和密碼）',
+        'invalidCredentials': '登入失敗：使用者名稱或密碼錯誤',
       },
       'en': {
         'title': 'AnyDownload - Professional Website Downloader',
@@ -476,7 +530,25 @@
         'complete': 'Download Complete!',
         'error': 'Download Failed: ',
         'speed': 'Speed: ',
-        'eta': 'ETA: '
+        'eta': 'ETA: ',
+        'loginSettings': 'Login Settings',
+        'loginPageUrl': 'Login Page URL',
+        'loginPageUrlHelp': 'URL of the login page for websites requiring authentication',
+        'loginFormMapping': 'Login Form Field Mapping (JSON)',
+        'loginFormMappingHelp': 'Specify the username and password field selectors in the login form',
+        'loginCredentials': 'Login Credentials (JSON)',
+        'loginCredentialsPlaceholder': '{"username": "user", "password": "pass"}',
+        'loginCredentialsHelp': 'Username and password for login',
+        'username': 'Username',
+        'usernamePlaceholder': 'Enter username',
+        'usernameHelp': 'Username for login',
+        'password': 'Password',
+        'passwordPlaceholder': 'Enter password',
+        'passwordHelp': 'Password for login',
+        'loginNotice': 'Note: If the website requires login to access, please fill in the following information. If no login is required, you can leave it empty.',
+        'loginError': 'Login failed: Please verify your login information or check if the website requires a different authentication method.',
+        'loginIncomplete': 'Please fill in all login information (login URL, username, and password)',
+        'invalidCredentials': 'Login failed: Incorrect username or password',
       }
     };
 
@@ -543,33 +615,148 @@
     // Form submission handler
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
+      
+      // 檢查登入資訊
+      const loginUrl = document.getElementById('loginUrl').value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const loginError = document.getElementById('loginError');
+      const loginIncomplete = document.getElementById('loginIncomplete');
+      const invalidCredentials = document.getElementById('invalidCredentials');
+      
+      // 隱藏所有錯誤提示
+      loginError.style.display = 'none';
+      loginIncomplete.style.display = 'none';
+      invalidCredentials.style.display = 'none';
+      
+      // 如果填寫了部分登入資訊但未完整
+      if ((loginUrl || username || password) && !(loginUrl && username && password)) {
+        loginIncomplete.style.display = 'block';
+        return;
+      }
 
+      // 收集表單數據
+      const formData = {
+        url: document.getElementById('url').value,
+        loginUrl: document.getElementById('loginUrl').value,
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        outputDir: document.getElementById('output').value,
+        maxDepth: document.getElementById('maxDepth').value,
+        dynamicMode: true, // 強制啟用動態模式
+        recursive: document.getElementById('recursive').checked,
+        generateSitemap: document.getElementById('sitemap').checked,
+        resumeDownload: document.getElementById('resume').checked,
+        type: document.getElementById('type').value,
+        concurrency: document.getElementById('concurrency').value,
+        delay: document.getElementById('delay').value,
+        retry: document.getElementById('retry').value,
+        'user-agent': document.getElementById('user-agent').value || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        cookie: document.getElementById('cookie').value,
+        'ignore-robots': document.getElementById('ignore-robots').checked,
+        headless: false, // 強制使用有頭模式
+        filter: document.getElementById('filter').value,
+        glob: document.getElementById('glob').value,
+        mimetype: document.getElementById('mimetype').value,
+        whitelist: document.getElementById('whitelist').value,
+        blacklist: document.getElementById('blacklist').value,
+        'auth-user': document.getElementById('auth-user').value,
+        'auth-pass': document.getElementById('auth-pass').value,
+        schedule: document.getElementById('schedule').value,
+        'speed-limit': document.getElementById('speed-limit').value,
+        'parallel-limit': document.getElementById('parallel-limit').value,
+        timeout: 60000, // 增加超時時間到 60 秒
+        'max-file-size': document.getElementById('max-file-size').value,
+        proxy: document.getElementById('proxy').value,
+        'validate-ssl': document.getElementById('validate-ssl').checked,
+        'follow-redirects': true, // 強制啟用重定向
+        'max-redirects': 10, // 增加最大重定向次數
+        'keep-original-urls': document.getElementById('keep-original-urls').checked,
+        'clean-urls': document.getElementById('clean-urls').checked,
+        'ignore-errors': true // 強制忽略錯誤
+      };
+
+      // 如果有登入資訊，自動生成 JSON 格式
+      if (formData.loginUrl && formData.username && formData.password) {
+        formData.loginForm = JSON.stringify({
+          "#username": "username",
+          "#password": "password"
+        });
+        formData.loginCredentials = JSON.stringify({
+          "username": formData.username,
+          "password": formData.password
+        });
+      }
+
+      // 顯示進度卡片
       status.style.display = 'block';
       progressBar.style.width = '0%';
       progressText.textContent = '0%';
       currentFile.textContent = translations[document.documentElement.lang]['preparing'];
 
       try {
+        // 發送下載請求
         const response = await fetch('/api/download', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(data)
+          body: JSON.stringify(formData)
         });
 
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error);
+        const responseData = await response.json();
+
+        if (!response.ok) {
+          if (responseData.error === 'login_failed') {
+            loginError.style.display = 'block';
+          } else if (responseData.error === 'invalid_credentials') {
+            invalidCredentials.style.display = 'block';
+          } else {
+            loginError.style.display = 'block';
+          }
+          throw new Error(responseData.message || '下載請求失敗');
         }
+
+        // 顯示成功通知
+        showToast('下載已完成', 'success');
       } catch (error) {
+        showToast(error.message, 'error');
         currentFile.textContent = translations[document.documentElement.lang]['error'] + error.message;
         progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
         progressBar.classList.add('bg-danger');
       }
     });
+
+    // 添加 Toast 通知功能
+    function showToast(message, type = 'info') {
+      const toastContainer = document.createElement('div');
+      toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+      document.body.appendChild(toastContainer);
+
+      const toast = document.createElement('div');
+      toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : 'success'} border-0`;
+      toast.setAttribute('role', 'alert');
+      toast.setAttribute('aria-live', 'assertive');
+      toast.setAttribute('aria-atomic', 'true');
+
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">
+            ${message}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      `;
+
+      toastContainer.appendChild(toast);
+      const bsToast = new bootstrap.Toast(toast);
+      bsToast.show();
+
+      // 自動移除 Toast
+      toast.addEventListener('hidden.bs.toast', () => {
+        toastContainer.remove();
+      });
+    }
 
     // Download progress handler
     socket.on('download-progress', (data) => {

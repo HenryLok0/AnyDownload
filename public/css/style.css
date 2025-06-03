@@ -394,4 +394,116 @@ body.dark-mode .dropdown-item:hover {
 /* Download status */
 .download-status {
     margin-top: 2rem;
+}
+
+/* Dark Mode Styles for Login Section */
+body.dark-mode .login-section {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+body.dark-mode .login-section h6 {
+    color: var(--text-color);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+body.dark-mode .login-section .form-text {
+    color: var(--placeholder-color) !important;
+}
+
+body.dark-mode .login-section .form-label {
+    color: var(--text-color);
+}
+
+body.dark-mode .login-section .form-control {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--input-text);
+}
+
+body.dark-mode .login-section .form-control:focus {
+    background-color: var(--input-bg);
+    border-color: var(--secondary-color);
+    color: var(--input-text);
+}
+
+body.dark-mode .login-section .form-control::placeholder {
+    color: var(--placeholder-color);
+}
+
+/* Dark Mode Form Text Styles */
+body.dark-mode .form-text {
+    color: var(--placeholder-color) !important;
+}
+
+body.dark-mode .form-label {
+    color: var(--text-color);
+}
+
+body.dark-mode .form-control {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--input-text);
+}
+
+body.dark-mode .form-control:focus {
+    background-color: var(--input-bg);
+    border-color: var(--secondary-color);
+    color: var(--input-text);
+}
+
+body.dark-mode .form-control::placeholder {
+    color: var(--placeholder-color);
+}
+
+/* Dark Mode Card Styles */
+body.dark-mode .card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .card-header {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .card-body {
+    background-color: var(--card-bg);
+}
+
+/* Dark Mode Option Group Styles */
+body.dark-mode .option-group {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .option-group h5 {
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+/* Dark Mode Input Group Styles */
+body.dark-mode .input-group-text {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+/* Dark Mode Form Switch Styles */
+body.dark-mode .form-check-input {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .form-check-input:checked {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+body.dark-mode .form-check-label {
+    color: var(--text-color);
 } 

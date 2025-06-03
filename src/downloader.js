@@ -146,6 +146,9 @@ class Downloader extends EventEmitter {
         this.startTime = Date.now();
         this.lastProgressUpdate = Date.now();
         this.progressInterval = options.progressInterval || 1000;
+        this.loginUrl = options.loginUrl || null;
+        this.loginForm = options.loginForm || null;
+        this.loginCredentials = options.loginCredentials || null;
     }
 
     pause() {
@@ -583,8 +586,48 @@ class Downloader extends EventEmitter {
         return res.data;
     }
 
+    async handleLogin(page) {
+        if (!this.loginUrl || !this.loginForm || !this.loginCredentials) return;
+
+        console.log('[DEBUG] Attempting to login...');
+        try {
+            await page.goto(this.loginUrl);
+            
+            // Fill login form
+            for (const [field, value] of Object.entries(this.loginForm)) {
+                await page.type(field, this.loginCredentials[value]);
+            }
+            
+            // Submit form
+            await Promise.all([
+                page.waitForNavigation(),
+                page.click('button[type="submit"]')
+            ]);
+
+            // 檢查登入是否成功
+            const currentUrl = page.url();
+            const pageContent = await page.content();
+            
+            // 檢查是否仍在登入頁面或出現錯誤訊息
+            if (currentUrl === this.loginUrl || 
+                pageContent.includes('error') || 
+                pageContent.includes('invalid') || 
+                pageContent.includes('incorrect')) {
+                throw new Error('invalid_credentials');
+            }
+            
+            console.log('[DEBUG] Login completed successfully');
+        } catch (error) {
+            console.log('[DEBUG] Login failed:', error.message);
+            if (error.message === 'invalid_credentials') {
+                throw new Error('invalid_credentials');
+            }
+            throw new Error('login_failed');
+        }
+    }
+
     async fetchDynamicHtml(url) {
-        console.log('[DEBUG] Inside fetchDynamicHtml for URL:', url); // Debug output: entering function
+        console.log('[DEBUG] Inside fetchDynamicHtml for URL:', url);
         if (this.browserType === 'puppeteer') {
             const browser = await puppeteer.launch({ headless: this.headless ? 'new' : false });
             const page = await browser.newPage();
@@ -592,17 +635,29 @@ class Downloader extends EventEmitter {
             if (this.cookie) {
                 await page.setExtraHTTPHeaders({ Cookie: this.cookie });
             }
-            await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-            // Wait for a fixed duration (less reliable)
-            console.log('[DEBUG] Waiting for 5 seconds...'); // Debug output
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
-            console.log('[DEBUG] Finished waiting.'); // Debug output
+            try {
+                // Handle login if credentials are provided
+                if (this.loginUrl) {
+                    await this.handleLogin(page);
+                }
 
-            const html = await page.content();
-            await browser.close();
-            console.log('[DEBUG] Successfully fetched dynamic HTML. Length:', html.length); // Debug output: success and HTML length
-            return html;
+                await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+
+                // Wait for a fixed duration
+                console.log('[DEBUG] Waiting for 5 seconds...');
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                console.log('[DEBUG] Finished waiting.');
+
+                const html = await page.content();
+                await browser.close();
+                console.log('[DEBUG] Successfully fetched dynamic HTML. Length:', html.length);
+                return html;
+            } catch (error) {
+                await browser.close();
+                console.log('[DEBUG] Error in fetchDynamicHtml:', error.message);
+                throw error;
+            }
         }
         // Expandable Playwright
         throw new Error('Only puppeteer supported now');

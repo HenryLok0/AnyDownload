@@ -122,6 +122,12 @@ Then visit [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Advanced Examples
 
+### Download with Login
+```bash
+# Download a website that requires login
+anydownload https://example.com --login-url https://example.com/login --login-form '{"#username": "username", "#password": "password"}' --login-credentials '{"username": "user", "password": "pass"}'
+```
+
 ### Download with Custom Output
 ```bash
 anydownload https://example.com --output mysite
@@ -198,6 +204,9 @@ anydownload https://example.com --sitemap
 | `--clean-urls` | Clean URLs | `false` |
 | `--ignore-errors` | Ignore errors | `false` |
 | `--parallel-limit` | Parallel download limit | `5` |
+| `--login-url` | Login page URL | `null` |
+| `--login-form` | Login form field mapping | `null` |
+| `--login-credentials` | Login credentials | `null` |
 
 ## FAQ
 

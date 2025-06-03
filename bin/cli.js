@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { Downloader, checkNeedDynamic } = require('../src/downloader');
 const yargs = require('yargs');
 const ora = require('ora').default;
@@ -8,13 +10,9 @@ const fs = require('fs-extra');
 const inquirerImport = require('inquirer');
 const cosmiconfig = require('cosmiconfig').cosmiconfigSync;
 const chalk = require('chalk');
-const updateNotifier = require('update-notifier');
 const pkg = require('../package.json');
 const { program } = require('commander');
 const { version } = require('../package.json');
-
-// Check for updates
-updateNotifier({ pkg }).notify();
 
 // Compatible with inquirer v8/v9
 const inquirer = inquirerImport.prompt ? inquirerImport : inquirerImport.default;

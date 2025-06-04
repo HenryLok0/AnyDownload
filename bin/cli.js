@@ -108,6 +108,7 @@ const urlArgument = program.args[0]; // Get the URL argument if provided
 // If --gui is enabled, start the web GUI and open browser
 if (options.gui) {
     console.log('Starting web GUI...');
+    console.log('http://localhost:3000/');
     // Use spawn to run the web-gui.js as a detached process
     const { spawn } = require('child_process');
     const webGuiPath = path.join(__dirname, '..', 'web-gui.js');

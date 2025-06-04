@@ -230,80 +230,6 @@
     <div class="container main-container">
         <div class="row justify-content-center">
             <div class="col-lg-10">
-                <!-- README Content -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h4 class="mb-0" data-i18n="readmeTitle">AnyDownload</h4>
-                    </div>
-                    <div class="card-body">
-                        <div class="badges mb-3">
-                            <img src="https://img.shields.io/github/languages/code-size/HenryLok0/AnyDownload?style=flat-square&logo=github" alt="Code Size">
-                            <img src="https://img.shields.io/npm/v/anydownload?style=flat-square" alt="npm version">
-                            <img src="https://img.shields.io/github/license/HenryLok0/AnyDownload?style=flat-square" alt="MIT License">
-                            <img src="https://img.shields.io/github/stars/HenryLok0/AnyDownload?style=flat-square" alt="Stars">
-                        </div>
-                        <p class="lead" data-i18n="readmeDescription">一個強大的網站下載工具，支援 Puppeteer 和 Playwright，讓您可以用單一指令下載整個網站。適合離線瀏覽、網站備份或學習網頁開發。</p>
-                        
-                        <h5 class="mt-4" data-i18n="keyFeatures">主要功能</h5>
-                        <ul>
-                            <li data-i18n="featureHighPerformance"><strong>高效能</strong>: Fast concurrent downloads and efficient resource management</li>
-                            <li data-i18n="featureDynamicSupport"><strong>動態網站支援</strong>: Download modern JavaScript-heavy sites using Puppeteer or Playwright</li>
-                            <li data-i18n="featureResourceCapture"><strong>完整資源擷取</strong>: HTML, CSS, JS, images, fonts, media, and more</li>
-                            <li data-i18n="featureWebGUI"><strong>友善的網頁介面</strong>: Configure and monitor downloads visually</li>
-                            <li data-i18n="featureRecursive"><strong>遞迴下載</strong>: Configurable depth for linked pages</li>
-                            <li data-i18n="featureFiltering"><strong>進階過濾</strong>: Download only what you need</li>
-                            <li data-i18n="featureAuth"><strong>認證支援</strong>: Supports login flows (form-based)</li>
-                            <li data-i18n="featureMore"><strong>續傳、代理、速度限制、站點地圖等功能</strong></li>
-                        </ul>
-
-                        <h5 class="mt-4" data-i18n="installation">安裝</h5>
-                        <pre><code># Using npm
-npm install -g anydownload
-
-# Or clone the repository
-git clone https://github.com/HenryLok0/AnyDownload
-cd AnyDownload
-npm install</code></pre>
-
-                        <div class="alert alert-info" role="alert">
-                            <i class="bi bi-info-circle-fill me-2"></i>
-                            <span data-i18n="playwrightNote">注意：如果您想使用 Playwright，您可能需要安裝瀏覽器二進制檔案：</span>
-                            <pre class="mt-2"><code>npx playwright install</code></pre>
-                        </div>
-
-                        <h5 class="mt-4" data-i18n="docker">Docker</h5>
-                        <p data-i18n="dockerIntro">您可以使用 Docker 輕鬆運行 AnyDownload。</p>
-                        
-                        <h6 data-i18n="dockerBuild">1. 建立 Docker 映像</h6>
-                        <pre><code>docker build -t anydownload .</code></pre>
-
-                        <h6 data-i18n="dockerRunGUI">2. 運行網頁介面</h6>
-                        <pre><code>docker run -p 3000:3000 anydownload</code></pre>
-                        <p data-i18n="dockerVisit">然後在瀏覽器中訪問</p>
-
-                        <h6 data-i18n="dockerRunCLI">3. 運行 CLI 模式（掛載輸出資料夾）</h6>
-                        <pre><code>docker run --rm -v $(pwd)/output:/app/output anydownload anydownload https://example.com -o output</code></pre>
-
-                        <h5 class="mt-4" data-i18n="basicUsage">基本使用</h5>
-                        <pre><code># Download a website (default: Puppeteer)
-anydownload https://example.com
-
-# Use Playwright as the browser engine
-anydownload https://example.com --dynamic --browser playwright
-
-# Or using the repository
-node bin/cli.js https://example.com --browser puppeteer
-node bin/cli.js https://example.com --browser playwright</code></pre>
-
-                        <h5 class="mt-4" data-i18n="webInterface">網頁介面</h5>
-                        <p data-i18n="webInterfaceIntro">啟動網頁介面以獲得視覺化的下載體驗：</p>
-                        <pre><code>anydownload --gui
-# Or
-node web-gui.js</code></pre>
-                        <p data-i18n="webInterfaceVisit">然後在瀏覽器中訪問</p>
-                    </div>
-                </div>
-
                 <!-- Command Generator Card -->
                 <div class="card">
                     <div class="card-header">
@@ -714,29 +640,6 @@ node web-gui.js</code></pre>
                 'keepOriginalUrls': '保留原始 URL',
                 'cleanUrls': '清理 URL',
                 'ignoreErrors': '忽略錯誤',
-                'readmeTitle': 'AnyDownload',
-                'readmeDescription': '一個強大的網站下載工具，支援 Puppeteer 和 Playwright，讓您可以用單一指令下載整個網站。適合離線瀏覽、網站備份或學習網頁開發。',
-                'keyFeatures': '主要功能',
-                'featureHighPerformance': '高效能：快速並行下載和高效的資源管理',
-                'featureDynamicSupport': '動態網站支援：使用 Puppeteer 或 Playwright 下載現代 JavaScript 網站',
-                'featureResourceCapture': '完整資源擷取：HTML、CSS、JS、圖片、字體、媒體等',
-                'featureWebGUI': '友善的網頁介面：視覺化配置和監控下載',
-                'featureRecursive': '遞迴下載：可配置的連結頁面深度',
-                'featureFiltering': '進階過濾：只下載您需要的內容',
-                'featureAuth': '認證支援：支援登入流程（表單式）',
-                'featureMore': '續傳、代理、速度限制、站點地圖等功能',
-                'installation': '安裝',
-                'playwrightNote': '注意：如果您想使用 Playwright，您可能需要安裝瀏覽器二進制檔案：',
-                'docker': 'Docker',
-                'dockerIntro': '您可以使用 Docker 輕鬆運行 AnyDownload。',
-                'dockerBuild': '1. 建立 Docker 映像',
-                'dockerRunGUI': '2. 運行網頁介面',
-                'dockerVisit': '然後在瀏覽器中訪問',
-                'dockerRunCLI': '3. 運行 CLI 模式（掛載輸出資料夾）',
-                'basicUsage': '基本使用',
-                'webInterface': '網頁介面',
-                'webInterfaceIntro': '啟動網頁介面以獲得視覺化的下載體驗：',
-                'webInterfaceVisit': '然後在瀏覽器中訪問',
             },
             'en': {
                 'commandGenerator': 'Command Generator',
@@ -811,29 +714,6 @@ node web-gui.js</code></pre>
                 'keepOriginalUrls': 'Keep Original URLs',
                 'cleanUrls': 'Clean URLs',
                 'ignoreErrors': 'Ignore Errors',
-                'readmeTitle': 'AnyDownload',
-                'readmeDescription': 'A powerful and efficient website downloader support both `Puppeteer` and `Playwright` that allows you to download entire websites with a single command. Perfect for offline browsing, archiving, or learning web development.',
-                'keyFeatures': 'Key Features',
-                'featureHighPerformance': 'High Performance: Fast concurrent downloads and efficient resource management',
-                'featureDynamicSupport': 'Dynamic Website Support: Download modern JavaScript-heavy sites using Puppeteer or Playwright',
-                'featureResourceCapture': 'Comprehensive Resource Capture: HTML, CSS, JS, images, fonts, media, and more',
-                'featureWebGUI': 'User-Friendly Web GUI: Configure and monitor downloads visually',
-                'featureRecursive': 'Recursive Download: Configurable depth for linked pages',
-                'featureFiltering': 'Advanced Filtering: Download only what you need',
-                'featureAuth': 'Authentication: Supports login flows (form-based)',
-                'featureMore': 'Resume, Proxy, Speed Limit, Sitemap, and More',
-                'installation': 'Installation',
-                'playwrightNote': 'Note: If you want to use Playwright, you may need to install browser binaries:',
-                'docker': 'Docker',
-                'dockerIntro': 'You can run AnyDownload easily with Docker.',
-                'dockerBuild': '1. Build the Docker image',
-                'dockerRunGUI': '2. Run the Web GUI',
-                'dockerVisit': 'Then visit',
-                'dockerRunCLI': '3. Run CLI mode (with output folder mounted)',
-                'basicUsage': 'Basic Usage',
-                'webInterface': 'Web Interface',
-                'webInterfaceIntro': 'Start the web GUI for a visual download experience:',
-                'webInterfaceVisit': 'Then visit',
             }
         };
 

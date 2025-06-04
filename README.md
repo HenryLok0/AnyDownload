@@ -58,7 +58,7 @@ A powerful and efficient website downloader that allows you to download entire w
 
 ```bash
 # Using npm
-npm install -g anydownload
+npm install anydownload
 
 # Or clone the repository
 git clone https://github.com/HenryLok0/AnyDownload

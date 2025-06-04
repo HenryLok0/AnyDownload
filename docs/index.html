@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnyDownload - 命令生成器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f1c40f;
+            --light-bg: #f8f9fa;
+            --dark-bg: #1a1a1a;
+            --text-color: #333;
+            --card-bg: #fff;
+            --border-color: #dee2e6;
+        }
+
+        body {
+            background-color: var(--light-bg);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            color: var(--text-color);
+        }
+
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: white !important;
+        }
+
+        .navbar-brand i {
+            margin-right: 0.5rem;
+        }
+
+        .main-container {
+            padding: 2rem 0;
+        }
+
+        .card {
+            border-radius: 1rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-body {
+            padding: 2rem;
+        }
+
+        .option-group {
+            background: var(--card-bg);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .option-group h5 {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .form-label {
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+
+        .form-control,
+        .form-select {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .btn-primary {
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            border-radius: 0.5rem;
+            background-color: var(--secondary-color);
+            border: none;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+
+        .toast {
+            background-color: var(--card-bg);
+            border: none;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .toast.bg-success {
+            background-color: var(--success-color) !important;
+        }
+
+        .toast.bg-danger {
+            background-color: var(--danger-color) !important;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem;
+            }
+
+            .card-body {
+                padding: 1.5rem;
+            }
+
+            .option-group {
+                padding: 1rem;
+            }
+        }
+
+        .command-display {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: monospace;
+            word-break: break-all;
+        }
+
+        .command-display input {
+            width: 100%;
+            padding: 0.5rem;
+            border: none;
+            background: transparent;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .command-display input:focus {
+            outline: none;
+        }
+
+        .copy-button {
+            margin-top: 0.5rem;
+        }
+
+        body.dark-mode {
+            background-color: var(--dark-bg);
+            color: #fff;
+        }
+
+        body.dark-mode .card,
+        body.dark-mode .option-group {
+            background-color: #2d2d2d;
+            border-color: #404040;
+        }
+
+        body.dark-mode .form-control,
+        body.dark-mode .form-select {
+            background-color: #3d3d3d;
+            border-color: #404040;
+            color: #fff;
+        }
+
+        body.dark-mode .form-control:focus,
+        body.dark-mode .form-select:focus {
+            background-color: #3d3d3d;
+            color: #fff;
+        }
+
+        body.dark-mode .command-display {
+            background-color: #3d3d3d;
+            border-color: #404040;
+            color: #fff;
+        }
+
+        body.dark-mode .command-display input {
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+
+        <div class="container">
+            <a class="navbar-brand" href="https://github.com/HenryLok0/AnyDownload">
+                <i class="bi bi-cloud-download"></i> AnyDownload
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <button id="languageToggle" class="btn btn-outline-light me-3">
+                    <i class="bi bi-translate"></i> <span id="currentLang">繁體中文</span>
+                </button>
+                <button id="darkModeToggle" class="btn btn-outline-light">
+                    <i class="bi bi-moon-fill"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container main-container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- README Content -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4 class="mb-0" data-i18n="readmeTitle">AnyDownload</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="badges mb-3">
+                            <img src="https://img.shields.io/github/languages/code-size/HenryLok0/AnyDownload?style=flat-square&logo=github" alt="Code Size">
+                            <img src="https://img.shields.io/npm/v/anydownload?style=flat-square" alt="npm version">
+                            <img src="https://img.shields.io/github/license/HenryLok0/AnyDownload?style=flat-square" alt="MIT License">
+                            <img src="https://img.shields.io/github/stars/HenryLok0/AnyDownload?style=flat-square" alt="Stars">
+                        </div>
+                        <p class="lead" data-i18n="readmeDescription">一個強大的網站下載工具，支援 Puppeteer 和 Playwright，讓您可以用單一指令下載整個網站。適合離線瀏覽、網站備份或學習網頁開發。</p>
+                        
+                        <h5 class="mt-4" data-i18n="keyFeatures">主要功能</h5>
+                        <ul>
+                            <li data-i18n="featureHighPerformance"><strong>高效能</strong>: Fast concurrent downloads and efficient resource management</li>
+                            <li data-i18n="featureDynamicSupport"><strong>動態網站支援</strong>: Download modern JavaScript-heavy sites using Puppeteer or Playwright</li>
+                            <li data-i18n="featureResourceCapture"><strong>完整資源擷取</strong>: HTML, CSS, JS, images, fonts, media, and more</li>
+                            <li data-i18n="featureWebGUI"><strong>友善的網頁介面</strong>: Configure and monitor downloads visually</li>
+                            <li data-i18n="featureRecursive"><strong>遞迴下載</strong>: Configurable depth for linked pages</li>
+                            <li data-i18n="featureFiltering"><strong>進階過濾</strong>: Download only what you need</li>
+                            <li data-i18n="featureAuth"><strong>認證支援</strong>: Supports login flows (form-based)</li>
+                            <li data-i18n="featureMore"><strong>續傳、代理、速度限制、站點地圖等功能</strong></li>
+                        </ul>
+
+                        <h5 class="mt-4" data-i18n="installation">安裝</h5>
+                        <pre><code># Using npm
+npm install -g anydownload
+
+# Or clone the repository
+git clone https://github.com/HenryLok0/AnyDownload
+cd AnyDownload
+npm install</code></pre>
+
+                        <div class="alert alert-info" role="alert">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <span data-i18n="playwrightNote">注意：如果您想使用 Playwright，您可能需要安裝瀏覽器二進制檔案：</span>
+                            <pre class="mt-2"><code>npx playwright install</code></pre>
+                        </div>
+
+                        <h5 class="mt-4" data-i18n="docker">Docker</h5>
+                        <p data-i18n="dockerIntro">您可以使用 Docker 輕鬆運行 AnyDownload。</p>
+                        
+                        <h6 data-i18n="dockerBuild">1. 建立 Docker 映像</h6>
+                        <pre><code>docker build -t anydownload .</code></pre>
+
+                        <h6 data-i18n="dockerRunGUI">2. 運行網頁介面</h6>
+                        <pre><code>docker run -p 3000:3000 anydownload</code></pre>
+                        <p data-i18n="dockerVisit">然後在瀏覽器中訪問</p>
+
+                        <h6 data-i18n="dockerRunCLI">3. 運行 CLI 模式（掛載輸出資料夾）</h6>
+                        <pre><code>docker run --rm -v $(pwd)/output:/app/output anydownload anydownload https://example.com -o output</code></pre>
+
+                        <h5 class="mt-4" data-i18n="basicUsage">基本使用</h5>
+                        <pre><code># Download a website (default: Puppeteer)
+anydownload https://example.com
+
+# Use Playwright as the browser engine
+anydownload https://example.com --dynamic --browser playwright
+
+# Or using the repository
+node bin/cli.js https://example.com --browser puppeteer
+node bin/cli.js https://example.com --browser playwright</code></pre>
+
+                        <h5 class="mt-4" data-i18n="webInterface">網頁介面</h5>
+                        <p data-i18n="webInterfaceIntro">啟動網頁介面以獲得視覺化的下載體驗：</p>
+                        <pre><code>anydownload --gui
+# Or
+node web-gui.js</code></pre>
+                        <p data-i18n="webInterfaceVisit">然後在瀏覽器中訪問</p>
+                    </div>
+                </div>
+
+                <!-- Command Generator Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0" data-i18n="commandGenerator">命令生成器</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="commandForm">
+                            <div class="mb-4">
+                                <label for="url" class="form-label" data-i18n="websiteUrl">網站網址</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                    <input type="url" class="form-control" id="url" name="url" required
+                                        data-i18n-placeholder="websiteUrlPlaceholder" placeholder="https://example.com">
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-gear"></i> <span data-i18n="basicOptions">基本選項</span></h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="output" class="form-label" data-i18n="outputFolder">輸出資料夾</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-folder"></i></span>
+                                            <input type="text" class="form-control" id="output" name="output"
+                                                data-i18n-placeholder="outputFolderPlaceholder"
+                                                placeholder="downloaded_site">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="type" class="form-label" data-i18n="resourceType">資源類型</label>
+                                        <select class="form-select" id="type" name="type">
+                                            <option value="all" data-i18n="allResources">所有資源</option>
+                                            <option value="image" data-i18n="imagesOnly">僅圖片</option>
+                                            <option value="css" data-i18n="cssOnly">僅 CSS</option>
+                                            <option value="js" data-i18n="jsOnly">僅 JavaScript</option>
+                                            <option value="html" data-i18n="htmlOnly">僅 HTML</option>
+                                            <option value="media" data-i18n="mediaOnly">僅媒體檔案</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="browser" class="form-label" data-i18n="browserEngine">瀏覽器引擎</label>
+                                        <select class="form-select" id="browser" name="browser">
+                                            <option value="puppeteer" data-i18n="puppeteer">Puppeteer (Chrome/Edge)
+                                            </option>
+                                            <option value="playwright" data-i18n="playwright">Playwright (多瀏覽器支援)
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-sliders"></i> <span data-i18n="advancedOptions">進階選項</span></h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="recursive"
+                                                name="recursive">
+                                            <label class="form-check-label" for="recursive">
+                                                <i class="bi bi-arrow-repeat"></i> <span
+                                                    data-i18n="recursiveDownload">遞迴下載</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="dynamic" name="dynamic">
+                                            <label class="form-check-label" for="dynamic">
+                                                <i class="bi bi-lightning"></i> <span
+                                                    data-i18n="dynamicMode">動態模式</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="maxDepth" class="form-label" data-i18n="maxDepth">最大深度</label>
+                                        <input type="number" class="form-control" id="maxDepth" name="maxDepth"
+                                            value="1" min="1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="concurrency" class="form-label"
+                                            data-i18n="concurrency">並行下載數</label>
+                                        <input type="number" class="form-control" id="concurrency" name="concurrency"
+                                            value="5" min="1">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-shield"></i> <span data-i18n="securityOptions">安全選項</span></h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="user-agent" class="form-label" data-i18n="userAgent">使用者代理</label>
+                                        <input type="text" class="form-control" id="user-agent" name="user-agent"
+                                            data-i18n-placeholder="userAgentPlaceholder" placeholder="自訂 User-Agent">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="cookie" class="form-label" data-i18n="cookie">Cookie</label>
+                                        <input type="text" class="form-control" id="cookie" name="cookie"
+                                            data-i18n-placeholder="cookiePlaceholder" placeholder="自訂 Cookie">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="ignore-robots"
+                                                name="ignore-robots">
+                                            <label class="form-check-label" for="ignore-robots">
+                                                <i class="bi bi-robot"></i> <span data-i18n="ignoreRobots">忽略
+                                                    robots.txt</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="headless"
+                                                name="headless" checked>
+                                            <label class="form-check-label" for="headless">
+                                                <i class="bi bi-display"></i> <span
+                                                    data-i18n="headlessBrowser">無頭瀏覽器</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-funnel"></i> <span data-i18n="filterOptions">過濾選項</span></h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="filter" class="form-label" data-i18n="urlFilter">URL 過濾器
+                                            (正則表達式)</label>
+                                        <input type="text" class="form-control" id="filter" name="filter"
+                                            data-i18n-placeholder="filterPlaceholder" placeholder="正則表達式模式">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="glob" class="form-label" data-i18n="globPattern">Glob 模式</label>
+                                        <input type="text" class="form-control" id="glob" name="glob"
+                                            data-i18n-placeholder="globPlaceholder" placeholder="Glob 模式">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="mimetype" class="form-label" data-i18n="mimeType">MIME 類型</label>
+                                        <input type="text" class="form-control" id="mimetype" name="mimetype"
+                                            data-i18n-placeholder="mimeTypePlaceholder" placeholder="例如：image/png">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="whitelist" class="form-label" data-i18n="whitelist">白名單 URL</label>
+                                        <input type="text" class="form-control" id="whitelist" name="whitelist"
+                                            data-i18n-placeholder="whitelistPlaceholder" placeholder="以逗號分隔的 URL">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="blacklist" class="form-label" data-i18n="blacklist">黑名單 URL</label>
+                                        <input type="text" class="form-control" id="blacklist" name="blacklist"
+                                            data-i18n-placeholder="blacklistPlaceholder" placeholder="以逗號分隔的 URL">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-shield-lock"></i> <span data-i18n="authOptions">認證選項</span></h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="auth-user" class="form-label" data-i18n="authUser">認證使用者名稱</label>
+                                        <input type="text" class="form-control" id="auth-user" name="auth-user"
+                                            data-i18n-placeholder="authUserPlaceholder" placeholder="HTTP 基本認證使用者名稱">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="auth-pass" class="form-label" data-i18n="authPass">認證密碼</label>
+                                        <input type="password" class="form-control" id="auth-pass" name="auth-pass"
+                                            data-i18n-placeholder="authPassPlaceholder" placeholder="HTTP 基本認證密碼">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="login-url" class="form-label" data-i18n="loginUrl">登入網址</label>
+                                        <input type="url" class="form-control" id="login-url" name="login-url"
+                                            data-i18n-placeholder="loginUrlPlaceholder" placeholder="登入表單網址">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="login-form" class="form-label" data-i18n="loginForm">登入表單資料</label>
+                                        <input type="text" class="form-control" id="login-form" name="login-form"
+                                            data-i18n-placeholder="loginFormPlaceholder" placeholder="JSON 字串">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-clock"></i> <span data-i18n="scheduleOptions">排程選項</span></h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="sitemap" name="sitemap">
+                                            <label class="form-check-label" for="sitemap">
+                                                <i class="bi bi-sitemap"></i> <span
+                                                    data-i18n="enableSitemap">啟用站點地圖</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="schedule" class="form-label" data-i18n="schedule">排程 (Cron)</label>
+                                        <input type="text" class="form-control" id="schedule" name="schedule"
+                                            data-i18n-placeholder="schedulePlaceholder" placeholder="Cron 語法">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-speedometer2"></i> <span data-i18n="performanceOptions">效能選項</span>
+                                </h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="speed-limit" class="form-label" data-i18n="speedLimit">下載速度限制
+                                            (KB/s)</label>
+                                        <input type="number" class="form-control" id="speed-limit" name="speed-limit"
+                                            value="0" min="0">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="parallel-limit" class="form-label"
+                                            data-i18n="parallelLimit">並行下載限制</label>
+                                        <input type="number" class="form-control" id="parallel-limit"
+                                            name="parallel-limit" value="5" min="1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="timeout" class="form-label" data-i18n="timeout">請求超時 (毫秒)</label>
+                                        <input type="number" class="form-control" id="timeout" name="timeout"
+                                            value="30000" min="0">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="max-file-size" class="form-label" data-i18n="maxFileSize">最大檔案大小
+                                            (MB)</label>
+                                        <input type="number" class="form-control" id="max-file-size"
+                                            name="max-file-size" value="0" min="0">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-gear-wide-connected"></i> <span
+                                        data-i18n="networkOptions">網路選項</span></h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="proxy" class="form-label" data-i18n="proxy">代理伺服器</label>
+                                        <input type="text" class="form-control" id="proxy" name="proxy"
+                                            data-i18n-placeholder="proxyPlaceholder"
+                                            placeholder="http://proxy.example.com:8080">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="validate-ssl"
+                                                name="validate-ssl" checked>
+                                            <label class="form-check-label" for="validate-ssl">
+                                                <i class="bi bi-shield-check"></i> <span data-i18n="validateSSL">SSL
+                                                    驗證</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="follow-redirects"
+                                                name="follow-redirects" checked>
+                                            <label class="form-check-label" for="follow-redirects">
+                                                <i class="bi bi-arrow-repeat"></i> <span
+                                                    data-i18n="followRedirects">跟隨重定向</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="max-redirects" class="form-label"
+                                            data-i18n="maxRedirects">最大重定向次數</label>
+                                        <input type="number" class="form-control" id="max-redirects"
+                                            name="max-redirects" value="5" min="0">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-tools"></i> <span data-i18n="advancedFeatures">進階功能</span></h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="resume" name="resume">
+                                            <label class="form-check-label" for="resume">
+                                                <i class="bi bi-arrow-clockwise"></i> <span
+                                                    data-i18n="resumeDownload">續傳下載</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="keep-original-urls"
+                                                name="keep-original-urls">
+                                            <label class="form-check-label" for="keep-original-urls">
+                                                <i class="bi bi-link-45deg"></i> <span data-i18n="keepOriginalUrls">保留原始
+                                                    URL</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="clean-urls"
+                                                name="clean-urls">
+                                            <label class="form-check-label" for="clean-urls">
+                                                <i class="bi bi-brush"></i> <span data-i18n="cleanUrls">清理 URL</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="ignore-errors"
+                                                name="ignore-errors">
+                                            <label class="form-check-label" for="ignore-errors">
+                                                <i class="bi bi-x-circle"></i> <span
+                                                    data-i18n="ignoreErrors">忽略錯誤</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="option-group">
+                                <h5><i class="bi bi-terminal"></i> <span data-i18n="generatedCommand">生成的命令</span></h5>
+                                <div class="command-display">
+                                    <input type="text" id="generatedCommand" readonly>
+                                </div>
+                                <button class="btn btn-outline-primary copy-button" type="button" id="copyCommand">
+                                    <i class="bi bi-clipboard"></i> <span data-i18n="copyCommand">複製命令</span>
+                                </button>
+                                <small class="form-text text-muted" data-i18n="commandGeneratorHelp">
+                                    此命令可用於在終端機中執行相同的下載任務
+                                </small>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Translations
+        const translations = {
+            'zh-TW': {
+                'commandGenerator': '命令生成器',
+                'websiteUrl': '網站網址',
+                'websiteUrlPlaceholder': 'https://example.com',
+                'basicOptions': '基本選項',
+                'outputFolder': '輸出資料夾',
+                'outputFolderPlaceholder': 'downloaded_site',
+                'resourceType': '資源類型',
+                'allResources': '所有資源',
+                'imagesOnly': '僅圖片',
+                'cssOnly': '僅 CSS',
+                'jsOnly': '僅 JavaScript',
+                'htmlOnly': '僅 HTML',
+                'mediaOnly': '僅媒體檔案',
+                'browserEngine': '瀏覽器引擎',
+                'puppeteer': 'Puppeteer (Chrome/Edge)',
+                'playwright': 'Playwright (多瀏覽器支援)',
+                'advancedOptions': '進階選項',
+                'recursiveDownload': '遞迴下載',
+                'dynamicMode': '動態模式',
+                'maxDepth': '最大深度',
+                'concurrency': '並行下載數',
+                'generatedCommand': '生成的命令',
+                'copyCommand': '複製命令',
+                'commandGeneratorHelp': '此命令可用於在終端機中執行相同的下載任務',
+                'commandCopied': '命令已複製到剪貼簿',
+                'securityOptions': '安全選項',
+                'userAgent': '使用者代理',
+                'userAgentPlaceholder': '自訂 User-Agent',
+                'cookie': 'Cookie',
+                'cookiePlaceholder': '自訂 Cookie',
+                'ignoreRobots': '忽略 robots.txt',
+                'headlessBrowser': '無頭瀏覽器',
+                'filterOptions': '過濾選項',
+                'urlFilter': 'URL 過濾器 (正則表達式)',
+                'filterPlaceholder': '正則表達式模式',
+                'globPattern': 'Glob 模式',
+                'globPlaceholder': 'Glob 模式',
+                'mimeType': 'MIME 類型',
+                'mimeTypePlaceholder': '例如：image/png',
+                'whitelist': '白名單 URL',
+                'whitelistPlaceholder': '以逗號分隔的 URL',
+                'blacklist': '黑名單 URL',
+                'blacklistPlaceholder': '以逗號分隔的 URL',
+                'authOptions': '認證選項',
+                'authUser': '認證使用者名稱',
+                'authUserPlaceholder': 'HTTP 基本認證使用者名稱',
+                'authPass': '認證密碼',
+                'authPassPlaceholder': 'HTTP 基本認證密碼',
+                'loginUrl': '登入網址',
+                'loginUrlPlaceholder': '登入表單網址',
+                'loginForm': '登入表單資料',
+                'loginFormPlaceholder': 'JSON 字串',
+                'scheduleOptions': '排程選項',
+                'enableSitemap': '啟用站點地圖',
+                'schedule': '排程 (Cron)',
+                'schedulePlaceholder': 'Cron 語法',
+                'performanceOptions': '效能選項',
+                'speedLimit': '下載速度限制 (KB/s)',
+                'parallelLimit': '並行下載限制',
+                'timeout': '請求超時 (毫秒)',
+                'maxFileSize': '最大檔案大小 (MB)',
+                'networkOptions': '網路選項',
+                'proxy': '代理伺服器',
+                'proxyPlaceholder': 'http://proxy.example.com:8080',
+                'validateSSL': 'SSL 驗證',
+                'followRedirects': '跟隨重定向',
+                'maxRedirects': '最大重定向次數',
+                'advancedFeatures': '進階功能',
+                'resumeDownload': '續傳下載',
+                'keepOriginalUrls': '保留原始 URL',
+                'cleanUrls': '清理 URL',
+                'ignoreErrors': '忽略錯誤',
+                'readmeTitle': 'AnyDownload',
+                'readmeDescription': '一個強大的網站下載工具，支援 Puppeteer 和 Playwright，讓您可以用單一指令下載整個網站。適合離線瀏覽、網站備份或學習網頁開發。',
+                'keyFeatures': '主要功能',
+                'featureHighPerformance': '高效能：快速並行下載和高效的資源管理',
+                'featureDynamicSupport': '動態網站支援：使用 Puppeteer 或 Playwright 下載現代 JavaScript 網站',
+                'featureResourceCapture': '完整資源擷取：HTML、CSS、JS、圖片、字體、媒體等',
+                'featureWebGUI': '友善的網頁介面：視覺化配置和監控下載',
+                'featureRecursive': '遞迴下載：可配置的連結頁面深度',
+                'featureFiltering': '進階過濾：只下載您需要的內容',
+                'featureAuth': '認證支援：支援登入流程（表單式）',
+                'featureMore': '續傳、代理、速度限制、站點地圖等功能',
+                'installation': '安裝',
+                'playwrightNote': '注意：如果您想使用 Playwright，您可能需要安裝瀏覽器二進制檔案：',
+                'docker': 'Docker',
+                'dockerIntro': '您可以使用 Docker 輕鬆運行 AnyDownload。',
+                'dockerBuild': '1. 建立 Docker 映像',
+                'dockerRunGUI': '2. 運行網頁介面',
+                'dockerVisit': '然後在瀏覽器中訪問',
+                'dockerRunCLI': '3. 運行 CLI 模式（掛載輸出資料夾）',
+                'basicUsage': '基本使用',
+                'webInterface': '網頁介面',
+                'webInterfaceIntro': '啟動網頁介面以獲得視覺化的下載體驗：',
+                'webInterfaceVisit': '然後在瀏覽器中訪問',
+            },
+            'en': {
+                'commandGenerator': 'Command Generator',
+                'websiteUrl': 'Website URL',
+                'websiteUrlPlaceholder': 'https://example.com',
+                'basicOptions': 'Basic Options',
+                'outputFolder': 'Output Folder',
+                'outputFolderPlaceholder': 'downloaded_site',
+                'resourceType': 'Resource Type',
+                'allResources': 'All Resources',
+                'imagesOnly': 'Images Only',
+                'cssOnly': 'CSS Only',
+                'jsOnly': 'JavaScript Only',
+                'htmlOnly': 'HTML Only',
+                'mediaOnly': 'Media Files Only',
+                'browserEngine': 'Browser Engine',
+                'puppeteer': 'Puppeteer (Chrome/Edge)',
+                'playwright': 'Playwright (Multi-browser)',
+                'advancedOptions': 'Advanced Options',
+                'recursiveDownload': 'Recursive Download',
+                'dynamicMode': 'Dynamic Mode',
+                'maxDepth': 'Max Depth',
+                'concurrency': 'Concurrency',
+                'generatedCommand': 'Generated Command',
+                'copyCommand': 'Copy Command',
+                'commandGeneratorHelp': 'This command can be used to execute the same download task in terminal',
+                'commandCopied': 'Command copied to clipboard',
+                'securityOptions': 'Security Options',
+                'userAgent': 'User Agent',
+                'userAgentPlaceholder': 'Custom User-Agent',
+                'cookie': 'Cookie',
+                'cookiePlaceholder': 'Custom Cookie',
+                'ignoreRobots': 'Ignore robots.txt',
+                'headlessBrowser': 'Headless Browser',
+                'filterOptions': 'Filter Options',
+                'urlFilter': 'URL Filter (Regex)',
+                'filterPlaceholder': 'Regular expression pattern',
+                'globPattern': 'Glob Pattern',
+                'globPlaceholder': 'Glob pattern',
+                'mimeType': 'MIME Type',
+                'mimeTypePlaceholder': 'e.g., image/png',
+                'whitelist': 'Whitelist URLs',
+                'whitelistPlaceholder': 'Comma-separated URLs',
+                'blacklist': 'Blacklist URLs',
+                'blacklistPlaceholder': 'Comma-separated URLs',
+                'authOptions': 'Authentication Options',
+                'authUser': 'Auth Username',
+                'authUserPlaceholder': 'HTTP Basic Auth Username',
+                'authPass': 'Auth Password',
+                'authPassPlaceholder': 'HTTP Basic Auth Password',
+                'loginUrl': 'Login URL',
+                'loginUrlPlaceholder': 'Login Form URL',
+                'loginForm': 'Login Form Data',
+                'loginFormPlaceholder': 'JSON string',
+                'scheduleOptions': 'Schedule Options',
+                'enableSitemap': 'Enable Sitemap',
+                'schedule': 'Schedule (Cron)',
+                'schedulePlaceholder': 'Cron syntax',
+                'performanceOptions': 'Performance Options',
+                'speedLimit': 'Download Speed Limit (KB/s)',
+                'parallelLimit': 'Parallel Download Limit',
+                'timeout': 'Request Timeout (ms)',
+                'maxFileSize': 'Maximum File Size (MB)',
+                'networkOptions': 'Network Options',
+                'proxy': 'Proxy Server',
+                'proxyPlaceholder': 'http://proxy.example.com:8080',
+                'validateSSL': 'SSL Validation',
+                'followRedirects': 'Follow Redirects',
+                'maxRedirects': 'Maximum Redirects',
+                'advancedFeatures': 'Advanced Features',
+                'resumeDownload': 'Resume Download',
+                'keepOriginalUrls': 'Keep Original URLs',
+                'cleanUrls': 'Clean URLs',
+                'ignoreErrors': 'Ignore Errors',
+                'readmeTitle': 'AnyDownload',
+                'readmeDescription': 'A powerful and efficient website downloader support both `Puppeteer` and `Playwright` that allows you to download entire websites with a single command. Perfect for offline browsing, archiving, or learning web development.',
+                'keyFeatures': 'Key Features',
+                'featureHighPerformance': 'High Performance: Fast concurrent downloads and efficient resource management',
+                'featureDynamicSupport': 'Dynamic Website Support: Download modern JavaScript-heavy sites using Puppeteer or Playwright',
+                'featureResourceCapture': 'Comprehensive Resource Capture: HTML, CSS, JS, images, fonts, media, and more',
+                'featureWebGUI': 'User-Friendly Web GUI: Configure and monitor downloads visually',
+                'featureRecursive': 'Recursive Download: Configurable depth for linked pages',
+                'featureFiltering': 'Advanced Filtering: Download only what you need',
+                'featureAuth': 'Authentication: Supports login flows (form-based)',
+                'featureMore': 'Resume, Proxy, Speed Limit, Sitemap, and More',
+                'installation': 'Installation',
+                'playwrightNote': 'Note: If you want to use Playwright, you may need to install browser binaries:',
+                'docker': 'Docker',
+                'dockerIntro': 'You can run AnyDownload easily with Docker.',
+                'dockerBuild': '1. Build the Docker image',
+                'dockerRunGUI': '2. Run the Web GUI',
+                'dockerVisit': 'Then visit',
+                'dockerRunCLI': '3. Run CLI mode (with output folder mounted)',
+                'basicUsage': 'Basic Usage',
+                'webInterface': 'Web Interface',
+                'webInterfaceIntro': 'Start the web GUI for a visual download experience:',
+                'webInterfaceVisit': 'Then visit',
+            }
+        };
+
+        // Language switching functionality
+        function setLanguage(lang) {
+            document.documentElement.lang = lang;
+            document.getElementById('currentLang').textContent = lang === 'zh-TW' ? 'English' : '繁體中文';
+
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[lang] && translations[lang][key]) {
+                    element.textContent = translations[lang][key];
+                }
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                const key = element.getAttribute('data-i18n-placeholder');
+                if (translations[lang] && translations[lang][key]) {
+                    element.placeholder = translations[lang][key];
+                }
+            });
+
+            localStorage.setItem('language', lang);
+        }
+
+        // Initialize language
+        const savedLang = localStorage.getItem('language') || 'zh-TW';
+        setLanguage(savedLang);
+
+        // Language toggle event
+        document.getElementById('languageToggle').addEventListener('click', () => {
+            const currentLang = document.documentElement.lang;
+            const newLang = currentLang === 'zh-TW' ? 'en' : 'zh-TW';
+            setLanguage(newLang);
+        });
+
+        // Dark mode functionality
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+
+        if (savedDarkMode) {
+            document.body.classList.add('dark-mode');
+            darkModeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
+        }
+
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            darkModeToggle.innerHTML = isDark ?
+                '<i class="bi bi-sun-fill"></i>' :
+                '<i class="bi bi-moon-fill"></i>';
+        });
+
+        // Command Generator Function
+        function generateCommand() {
+            const formData = {
+                url: document.getElementById('url').value,
+                output: document.getElementById('output').value,
+                type: document.getElementById('type').value,
+                browser: document.getElementById('browser').value,
+                recursive: document.getElementById('recursive').checked,
+                dynamic: document.getElementById('dynamic').checked,
+                maxDepth: document.getElementById('maxDepth').value,
+                concurrency: document.getElementById('concurrency').value,
+                'user-agent': document.getElementById('user-agent').value,
+                cookie: document.getElementById('cookie').value,
+                'ignore-robots': document.getElementById('ignore-robots').checked,
+                headless: document.getElementById('headless').checked,
+                filter: document.getElementById('filter').value,
+                glob: document.getElementById('glob').value,
+                mimetype: document.getElementById('mimetype').value,
+                whitelist: document.getElementById('whitelist').value,
+                blacklist: document.getElementById('blacklist').value,
+                'auth-user': document.getElementById('auth-user').value,
+                'auth-pass': document.getElementById('auth-pass').value,
+                'login-url': document.getElementById('login-url').value,
+                'login-form': document.getElementById('login-form').value,
+                sitemap: document.getElementById('sitemap').checked,
+                schedule: document.getElementById('schedule').value,
+                'speed-limit': document.getElementById('speed-limit').value,
+                'parallel-limit': document.getElementById('parallel-limit').value,
+                timeout: document.getElementById('timeout').value,
+                'max-file-size': document.getElementById('max-file-size').value,
+                proxy: document.getElementById('proxy').value,
+                'validate-ssl': document.getElementById('validate-ssl').checked,
+                'follow-redirects': document.getElementById('follow-redirects').checked,
+                'max-redirects': document.getElementById('max-redirects').value,
+                resume: document.getElementById('resume').checked,
+                'keep-original-urls': document.getElementById('keep-original-urls').checked,
+                'clean-urls': document.getElementById('clean-urls').checked,
+                'ignore-errors': document.getElementById('ignore-errors').checked
+            };
+
+            let command = 'anydownload';
+
+            // Add URL
+            if (formData.url) {
+                command += ` "${formData.url}"`;
+            }
+
+            // Add options
+            if (formData.output && formData.output !== 'downloaded_site') {
+                command += ` --output "${formData.output}"`;
+            }
+            if (formData.type && formData.type !== 'all') {
+                command += ` --type ${formData.type}`;
+            }
+            if (formData.browser && formData.browser !== 'puppeteer') {
+                command += ` --browser ${formData.browser}`;
+            }
+            if (formData.recursive) {
+                command += ' --recursive';
+            }
+            if (formData.dynamic) {
+                command += ' --dynamic';
+            }
+            if (formData.maxDepth && formData.maxDepth !== '1') {
+                command += ` --max-depth ${formData.maxDepth}`;
+            }
+            if (formData.concurrency && formData.concurrency !== '5') {
+                command += ` --concurrency ${formData.concurrency}`;
+            }
+            if (formData['user-agent']) {
+                command += ` --user-agent "${formData['user-agent']}"`;
+            }
+            if (formData.cookie) {
+                command += ` --cookie "${formData.cookie}"`;
+            }
+            if (formData['ignore-robots']) {
+                command += ' --ignore-robots';
+            }
+            if (!formData.headless) {
+                command += ' --no-headless';
+            }
+            if (formData.filter) {
+                command += ` --filter "${formData.filter}"`;
+            }
+            if (formData.glob) {
+                command += ` --glob "${formData.glob}"`;
+            }
+            if (formData.mimetype) {
+                command += ` --mimetype "${formData.mimetype}"`;
+            }
+            if (formData.whitelist) {
+                command += ` --whitelist "${formData.whitelist}"`;
+            }
+            if (formData.blacklist) {
+                command += ` --blacklist "${formData.blacklist}"`;
+            }
+            if (formData['auth-user']) {
+                command += ` --auth-user "${formData['auth-user']}"`;
+            }
+            if (formData['auth-pass']) {
+                command += ` --auth-pass "${formData['auth-pass']}"`;
+            }
+            if (formData['login-url']) {
+                command += ` --login-url "${formData['login-url']}"`;
+            }
+            if (formData['login-form']) {
+                command += ` --login-form '${formData['login-form']}'`;
+            }
+            if (formData.sitemap) {
+                command += ' --sitemap';
+            }
+            if (formData.schedule) {
+                command += ` --schedule "${formData.schedule}"`;
+            }
+            if (formData['speed-limit'] && formData['speed-limit'] !== '0') {
+                command += ` --speed-limit ${formData['speed-limit']}`;
+            }
+            if (formData['parallel-limit'] && formData['parallel-limit'] !== '5') {
+                command += ` --parallel-limit ${formData['parallel-limit']}`;
+            }
+            if (formData.timeout && formData.timeout !== '30000') {
+                command += ` --timeout ${formData.timeout}`;
+            }
+            if (formData['max-file-size'] && formData['max-file-size'] !== '0') {
+                command += ` --max-file-size ${formData['max-file-size']}`;
+            }
+            if (formData.proxy) {
+                command += ` --proxy "${formData.proxy}"`;
+            }
+            if (!formData['validate-ssl']) {
+                command += ' --no-validate-ssl';
+            }
+            if (!formData['follow-redirects']) {
+                command += ' --no-follow-redirects';
+            }
+            if (formData['max-redirects'] && formData['max-redirects'] !== '5') {
+                command += ` --max-redirects ${formData['max-redirects']}`;
+            }
+            if (formData.resume) {
+                command += ' --resume';
+            }
+            if (formData['keep-original-urls']) {
+                command += ' --keep-original-urls';
+            }
+            if (formData['clean-urls']) {
+                command += ' --clean-urls';
+            }
+            if (formData['ignore-errors']) {
+                command += ' --ignore-errors';
+            }
+
+            const commandInput = document.getElementById('generatedCommand');
+            if (commandInput) {
+                commandInput.value = command;
+            }
+        }
+
+        // Initialize command generator
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize command generation
+            generateCommand();
+
+            // Add event listeners to all form inputs
+            const formInputs = document.querySelectorAll('#commandForm input, #commandForm select');
+            formInputs.forEach(input => {
+                input.addEventListener('change', generateCommand);
+                input.addEventListener('input', generateCommand);
+            });
+
+            // Special handling for URL input
+            const urlInput = document.getElementById('url');
+            if (urlInput) {
+                urlInput.addEventListener('input', generateCommand);
+                urlInput.addEventListener('change', generateCommand);
+                urlInput.addEventListener('keyup', generateCommand);
+            }
+
+            // Add copy button event
+            const copyButton = document.getElementById('copyCommand');
+            if (copyButton) {
+                copyButton.addEventListener('click', () => {
+                    const commandInput = document.getElementById('generatedCommand');
+                    if (commandInput) {
+                        commandInput.select();
+                        document.execCommand('copy');
+                        showToast('命令已複製到剪貼簿', 'success');
+                    }
+                });
+            }
+        });
+
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container';
+            document.body.appendChild(toastContainer);
+
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+
+            toastContainer.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+
+            // Auto remove toast
+            toast.addEventListener('hidden.bs.toast', () => {
+                toastContainer.remove();
+            });
+        }
+    </script>
+</body>
+
+</html>

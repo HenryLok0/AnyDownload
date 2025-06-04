@@ -86,6 +86,57 @@ app.post('/api/download', async (req, res) => {
     }
 });
 
+// API open website route
+app.post('/api/open-website', async (req, res) => {
+    const { folder } = req.body;
+    if (!folder) {
+        return res.json({ success: false, error: '請提供網站資料夾路徑' });
+    }
+
+    try {
+        // 使用絕對路徑
+        const absoluteFolder = path.resolve(folder);
+        const indexFile = path.join(absoluteFolder, 'index.html');
+        
+        console.log('嘗試開啟檔案:', indexFile);
+
+        if (!fs.existsSync(indexFile)) {
+            console.log('找不到檔案:', indexFile);
+            return res.json({ success: false, error: '找不到網站首頁檔案' });
+        }
+
+        // 使用系統預設瀏覽器開啟網站
+        const { exec } = require('child_process');
+        const platform = process.platform;
+        let command;
+
+        if (platform === 'win32') {
+            // Windows 使用 file:// 協議
+            const fileUrl = `file:///${indexFile.replace(/\\/g, '/')}`;
+            command = `start "" "${fileUrl}"`;
+        } else if (platform === 'darwin') {
+            command = `open "${indexFile}"`;
+        } else {
+            command = `xdg-open "${indexFile}"`;
+        }
+
+        console.log('執行命令:', command);
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error('開啟網站錯誤:', error);
+                console.error('錯誤輸出:', stderr);
+                return res.json({ success: false, error: error.message });
+            }
+            console.log('命令輸出:', stdout);
+            res.json({ success: true });
+        });
+    } catch (error) {
+        console.error('開啟網站錯誤:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Server error:', err.stack);

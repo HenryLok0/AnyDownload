@@ -67,6 +67,16 @@
                       <option value="media" data-i18n="mediaOnly">僅媒體檔案</option>
                     </select>
                   </div>
+                  <div class="col-md-6">
+                    <label for="browser" class="form-label" data-i18n="browserEngine">瀏覽器引擎</label>
+                    <select class="form-select" id="browser" name="browser">
+                      <option value="puppeteer" data-i18n="puppeteer">Puppeteer (Chrome/Edge)</option>
+                      <option value="playwright" data-i18n="playwright">Playwright (多瀏覽器支援)</option>
+                    </select>
+                    <small class="form-text text-muted" data-i18n="browserEngineHelp">
+                      Puppeteer 適合大多數動態網站，Playwright 支援更多瀏覽器且較難被偵測
+                    </small>
+                  </div>
                 </div>
               </div>
 
@@ -462,6 +472,10 @@
         'loginError': '登入失敗：請確認登入資訊是否正確，或網站是否需要其他認證方式。',
         'loginIncomplete': '請填寫完整的登入資訊（登入網址、使用者名稱和密碼）',
         'invalidCredentials': '登入失敗：使用者名稱或密碼錯誤',
+        'browserEngine': '瀏覽器引擎',
+        'puppeteer': 'Puppeteer (Chrome/Edge)',
+        'playwright': 'Playwright (多瀏覽器支援)',
+        'browserEngineHelp': 'Puppeteer 適合大多數動態網站，Playwright 支援更多瀏覽器且較難被偵測',
       },
       'en': {
         'title': 'AnyDownload - Professional Website Downloader',
@@ -549,6 +563,10 @@
         'loginError': 'Login failed: Please verify your login information or check if the website requires a different authentication method.',
         'loginIncomplete': 'Please fill in all login information (login URL, username, and password)',
         'invalidCredentials': 'Login failed: Incorrect username or password',
+        'browserEngine': 'Browser Engine',
+        'puppeteer': 'Puppeteer (Chrome/Edge)',
+        'playwright': 'Playwright (Multi-browser)',
+        'browserEngineHelp': 'Puppeteer is great for most dynamic sites, Playwright supports more browsers and is harder to detect',
       }
     };
 
@@ -643,7 +661,7 @@
         password: document.getElementById('password').value,
         outputDir: document.getElementById('output').value,
         maxDepth: document.getElementById('maxDepth').value,
-        dynamicMode: true, // 強制啟用動態模式
+        dynamic: document.getElementById('dynamic').checked, // 使用使用者選擇的動態模式
         recursive: document.getElementById('recursive').checked,
         generateSitemap: document.getElementById('sitemap').checked,
         resumeDownload: document.getElementById('resume').checked,
@@ -654,7 +672,7 @@
         'user-agent': document.getElementById('user-agent').value || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         cookie: document.getElementById('cookie').value,
         'ignore-robots': document.getElementById('ignore-robots').checked,
-        headless: false, // 強制使用有頭模式
+        headless: document.getElementById('headless').checked, // 使用使用者選擇的無頭模式
         filter: document.getElementById('filter').value,
         glob: document.getElementById('glob').value,
         mimetype: document.getElementById('mimetype').value,
@@ -665,15 +683,16 @@
         schedule: document.getElementById('schedule').value,
         'speed-limit': document.getElementById('speed-limit').value,
         'parallel-limit': document.getElementById('parallel-limit').value,
-        timeout: 60000, // 增加超時時間到 60 秒
+        timeout: 30000, // 使用預設的 30 秒超時
         'max-file-size': document.getElementById('max-file-size').value,
         proxy: document.getElementById('proxy').value,
         'validate-ssl': document.getElementById('validate-ssl').checked,
-        'follow-redirects': true, // 強制啟用重定向
-        'max-redirects': 10, // 增加最大重定向次數
+        'follow-redirects': document.getElementById('follow-redirects').checked, // 使用使用者選擇的重定向設定
+        'max-redirects': 5, // 使用預設的 5 次重定向
         'keep-original-urls': document.getElementById('keep-original-urls').checked,
         'clean-urls': document.getElementById('clean-urls').checked,
-        'ignore-errors': true // 強制忽略錯誤
+        'ignore-errors': document.getElementById('ignore-errors').checked, // 使用使用者選擇的錯誤處理設定
+        browser: document.getElementById('browser').value,
       };
 
       // 如果有登入資訊，自動生成 JSON 格式

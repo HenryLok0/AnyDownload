@@ -1,6 +1,8 @@
 # AnyDownload
 
 [![Code Size](https://img.shields.io/github/languages/code-size/HenryLok0/AnyDownload?style=flat-square&logo=github)](https://github.com/HenryLok0/AnyDownload)
+[![npm version](https://img.shields.io/npm/v/anydownload?style=flat-square)](https://www.npmjs.com/package/anydownload)
+
 [![MIT License](https://img.shields.io/github/license/HenryLok0/AnyDownload?style=flat-square)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/HenryLok0/AnyDownload?style=flat-square)](https://github.com/HenryLok0/AnyDownload/stargazers)
 

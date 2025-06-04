@@ -1,7 +1,11 @@
 {
-  "name": "anydownload",
-  "version": "1.1.0",
+  "name": "@henrylok0/anydownload",
+  "version": "1.1.1",
   "description": "A powerful website downloader with GUI support",
+  "repository": "https://github.com/HenryLok0/AnyDownload.git",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "main": "web-gui.js",
   "bin": {
     "anydownload": "./bin/cli.js"

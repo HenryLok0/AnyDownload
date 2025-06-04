@@ -114,6 +114,11 @@ Then visit [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Advanced Examples
 
+### Download Full Website(About all sitemap pages)
+```bash
+anydownload https://example.com --browser playwright --dynamic --sitemap --recursive
+```
+
 ### Download with Login
 ```bash
 anydownload https://example.com --login-url https://example.com/login --login-form '{"#username": "username", "#password": "password"}' --login-credentials '{"username": "user", "password": "pass"}' --browser playwright
@@ -205,6 +210,13 @@ You can freely choose which engine to use with the `--browser` option.
 A:  
 - Use **Puppeteer** for most dynamic websites (Chromium/Chrome-based).
 - Use **Playwright** if you need to download sites that block Puppeteer, require Firefox/Safari/WebKit, or want more stealth/cross-browser support.
+
+### Q: What is the easiest way to download an entire website (including all sitemap pages)?
+A: Use the command `anydownload https://example.com --browser playwright --dynamic --sitemap --recursive`
+
+It will:
+- Read `sitemap_index.xml`
+- Parse all sub-sitemaps
 
 ### Q: How to handle websites with login?
 A: Use the `--login-url`, `--login-form`, and `--login-credentials` options. Both Puppeteer and Playwright support login automation.

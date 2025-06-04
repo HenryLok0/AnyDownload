@@ -68,6 +68,50 @@ cd AnyDownload
 npm install
 ```
 
+---
+
+## Docker
+
+You can run AnyDownload easily with Docker.
+
+### 1. Build the Docker image
+
+```bash
+docker build -t anydownload .
+```
+
+### 2. Run the Web GUI
+
+```bash
+docker run -p 3000:3000 anydownload
+```
+
+Then visit [http://localhost:3000](http://localhost:3000) in your browser.
+
+### 3. Run CLI mode (with output folder mounted)
+
+```bash
+docker run --rm -v $(pwd)/output:/app/output anydownload anydownload https://example.com -o output
+```
+
+### Dockerfile Example
+
+```dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --production
+
+COPY . .
+
+EXPOSE 3000
+CMD ["node", "web-gui.js"]
+```
+
+---
+
 ## Basic Usage
 
 ```bash

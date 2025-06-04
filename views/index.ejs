@@ -554,7 +554,7 @@
 
     function setLanguage(lang) {
       document.documentElement.lang = lang;
-      document.getElementById('currentLang').textContent = lang === 'zh-TW' ? '繁體中文' : 'English';
+      document.getElementById('currentLang').textContent = lang === 'zh-TW' ? 'English' : '繁體中文';
 
       document.querySelectorAll('[data-i18n]').forEach(element => {
         const key = element.getAttribute('data-i18n');

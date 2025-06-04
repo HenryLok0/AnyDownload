@@ -1,6 +1,6 @@
 {
   "name": "@henrylok0/anydownload",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "A powerful website downloader with GUI support",
   "repository": "https://github.com/HenryLok0/AnyDownload.git",
   "publishConfig": {
@@ -12,7 +12,7 @@
   },
   "scripts": {
     "start": "node web-gui.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "keywords": [
     "website",
@@ -50,5 +50,8 @@
   },
   "engines": {
     "node": ">=14.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }

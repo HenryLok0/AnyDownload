@@ -75,7 +75,15 @@ To contribute code, please follow these steps:
 
 ## Testing
 
-All code contributions should be accompanied by appropriate tests. Run `npm test` before submitting a PR.
+All code contributions should be accompanied by appropriate tests to ensure functionality and prevent regressions. We use [Jest](https://jestjs.io/) as our testing framework.
+
+To run the tests, use the following command:
+
+```bash
+npm test
+```
+
+Ensure all tests pass before submitting a Pull Request.
 
 ## Code of Conduct
 

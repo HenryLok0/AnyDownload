@@ -69,14 +69,29 @@ function normalizeUrl(u, base) {
 
 // Get filename from URL, add extension if missing
 function getFilenameFromUrl(resourceUrl, contentType = '') {
-    const pathname = new URL(resourceUrl).pathname;
-    let filename = path.basename(pathname);
-    if (!filename || filename === '/') filename = 'index';
-    if (!path.extname(filename) && contentType) {
-        const ext = mime.extension(contentType);
-        if (ext) filename += '.' + ext;
+    const url = new URL(resourceUrl);
+    let filepath = url.pathname;
+    
+    // Remove leading slash if exists
+    if (filepath.startsWith('/')) {
+        filepath = filepath.substring(1);
     }
-    return filename;
+    
+    // If path is empty or just '/', use 'index'
+    if (!filepath || filepath === '/') {
+        filepath = 'index';
+    }
+    
+    // Add extension if missing
+    if (!path.extname(filepath) && contentType) {
+        const ext = mime.extension(contentType);
+        if (ext) filepath += '.' + ext;
+    }
+    
+    // Replace invalid characters
+    filepath = filepath.replace(/[\\?%*:|"<>]/g, '_');
+    
+    return filepath;
 }
 
 // Hash a URL for deduplication
@@ -384,6 +399,103 @@ class Downloader extends EventEmitter {
         });
 
         // Save HTML file
+        const baseUrl = new URL(url);
+        const hostDir = baseUrl.host.replace(/[:\/\\]/g, '_');
+        
+        // Function to convert absolute URL to relative path
+        const getRelativePath = (absUrl) => {
+            if (!absUrl) return null;
+            try {
+                const targetUrl = new URL(absUrl);
+                if (targetUrl.origin === baseUrl.origin) {
+                    // Get the path relative to the base directory
+                    const targetPath = targetUrl.pathname;
+                    // Remove leading slash and ensure it's relative
+                    return targetPath.startsWith('/') ? targetPath.substring(1) : targetPath;
+                }
+            } catch (e) {
+                return null;
+            }
+            return null;
+        };
+
+        // Convert absolute URLs to relative paths
+        $('a[href]').each((_, el) => {
+            const href = $(el).attr('href');
+            if (href && !href.startsWith('data:') && !href.startsWith('#')) {
+                const abs = normalizeUrl(href, url);
+                const relativePath = getRelativePath(abs);
+                if (relativePath) {
+                    $(el).attr('href', relativePath);
+                }
+            }
+        });
+
+        // Convert resource URLs to relative paths
+        $('img[src],link[rel="stylesheet"][href],script[src],link[rel="manifest"][href]').each((_, el) => {
+            const src = $(el).attr('src') || $(el).attr('href');
+            if (src && !src.startsWith('data:') && !src.startsWith('#')) {
+                const abs = normalizeUrl(src, url);
+                const relativePath = getRelativePath(abs);
+                if (relativePath) {
+                    if ($(el).attr('src')) {
+                        $(el).attr('src', relativePath);
+                    } else {
+                        $(el).attr('href', relativePath);
+                    }
+                }
+            }
+        });
+
+        // Handle srcset attributes
+        $('[srcset]').each((_, el) => {
+            const srcset = $(el).attr('srcset');
+            if (srcset) {
+                const newSrcset = srcset.split(',').map(item => {
+                    const [src, size] = item.trim().split(' ');
+                    if (src && !src.startsWith('data:') && !src.startsWith('#')) {
+                        const abs = normalizeUrl(src, url);
+                        const relativePath = getRelativePath(abs);
+                        if (relativePath) {
+                            return size ? `${relativePath} ${size}` : relativePath;
+                        }
+                    }
+                    return item;
+                }).join(', ');
+                $(el).attr('srcset', newSrcset);
+            }
+        });
+
+        // Handle background images in style attributes
+        $('[style]').each((_, el) => {
+            const style = $(el).attr('style');
+            if (style) {
+                const newStyle = style.replace(/url\(['"]?([^'")]+)['"]?\)/g, (match, url) => {
+                    if (!url.startsWith('data:') && !url.startsWith('#')) {
+                        const abs = normalizeUrl(url, url);
+                        const relativePath = getRelativePath(abs);
+                        if (relativePath) {
+                            return `url("${relativePath}")`;
+                        }
+                    }
+                    return match;
+                });
+                $(el).attr('style', newStyle);
+            }
+        });
+
+        // Also handle CSS files
+        $('link[rel="stylesheet"]').each(async (_, el) => {
+            const href = $(el).attr('href');
+            if (href && !href.startsWith('data:') && !href.startsWith('#')) {
+                const abs = normalizeUrl(href, url);
+                const relativePath = getRelativePath(abs);
+                if (relativePath) {
+                    $(el).attr('href', relativePath);
+                }
+            }
+        });
+
         await fs.writeFile(path.join(baseDir, this._getPageFilename(url)), $.html());
 
         // Download resources
@@ -400,6 +512,9 @@ class Downloader extends EventEmitter {
 
             let filename = getFilenameFromUrl(abs);
             const savePath = path.join(baseDir, filename);
+            
+            // Ensure the directory exists
+            await fs.ensureDir(path.dirname(savePath));
 
             while (attempt < this.retry) {
                 if (this.cancelled) return;

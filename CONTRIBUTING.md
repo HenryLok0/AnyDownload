@@ -1,94 +1,64 @@
-# Contributing to AnyDownload
+# Contributing to This Project
+
+Thank you for your interest in contributing! Your help is greatly appreciated. Please read the following guidelines to make the contribution process smooth and effective for everyone.
 
 ---
 
-Thank you for your interest in contributing to AnyDownload! We welcome contributions from everyone, whether it's reporting bugs, suggesting new features, improving documentation, or writing code.
-
 ## How to Contribute
 
-There are several ways to contribute to AnyDownload:
+- **Fork the repository** and create your branch from `main` (or the default branch).
+- **Clone your fork** to your local machine.
+- **Create a descriptive branch name** (e.g., `feature/add-login-support`, `fix/typo-in-readme`).
+- **Make your changes** with clear, concise commits. Write helpful commit messages.
+- **Test your changes** before submitting a pull request.
+- **Push to your fork** and submit a [Pull Request](https://github.com/HenryLok0/AnyDownload/pulls).
+- **Describe your changes** in the PR template and reference any related issues.
 
-*   Report a bug
-*   Suggest a feature or enhancement
-*   Improve documentation
-*   Submit code changes
+---
 
-## Reporting Bugs
+## Code Style
 
-If you find a bug, please open an issue on our GitHub Issues page. Before submitting, please search to see if the issue has already been reported. When reporting a bug, please include:
+- Follow the existing code style and conventions of the project.
+- Write clear, readable, and well-documented code.
+- Add or update comments and docstrings as needed.
+- Run linters and tests if available.
 
-*   A clear and descriptive title.
-*   Steps to reproduce the bug.
-*   Expected behavior.
-*   Actual behavior.
-*   Any relevant error messages or screenshots.
-*   Your operating system and Node.js version.
-*   The version of AnyDownload you are using.
+---
 
-## Suggesting Features or Enhancements
+## Pull Requests
 
-Have an idea for a new feature or improvement? Open an issue on our GitHub Issues page. Please describe the idea in detail, including the problem it solves and how it might work.
+- Keep pull requests focused and minimal. One feature or fix per PR is best.
+- Link to any related issues in your PR description (e.g., `Closes #123`).
+- Ensure your branch is up to date with the base branch before submitting.
+- Be responsive to feedback and make requested changes promptly.
 
-## Improving Documentation
+---
 
-Good documentation is essential! If you find errors, inconsistencies, or areas that could be improved in the README or other documentation files, please open an issue or submit a pull request with your changes.
+## Issues
 
-## Submitting Code Changes
+- Search existing issues before opening a new one to avoid duplicates.
+- When reporting a bug, include:
+  - Steps to reproduce
+  - Expected behavior
+  - Actual behavior
+  - Environment details (OS, Python version, etc.)
+- For feature requests, describe your use case and proposed solution.
 
-To contribute code, please follow these steps:
-
-1.  **Fork** the repository on GitHub.
-2.  **Clone** your forked repository to your local machine.
-    ```bash
-    git clone https://github.com/YourUsername/AnyDownload.git
-    cd AnyDownload
-    ```
-3.  **Install dependencies**:
-    ```bash
-    npm install
-    ```
-4.  **Create a new branch** for your changes. Choose a descriptive name (e.g., `fix/bug-description` or `feat/new-feature`).
-    ```bash
-    git checkout -b your-branch-name
-    ```
-5.  **Make your changes.** Write clear, maintainable code.
-6.  **Follow the code style.** We recommend using Prettier or ESLint for formatting. Refer to existing code for style guidelines.
-7.  **Add or update tests** for your changes. Ensure all tests pass by running:
-    ```bash
-    npm test
-    ```
-8.  **Commit your changes.** Write clear and concise commit messages.
-    ```bash
-    git commit -m "feat: Add new feature"
-    ```
-9.  **Push your branch** to your forked repository.
-    ```bash
-    git push origin your-branch-name
-    ```
-10. **Open a Pull Request (PR)** from your forked repository to the main AnyDownload repository. Provide a clear description of your changes.
-
-## Code Style and Guidelines
-
-*   Adhere to the existing code style.
-*   Use descriptive variable and function names.
-*   Add comments where necessary (in English).
-
-## Testing
-
-All code contributions should be accompanied by appropriate tests to ensure functionality and prevent regressions. We use [Jest](https://jestjs.io/) as our testing framework.
-
-To run the tests, use the following command:
-
-```bash
-npm test
-```
-
-Ensure all tests pass before submitting a Pull Request.
+---
 
 ## Code of Conduct
 
-We follow a Code of Conduct to ensure a welcoming and inclusive community. Please read and adhere to it.
+- Be respectful and inclusive to all contributors and users.
+- No harassment, discrimination, or inappropriate behavior will be tolerated.
+- See the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) if available.
 
-## Contact
+---
 
-If you have questions or need help, feel free to open an issue on GitHub.
+## Contact & Support
+
+- For questions, open an issue or start a discussion on GitHub.
+- For sensitive matters, contact the maintainers directly if contact info is provided.
+
+---
+
+Thank you for helping make this project better!

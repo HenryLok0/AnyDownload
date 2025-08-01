@@ -12,10 +12,13 @@ const { promisify } = require('util');
 const undici = require('undici');
 const EventEmitter = require('events');
 const { SitemapStream, streamToPromise } = require('sitemap');
-const { createGzip } = require('zlib');
+const { createGzip, createGunzip, createInflate } = require('zlib');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
 const playwright = require('playwright');
+
+// Add brotli decompression support
+const brotli = require('brotli');
 
 const streamPipeline = promisify(pipeline);
 
@@ -366,7 +369,69 @@ class Downloader extends EventEmitter {
         }
         resources = rawCollectedResources;
 
-        // Filter and normalize resources
+        // 新增：取得本地儲存路徑（支援外部資源）
+        const getLocalPathForResource = (absUrl) => {
+            try {
+                const urlObj = new URL(absUrl);
+                // 外部資源存 external/域名/路徑
+                if (urlObj.hostname !== baseUrl.hostname) {
+                    return path.join('external', urlObj.hostname, urlObj.pathname.replace(/^\//, '')).replace(/\\/g, '/');
+                } else {
+                    // 主站資源維持原本結構
+                    return urlObj.pathname.replace(/^\//, '');
+                }
+            } catch {
+                return null;
+            }
+        };
+
+        // 取代 HTML 內所有資源連結為本地路徑
+        $('img[src],link[rel="stylesheet"][href],script[src],link[rel="manifest"][href]').each((_, el) => {
+            const attr = $(el).attr('src') ? 'src' : 'href';
+            const orig = $(el).attr(attr);
+            if (orig && !orig.startsWith('data:') && !orig.startsWith('#')) {
+                const abs = normalizeUrl(orig, url);
+                const localPath = getLocalPathForResource(abs);
+                if (localPath) $(el).attr(attr, localPath);
+            }
+        });
+        // 取代 srcset
+        $('[srcset]').each((_, el) => {
+            const srcset = $(el).attr('srcset');
+            if (srcset) {
+                const newSrcset = srcset.split(',').map(item => {
+                    const [src, size] = item.trim().split(' ');
+                    if (src && !src.startsWith('data:') && !src.startsWith('#')) {
+                        const abs = normalizeUrl(src, url);
+                        const localPath = getLocalPathForResource(abs);
+                        if (localPath) {
+                            return size ? `${localPath} ${size}` : localPath;
+                        }
+                    }
+                    return item;
+                }).join(', ');
+                $(el).attr('srcset', newSrcset);
+            }
+        });
+        // 取代 style 內的背景圖
+        $('[style]').each((_, el) => {
+            const style = $(el).attr('style');
+            if (style) {
+                const newStyle = style.replace(/url\(['"]?([^'")]+)['"]?\)/g, (match, sUrl) => {
+                    if (!sUrl.startsWith('data:') && !sUrl.startsWith('#')) {
+                        const abs = normalizeUrl(sUrl, url);
+                        const localPath = getLocalPathForResource(abs);
+                        if (localPath) {
+                            return `url(\"${localPath}\")`;
+                        }
+                    }
+                    return match;
+                });
+                $(el).attr('style', newStyle);
+            }
+        });
+
+        // 收集所有資源（不論主域名或外部）
         resources = resources
             .map(r => normalizeUrl(r, url))
             .filter(r => !!r)
@@ -407,7 +472,10 @@ class Downloader extends EventEmitter {
             if (!absUrl) return null;
             try {
                 const targetUrl = new URL(absUrl);
-                if (targetUrl.origin === baseUrl.origin) {
+                // Check if it's from the same domain or a subdomain
+                if (targetUrl.hostname === baseUrl.hostname || 
+                    targetUrl.hostname.endsWith('.' + baseUrl.hostname) ||
+                    baseUrl.hostname.endsWith('.' + targetUrl.hostname)) {
                     // Get the path relative to the base directory
                     const targetPath = targetUrl.pathname;
                     // Remove leading slash and ensure it's relative
@@ -419,30 +487,15 @@ class Downloader extends EventEmitter {
             return null;
         };
 
-        // Convert absolute URLs to relative paths
-        $('a[href]').each((_, el) => {
-            const href = $(el).attr('href');
-            if (href && !href.startsWith('data:') && !href.startsWith('#')) {
-                const abs = normalizeUrl(href, url);
-                const relativePath = getRelativePath(abs);
-                if (relativePath) {
-                    $(el).attr('href', relativePath);
-                }
-            }
-        });
-
-        // Convert resource URLs to relative paths
-        $('img[src],link[rel="stylesheet"][href],script[src],link[rel="manifest"][href]').each((_, el) => {
-            const src = $(el).attr('src') || $(el).attr('href');
-            if (src && !src.startsWith('data:') && !src.startsWith('#')) {
-                const abs = normalizeUrl(src, url);
-                const relativePath = getRelativePath(abs);
-                if (relativePath) {
-                    if ($(el).attr('src')) {
-                        $(el).attr('src', relativePath);
-                    } else {
-                        $(el).attr('href', relativePath);
-                    }
+        // Convert all resource URLs to local paths using getLocalPathForResource
+        $('a[href],img[src],link[rel="stylesheet"][href],script[src],link[rel="manifest"][href]').each((_, el) => {
+            const attr = $(el).attr('src') ? 'src' : 'href';
+            const orig = $(el).attr(attr);
+            if (orig && !orig.startsWith('data:') && !orig.startsWith('#')) {
+                const abs = normalizeUrl(orig, url);
+                const localPath = getLocalPathForResource(abs);
+                if (localPath) {
+                    $(el).attr(attr, localPath);
                 }
             }
         });
@@ -455,9 +508,9 @@ class Downloader extends EventEmitter {
                     const [src, size] = item.trim().split(' ');
                     if (src && !src.startsWith('data:') && !src.startsWith('#')) {
                         const abs = normalizeUrl(src, url);
-                        const relativePath = getRelativePath(abs);
-                        if (relativePath) {
-                            return size ? `${relativePath} ${size}` : relativePath;
+                        const localPath = getLocalPathForResource(abs);
+                        if (localPath) {
+                            return size ? `${localPath} ${size}` : localPath;
                         }
                     }
                     return item;
@@ -470,29 +523,17 @@ class Downloader extends EventEmitter {
         $('[style]').each((_, el) => {
             const style = $(el).attr('style');
             if (style) {
-                const newStyle = style.replace(/url\(['"]?([^'")]+)['"]?\)/g, (match, url) => {
-                    if (!url.startsWith('data:') && !url.startsWith('#')) {
-                        const abs = normalizeUrl(url, url);
-                        const relativePath = getRelativePath(abs);
-                        if (relativePath) {
-                            return `url("${relativePath}")`;
+                const newStyle = style.replace(/url\(['"]?([^'")]+)['"]?\)/g, (match, sUrl) => {
+                    if (!sUrl.startsWith('data:') && !sUrl.startsWith('#')) {
+                        const abs = normalizeUrl(sUrl, url);
+                        const localPath = getLocalPathForResource(abs);
+                        if (localPath) {
+                            return `url("${localPath}")`;
                         }
                     }
                     return match;
                 });
                 $(el).attr('style', newStyle);
-            }
-        });
-
-        // Also handle CSS files
-        $('link[rel="stylesheet"]').each(async (_, el) => {
-            const href = $(el).attr('href');
-            if (href && !href.startsWith('data:') && !href.startsWith('#')) {
-                const abs = normalizeUrl(href, url);
-                const relativePath = getRelativePath(abs);
-                if (relativePath) {
-                    $(el).attr('href', relativePath);
-                }
             }
         });
 
@@ -509,9 +550,23 @@ class Downloader extends EventEmitter {
                 this.onError && this.onError(`Invalid URL: ${resource}`);
                 return;
             }
-
-            let filename = getFilenameFromUrl(abs);
-            const savePath = path.join(baseDir, filename);
+            // 使用 getLocalPathForResource 決定本地儲存路徑
+            let localPath = getLocalPathForResource(abs);
+            if (!localPath) {
+                this.failCount++;
+                this.failedResources.push({ url: resource, error: 'Invalid URL' });
+                this.onError && this.onError(`Invalid URL: ${resource}`);
+                return;
+            }
+            
+            // 確保檔案有正確的副檔名
+            const contentType = '';
+            const ext = mime.extension(contentType);
+            if (ext && !localPath.endsWith('.' + ext)) {
+                localPath += '.' + ext;
+            }
+            
+            const savePath = path.join(baseDir, localPath);
             
             // Ensure the directory exists
             await fs.ensureDir(path.dirname(savePath));
@@ -547,9 +602,55 @@ class Downloader extends EventEmitter {
                     });
 
                     const contentType = res.headers['content-type'] || '';
-                    filename = getFilenameFromUrl(abs, contentType);
+                    const contentEncoding = res.headers['content-encoding'] || '';
                     const fileStream = fs.createWriteStream(savePath);
-                    await streamPipeline(res.body, fileStream);
+                    
+                    // Handle compression based on content-encoding header
+                    let streamToWrite;
+                    if (contentEncoding === 'gzip') {
+                        streamToWrite = res.body.pipe(createGunzip());
+                    } else if (contentEncoding === 'deflate') {
+                        streamToWrite = res.body.pipe(createInflate());
+                    } else if (contentEncoding === 'br') {
+                        // For brotli, we need to handle it differently since it's not a stream
+                        try {
+                            const chunks = [];
+                            for await (const chunk of res.body) {
+                                chunks.push(chunk);
+                            }
+                            const buffer = Buffer.concat(chunks);
+                            const decompressed = brotli.decompress(buffer);
+                            if (decompressed) {
+                                await fs.writeFile(savePath, decompressed);
+                            } else {
+                                // If brotli decompression fails, write the original buffer
+                                await fs.writeFile(savePath, buffer);
+                            }
+                            const stat = await fs.stat(savePath);
+                            this.downloadedBytes += stat.size;
+                            this.successCount++;
+                            await new Promise(r => setTimeout(r, this.delay));
+                            return;
+                        } catch (brotliError) {
+                            console.log(`[DEBUG] Brotli decompression failed for ${abs}, writing original buffer`);
+                            // If brotli decompression fails, try to write the original buffer
+                            const chunks = [];
+                            for await (const chunk of res.body) {
+                                chunks.push(chunk);
+                            }
+                            const buffer = Buffer.concat(chunks);
+                            await fs.writeFile(savePath, buffer);
+                            const stat = await fs.stat(savePath);
+                            this.downloadedBytes += stat.size;
+                            this.successCount++;
+                            await new Promise(r => setTimeout(r, this.delay));
+                            return;
+                        }
+                    } else {
+                        streamToWrite = res.body;
+                    }
+
+                    await streamPipeline(streamToWrite, fileStream);
                     
                     const stat = await fs.stat(savePath);
                     this.downloadedBytes += stat.size;

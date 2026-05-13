@@ -204,7 +204,7 @@ if (options.gui) {
             timeout: parseInt(options.timeout),
             maxFileSize: parseInt(options.maxFileSize) * 1024 * 1024,
             retryDelay: parseInt(options.retryDelay),
-            validateSSL: options.validateSSL,
+            validateSSL: options.validateSsl,
             followRedirects: options.followRedirects,
             maxRedirects: parseInt(options.maxRedirects),
             keepOriginalUrls: options.keepOriginalUrls,

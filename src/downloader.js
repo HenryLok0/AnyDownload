@@ -12,13 +12,10 @@ const { promisify } = require('util');
 const undici = require('undici');
 const EventEmitter = require('events');
 const { SitemapStream, streamToPromise } = require('sitemap');
-const { createGzip, createGunzip, createInflate } = require('zlib');
+const { createGzip, createGunzip, createInflate, createBrotliDecompress } = require('zlib');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
 const playwright = require('playwright');
-
-// Add brotli decompression support
-const brotli = require('brotli');
 
 const streamPipeline = promisify(pipeline);
 
@@ -169,11 +166,62 @@ class Downloader extends EventEmitter {
         this.cancelled = true;
     }
 
+    _buildRequestHeaders() {
+        const headers = {};
+
+        if (this.userAgent) {
+            headers['User-Agent'] = this.userAgent;
+        }
+
+        if (this.cookie) {
+            headers.Cookie = this.cookie;
+        }
+
+        if (this.gzip) {
+            headers['Accept-Encoding'] = 'gzip, deflate, br';
+        }
+
+        return headers;
+    }
+
+    _getProxyConfig() {
+        if (!this.proxy) {
+            return null;
+        }
+
+        if (typeof this.proxy === 'string') {
+            try {
+                const proxyUrl = new URL(this.proxy);
+                return {
+                    protocol: proxyUrl.protocol.replace(':', ''),
+                    host: proxyUrl.hostname,
+                    port: proxyUrl.port ? Number(proxyUrl.port) : (proxyUrl.protocol === 'https:' ? 443 : 80),
+                    auth: proxyUrl.username
+                        ? {
+                            username: decodeURIComponent(proxyUrl.username),
+                            password: decodeURIComponent(proxyUrl.password)
+                        }
+                        : undefined
+                };
+            } catch {
+                return null;
+            }
+        }
+
+        if (typeof this.proxy === 'object') {
+            return this.proxy;
+        }
+
+        return null;
+    }
+
     // Generate sitemap.xml.gz if enabled
     async generateSitemap() {
         if (!this.sitemapEnabled) return;
+        if (!this.visited.size) return;
 
-        const sitemap = new SitemapStream({ hostname: this.baseUrl });
+        const baseUrl = new URL(Array.from(this.visited)[0]).origin;
+        const sitemap = new SitemapStream({ hostname: baseUrl });
         const pipeline = sitemap.pipe(createGzip());
 
         for (const url of this.visited) {
@@ -243,19 +291,36 @@ class Downloader extends EventEmitter {
     }
 
     // Download with proxy (not implemented)
-    async downloadWithProxy(url, filePath) {
-        if (!this.proxy) {
-            return this.downloadResource(url, filePath);
+    async downloadWithProxy(url, filePath, headers = {}) {
+        const proxyConfig = this._getProxyConfig();
+        if (!proxyConfig) {
+            throw new Error('Invalid proxy configuration');
         }
 
-        const proxyConfig = {
-            target: url,
-            changeOrigin: true,
-            ...this.proxy
-        };
+        const response = await axios.get(url, {
+            responseType: 'stream',
+            headers,
+            proxy: proxyConfig,
+            timeout: this.timeout,
+            maxRedirects: this.followRedirects ? this.maxRedirects : 0,
+            decompress: false,
+            validateStatus: status => status >= 200 && status < 400
+        });
 
-        const proxyMiddleware = createProxyMiddleware(proxyConfig);
-        // Proxy download logic to be implemented
+        const contentEncoding = response.headers['content-encoding'] || '';
+        const fileStream = fs.createWriteStream(filePath);
+
+        let streamToWrite = response.data;
+        if (contentEncoding === 'gzip') {
+            streamToWrite = response.data.pipe(createGunzip());
+        } else if (contentEncoding === 'deflate') {
+            streamToWrite = response.data.pipe(createInflate());
+        } else if (contentEncoding === 'br') {
+            streamToWrite = response.data.pipe(createBrotliDecompress());
+        }
+
+        await streamPipeline(streamToWrite, fileStream);
+        return response;
     }
 
     // Validate resource (SSL, file size)
@@ -263,11 +328,20 @@ class Downloader extends EventEmitter {
         if (!this.validateSSL) return true;
 
         try {
-            const response = await axios.head(url);
-            const contentType = response.headers['content-type'];
-            const contentLength = response.headers['content-length'];
+            const requestOptions = {
+                timeout: this.timeout,
+                maxRedirects: this.followRedirects ? this.maxRedirects : 0
+            };
+            const proxyConfig = this._getProxyConfig();
+            if (proxyConfig) {
+                requestOptions.proxy = proxyConfig;
+            }
 
-            if (this.maxFileSize && contentLength > this.maxFileSize) {
+            const response = await axios.head(url, requestOptions);
+            const headers = response?.headers || {};
+            const contentLength = Number(headers['content-length'] || 0);
+
+            if (this.maxFileSize && contentLength && contentLength > this.maxFileSize) {
                 throw new Error('File size exceeds limit');
             }
 
@@ -279,7 +353,7 @@ class Downloader extends EventEmitter {
     }
 
     // Clean URL (remove query/hash)
-    async cleanUrl(url) {
+    cleanUrl(url) {
         if (!this.cleanUrls) return url;
 
         const parsed = new URL(url);
@@ -435,6 +509,7 @@ class Downloader extends EventEmitter {
         resources = resources
             .map(r => normalizeUrl(r, url))
             .filter(r => !!r)
+            .map(r => this.cleanUrls ? this.cleanUrl(r) : r)
             .filter(r => {
                 const hash = hashUrl(r);
                 if (this.resourceHashSet.has(hash)) return false;
@@ -571,6 +646,8 @@ class Downloader extends EventEmitter {
             // Ensure the directory exists
             await fs.ensureDir(path.dirname(savePath));
 
+            await this.validateResource(abs, savePath);
+
             while (attempt < this.retry) {
                 if (this.cancelled) return;
                 if (this.paused) {
@@ -578,6 +655,7 @@ class Downloader extends EventEmitter {
                 }
 
                 try {
+                    const requestHeaders = this._buildRequestHeaders();
                     // Update progress
                     const now = Date.now();
                     const elapsed = (now - this.startTime) / 1000;
@@ -591,66 +669,34 @@ class Downloader extends EventEmitter {
                         return;
                     }
 
-                    const res = await undici.request(abs, {
-                        method: 'GET',
-                        headers: {
-                            'User-Agent': this.userAgent,
-                            ...(this.cookie ? { Cookie: this.cookie } : {}),
-                            'Accept-Encoding': this.gzip ? 'gzip, deflate, br' : undefined
-                        },
-                        maxRedirections: 5
-                    });
-
-                    const contentType = res.headers['content-type'] || '';
-                    const contentEncoding = res.headers['content-encoding'] || '';
-                    const fileStream = fs.createWriteStream(savePath);
-                    
-                    // Handle compression based on content-encoding header
-                    let streamToWrite;
-                    if (contentEncoding === 'gzip') {
-                        streamToWrite = res.body.pipe(createGunzip());
-                    } else if (contentEncoding === 'deflate') {
-                        streamToWrite = res.body.pipe(createInflate());
-                    } else if (contentEncoding === 'br') {
-                        // For brotli, we need to handle it differently since it's not a stream
-                        try {
-                            const chunks = [];
-                            for await (const chunk of res.body) {
-                                chunks.push(chunk);
-                            }
-                            const buffer = Buffer.concat(chunks);
-                            const decompressed = brotli.decompress(buffer);
-                            if (decompressed) {
-                                await fs.writeFile(savePath, decompressed);
-                            } else {
-                                // If brotli decompression fails, write the original buffer
-                                await fs.writeFile(savePath, buffer);
-                            }
-                            const stat = await fs.stat(savePath);
-                            this.downloadedBytes += stat.size;
-                            this.successCount++;
-                            await new Promise(r => setTimeout(r, this.delay));
-                            return;
-                        } catch (brotliError) {
-                            console.log(`[DEBUG] Brotli decompression failed for ${abs}, writing original buffer`);
-                            // If brotli decompression fails, try to write the original buffer
-                            const chunks = [];
-                            for await (const chunk of res.body) {
-                                chunks.push(chunk);
-                            }
-                            const buffer = Buffer.concat(chunks);
-                            await fs.writeFile(savePath, buffer);
-                            const stat = await fs.stat(savePath);
-                            this.downloadedBytes += stat.size;
-                            this.successCount++;
-                            await new Promise(r => setTimeout(r, this.delay));
-                            return;
-                        }
+                    if (this.proxy) {
+                        await this.downloadWithProxy(abs, savePath, requestHeaders);
                     } else {
-                        streamToWrite = res.body;
-                    }
+                        const res = await undici.request(abs, {
+                            method: 'GET',
+                            headers: requestHeaders,
+                            maxRedirections: this.followRedirects ? this.maxRedirects : 0,
+                            headersTimeout: this.timeout,
+                            bodyTimeout: this.timeout
+                        });
 
-                    await streamPipeline(streamToWrite, fileStream);
+                        const contentEncoding = res.headers['content-encoding'] || '';
+                        const fileStream = fs.createWriteStream(savePath);
+
+                        // Handle compression based on content-encoding header
+                        let streamToWrite;
+                        if (contentEncoding === 'gzip') {
+                            streamToWrite = res.body.pipe(createGunzip());
+                        } else if (contentEncoding === 'deflate') {
+                            streamToWrite = res.body.pipe(createInflate());
+                        } else if (contentEncoding === 'br') {
+                            streamToWrite = res.body.pipe(createBrotliDecompress());
+                        } else {
+                            streamToWrite = res.body;
+                        }
+
+                        await streamPipeline(streamToWrite, fileStream);
+                    }
                     
                     const stat = await fs.stat(savePath);
                     this.downloadedBytes += stat.size;
@@ -692,9 +738,10 @@ class Downloader extends EventEmitter {
             $('a[href]').each((_, el) => {
                 const href = $(el).attr('href');
                 const abs = normalizeUrl(href, url);
-                if (abs && abs.startsWith(new URL(url).origin) && !this.visited.has(abs)) {
-                    if (this.filterRegex && !this.filterRegex.test(abs)) return;
-                    pageLinks.push(abs);
+                const link = abs && this.cleanUrls ? this.cleanUrl(abs) : abs;
+                if (link && link.startsWith(new URL(url).origin) && !this.visited.has(link)) {
+                    if (this.filterRegex && !this.filterRegex.test(link)) return;
+                    pageLinks.push(link);
                 }
             });
 

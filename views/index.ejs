@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AnyDownload - 專業網站下載工具</title>
+  <title>AnyDownload - Professional Website Downloader</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
   <link href="/css/style.css" rel="stylesheet">
@@ -18,7 +18,7 @@
       </a>
       <div class="ms-auto d-flex align-items-center">
         <button id="languageToggle" class="btn btn-outline-light me-3">
-          <i class="bi bi-translate"></i> <span id="currentLang">繁體中文</span>
+          <i class="bi bi-translate"></i> <span id="currentLang">English</span>
         </button>
         <button id="darkModeToggle" class="btn btn-outline-light">
           <i class="bi bi-moon-fill"></i>
@@ -194,16 +194,6 @@
                     <input type="password" class="form-control" id="auth-pass" name="auth-pass" 
                            data-i18n-placeholder="authPassPlaceholder" placeholder="HTTP 基本認證密碼">
                   </div>
-                  <div class="col-md-6">
-                    <label for="login-url" class="form-label" data-i18n="loginUrl">登入網址</label>
-                    <input type="url" class="form-control" id="login-url" name="login-url" 
-                           data-i18n-placeholder="loginUrlPlaceholder" placeholder="登入表單網址">
-                  </div>
-                  <div class="col-md-6">
-                    <label for="login-form" class="form-label" data-i18n="loginForm">登入表單資料</label>
-                    <input type="text" class="form-control" id="login-form" name="login-form" 
-                           data-i18n-placeholder="loginFormPlaceholder" placeholder="JSON 字串">
-                  </div>
                 </div>
               </div>
 
@@ -373,6 +363,14 @@
                   <span id="downloadSpeed" data-i18n="speed">速度：0 KB/s</span>
                   <span id="eta" data-i18n="eta">預計完成時間：--:--</span>
                 </div>
+                <div id="actionButtons" class="mt-3 text-center" style="display: none;">
+                  <button type="button" id="btnOpenFolder" class="btn btn-outline-primary btn-sm me-2">
+                    <i class="bi bi-folder2-open"></i> <span data-i18n="openFolderBtn">開啟資料夾</span>
+                  </button>
+                  <button type="button" id="btnOpenWebsite" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-window"></i> <span data-i18n="openWebsiteBtn">瀏覽下載網站</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -454,6 +452,8 @@
         'error': '下載失敗：',
         'speed': '速度：',
         'eta': '預計完成時間：',
+        'openFolderBtn': '開啟資料夾',
+        'openWebsiteBtn': '瀏覽下載網站',
         'loginSettings': '登入設定',
         'loginPageUrl': '登入頁面網址',
         'loginPageUrlHelp': '需要登入的網站登入頁面網址',
@@ -545,6 +545,8 @@
         'error': 'Download Failed: ',
         'speed': 'Speed: ',
         'eta': 'ETA: ',
+        'openFolderBtn': 'Open Folder',
+        'openWebsiteBtn': 'Browse Website',
         'loginSettings': 'Login Settings',
         'loginPageUrl': 'Login Page URL',
         'loginPageUrlHelp': 'URL of the login page for websites requiring authentication',
@@ -571,8 +573,10 @@
     };
 
     function setLanguage(lang) {
+      lang = 'en';
       document.documentElement.lang = lang;
-      document.getElementById('currentLang').textContent = lang === 'zh-TW' ? 'English' : '繁體中文';
+      document.getElementById('currentLang').textContent = 'English';
+      document.title = translations[lang].title;
 
       document.querySelectorAll('[data-i18n]').forEach(element => {
         const key = element.getAttribute('data-i18n');
@@ -592,14 +596,11 @@
     }
 
     // Initialize language
-    const savedLang = localStorage.getItem('language') || 'zh-TW';
-    setLanguage(savedLang);
+    setLanguage('en');
 
     // Language toggle event
     document.getElementById('languageToggle').addEventListener('click', () => {
-      const currentLang = document.documentElement.lang;
-      const newLang = currentLang === 'zh-TW' ? 'en' : 'zh-TW';
-      setLanguage(newLang);
+      setLanguage('en');
     });
 
     const socket = io();
@@ -630,10 +631,14 @@
 
     darkModeToggle.addEventListener('click', toggleDarkMode);
 
+    let currentDownloadFolder = '';
+
     // Form submission handler
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       
+      document.getElementById('actionButtons').style.display = 'none';
+
       // 檢查登入資訊
       const loginUrl = document.getElementById('loginUrl').value;
       const username = document.getElementById('username').value;
@@ -712,6 +717,11 @@
       progressBar.style.width = '0%';
       progressText.textContent = '0%';
       currentFile.textContent = translations[document.documentElement.lang]['preparing'];
+      
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalBtnText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${translations[document.documentElement.lang]['downloading']}`;
 
       try {
         // 發送下載請求
@@ -733,16 +743,23 @@
           } else {
             loginError.style.display = 'block';
           }
-          throw new Error(responseData.message || '下載請求失敗');
+          throw new Error(responseData.message || 'Download request failed');
         }
 
         // 顯示成功通知
-        showToast('下載已完成', 'success');
+        showToast('Download completed', 'success');
+        if (responseData.folder) {
+          currentDownloadFolder = responseData.folder;
+          document.getElementById('actionButtons').style.display = 'block';
+        }
       } catch (error) {
         showToast(error.message, 'error');
         currentFile.textContent = translations[document.documentElement.lang]['error'] + error.message;
         progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
         progressBar.classList.add('bg-danger');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
       }
     });
 
@@ -798,6 +815,37 @@
       currentFile.textContent = translations[lang]['complete'];
       progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
       progressBar.classList.add('bg-success');
+    });
+
+    // Action button listeners
+    document.getElementById('btnOpenFolder').addEventListener('click', async () => {
+      if (!currentDownloadFolder) return;
+      try {
+        const res = await fetch('/api/open-folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder: currentDownloadFolder })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+      } catch (err) {
+        showToast('Failed to open folder: ' + err.message, 'error');
+      }
+    });
+
+    document.getElementById('btnOpenWebsite').addEventListener('click', async () => {
+      if (!currentDownloadFolder) return;
+      try {
+        const res = await fetch('/api/open-website', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder: currentDownloadFolder })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+      } catch (err) {
+        showToast('Failed to open website: ' + err.message, 'error');
+      }
     });
   </script>
 </body>

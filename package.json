@@ -1,6 +1,6 @@
 {
-  "name": "@henrylok0/anydownload",
-  "version": "1.2.0",
+  "name": "anydownload",
+  "version": "1.2.1",
   "description": "A powerful website downloader with GUI support",
   "repository": "https://github.com/HenryLok0/AnyDownload.git",
   "publishConfig": {
@@ -12,7 +12,9 @@
   },
   "scripts": {
     "start": "node web-gui.js",
-    "test": "jest"
+    "test": "jest",
+    "verify:package": "node scripts/verify-package-json.js",
+    "prepublishOnly": "npm run verify:package && npm test"
   },
   "keywords": [
     "website",

@@ -1,0 +1,13 @@
+__tests__/
+test/
+test-output/
+coverage/
+.github/
+*.tgz
+test-compression.js
+jest.config.js
+scripts/
+Dockerfile
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+.gitignore

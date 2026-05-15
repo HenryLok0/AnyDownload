@@ -1,4 +1,39 @@
+# Dependencies
 node_modules/
-mysite/
+
+# Download outputs
 downloaded_site/
-.npmrc
+mysite/
+test-output/
+output/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test and coverage
+coverage/
+.nyc_output/
+
+# Playwright / Puppeteer cache (if stored locally)
+.cache/
+playwright-report/
+test-results/
+
+# Optional local npm config (keep .npmrc out of repo if it has tokens)
+# .npmrc

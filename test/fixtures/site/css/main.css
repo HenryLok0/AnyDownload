@@ -1,0 +1,6 @@
+@import url("nested.css");
+
+body {
+  background: url(../img/bg.png) no-repeat;
+  font-family: sans-serif;
+}

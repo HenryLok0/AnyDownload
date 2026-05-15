@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { program } = require('commander');
+const { Command } = require('commander');
 const ora = require('ora').default;
 const path = require('path');
 const fs = require('fs-extra');
@@ -24,7 +24,6 @@ const MSG = {
     fail: 'Failed',
     size: 'Total size',
     time: 'Elapsed',
-    openIndex: 'Open homepage in browser?',
     homepage: 'Homepage:'
 };
 
@@ -56,9 +55,9 @@ function buildDownloaderOptions(opts) {
         outputDir: merged.output || merged.outputDir || 'downloaded_site',
         userAgent: merged.userAgent || config.userAgent,
         cookie: merged.cookie || config.cookie,
-        engineMode: merged.autoDynamic === false || merged.autoDynamic === 'false'
+        mode: merged.autoDynamic === false || merged.autoDynamic === 'false'
             ? 'static'
-            : (merged.engineMode || (merged.dynamic === true ? 'render' : 'auto')),
+            : (merged.mode || merged.engineMode || (merged.dynamic === true ? 'render' : 'auto')),
         dynamic: merged.dynamic === true,
         autoDynamic: merged.autoDynamic !== false && merged.autoDynamic !== 'false',
         browserType: merged.browser || merged.browserType || 'puppeteer',
@@ -84,7 +83,7 @@ function buildDownloaderOptions(opts) {
 }
 
 async function runWizard() {
-    const answers = await inquirer.prompt([
+    return inquirer.prompt([
         { type: 'input', name: 'url', message: MSG.provideUrl },
         {
             type: 'list',
@@ -104,7 +103,6 @@ async function runWizard() {
             choices: ['puppeteer', 'playwright']
         }
     ]);
-    return answers;
 }
 
 async function runDownload(url, opts) {
@@ -114,8 +112,7 @@ async function runDownload(url, opts) {
         process.exit(1);
     }
 
-    const downloaderOpts = buildDownloaderOptions(opts);
-    const downloader = new SiteDownloader(downloaderOpts);
+    const downloader = new SiteDownloader(buildDownloaderOptions(opts));
     const spinner = ora(MSG.downloading + url).start();
     const startTime = Date.now();
 
@@ -184,62 +181,53 @@ function startGui() {
     console.log('Web GUI starting at http://localhost:3000');
 }
 
+function addDownloadOptions(cmd) {
+    return cmd
+        .option('-o, --output <dir>', 'Output folder', config.output || 'downloaded_site')
+        .option('--preset <name>', 'Preset: page | full | mirror', config.preset || 'page')
+        .option('--wizard', 'Interactive setup wizard')
+        .option('--gui', 'Start web GUI')
+        .option('-r, --recursive', 'Download linked pages')
+        .option('-m, --max-depth <n>', 'Recursion depth', '1')
+        .option('-d, --dynamic', 'Force render engine (headless browser)')
+        .option('--mode <mode>', 'Engine: static | render | auto', 'auto')
+        .option('--engine-mode <mode>', '(deprecated) use --mode')
+        .option('--no-auto-dynamic', 'Use static engine only')
+        .option('--browser <engine>', 'Render backend: puppeteer | playwright', config.browser || 'puppeteer')
+        .option('--browser-engine <name>', 'chromium | firefox | webkit', 'chromium')
+        .option('--wait <ms>', 'Extra wait after page load', '2000')
+        .option('--sitemap', 'Use sitemap + generate sitemap.xml.gz')
+        .option('--ignore-robots', 'Ignore robots.txt')
+        .option('-v, --verbose', 'Verbose output')
+        .option('--concurrency <n>', 'Concurrent downloads', '5')
+        .option('--delay <ms>', 'Delay between downloads', '500')
+        .option('--filter <regex>', 'Filter URLs by regex')
+        .option('--open', 'Open homepage after download')
+        .option('--headless', 'Headless browser', true);
+}
+
+const program = new Command();
+
 program
     .name('anydownload')
     .description('Download websites for offline browsing')
-    .version(version)
-    .argument('[url]', 'URL to download')
-    .option('-o, --output <dir>', 'Output folder', config.output || 'downloaded_site')
-    .option('--preset <name>', 'Preset: page | full | mirror', config.preset || 'page')
-    .option('--wizard', 'Interactive setup wizard')
-    .option('--gui', 'Start web GUI')
-    .option('-r, --recursive', 'Download linked pages')
-    .option('-m, --max-depth <n>', 'Recursion depth', '1')
-    .option('-d, --dynamic', 'Force render engine (headless browser)')
-    .option('--engine-mode <mode>', 'static | render | auto (default: auto)', 'auto')
-    .option('--no-auto-dynamic', 'Use static engine only (same as --engine-mode static)')
-    .option('--browser <engine>', 'Render backend: puppeteer | playwright', config.browser || 'puppeteer')
-    .option('--browser-engine <name>', 'chromium | firefox | webkit', 'chromium')
-    .option('--wait <ms>', 'Extra wait after page load', '2000')
-    .option('--sitemap', 'Use sitemap + generate sitemap.xml.gz')
-    .option('--ignore-robots', 'Ignore robots.txt')
-    .option('-v, --verbose', 'Verbose output')
-    .option('--concurrency <n>', 'Concurrent downloads', '5')
-    .option('--delay <ms>', 'Delay between downloads', '500')
-    .option('--filter <regex>', 'Filter URLs by regex')
-    .option('--open', 'Open homepage after download')
-    .option('--headless', 'Headless browser', true);
+    .version(version);
 
-program
-    .command('advanced')
-    .description('Advanced download options')
-    .argument('<url>', 'URL to download')
-    .option('-o, --output <dir>', 'Output folder', 'downloaded_site')
-    .option('--proxy <url>', 'Proxy server URL')
-    .option('--type <type>', 'Resource type: all|image|css|js|html|media', 'all')
-    .option('--retry <n>', 'Retry count', '3')
-    .option('--timeout <ms>', 'Request timeout', '30000')
-    .action(async (url, opts) => {
-        await runDownload(url, {
-            ...program.opts(),
-            ...opts,
-            preset: 'page',
-            output: opts.output
-        });
-    });
+// Default command: anydownload example.com  OR  anydownload https://example.com
+const downloadCmd = addDownloadOptions(
+    program
+        .command('download', { isDefault: true })
+        .description('Download a website (default)')
+        .argument('[url]', 'URL to download (e.g. henrylok.me or https://example.com)')
+);
 
-const parsed = program.parse(process.argv);
-const opts = program.opts();
-const subcommand = parsed.args[0] === 'advanced' ? 'advanced' : null;
-let url = subcommand === 'advanced' ? parsed.args[1] : parsed.args[0];
+downloadCmd.action(async (url) => {
+    const opts = downloadCmd.opts();
 
-if (opts.gui) {
-    startGui();
-    process.exit(0);
-}
-
-(async () => {
-    if (subcommand === 'advanced') return;
+    if (opts.gui) {
+        startGui();
+        return;
+    }
 
     let runOpts = { ...opts, output: opts.output };
 
@@ -252,6 +240,26 @@ if (opts.gui) {
     if (url) {
         await runDownload(url, runOpts);
     } else {
-        program.help();
+        downloadCmd.help();
     }
-})();
+});
+
+program
+    .command('advanced')
+    .description('Advanced download options')
+    .argument('<url>', 'URL to download')
+    .option('-o, --output <dir>', 'Output folder', 'downloaded_site')
+    .option('--proxy <url>', 'Proxy server URL')
+    .option('--type <type>', 'Resource type: all|image|css|js|html|media', 'all')
+    .option('--retry <n>', 'Retry count', '3')
+    .option('--timeout <ms>', 'Request timeout', '30000')
+    .action(async (url, opts) => {
+        await runDownload(url, {
+            ...downloadCmd.opts(),
+            ...opts,
+            preset: 'page',
+            output: opts.output
+        });
+    });
+
+program.parse(process.argv);

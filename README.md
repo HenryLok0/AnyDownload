@@ -12,7 +12,8 @@ Download entire websites for offline browsing, archiving, or learning. Supports 
 ```bash
 npm install -g anydownload
 
-# Download a page and all assets (auto-detects static vs dynamic)
+# Download a page and all assets (domain without https:// also works)
+anydownload example.com
 anydownload https://example.com
 
 # Full site preset (recursive depth 2, sitemap, dynamic)
@@ -65,7 +66,8 @@ anydownload https://example.com --preset mirror -o mysite
 | `--wizard` | Interactive setup | - |
 | `--gui` | Start web interface | - |
 | `-d, --dynamic` | Force browser rendering | auto |
-| `--engine-mode` | `static` \| `render` \| `auto` | `auto` |
+| `--mode` | `static` \| `render` \| `auto` | `auto` |
+| `--engine-mode` | (deprecated) same as `--mode` | - |
 | `--browser` | Render backend: `puppeteer` \| `playwright` | `puppeteer` |
 | `--browser-engine` | `chromium` \| `firefox` \| `webkit` | `chromium` |
 | `-r, --recursive` | Follow same-domain links | preset |
@@ -105,10 +107,10 @@ AnyDownload has its own engine with three modes—no Playwright install required
 
 ```bash
 # Static only — fastest, zero browser
-anydownload https://example.com --engine-mode static
+anydownload https://example.com --mode static
 
 # Force browser rendering
-anydownload https://spa-app.com --engine-mode render
+anydownload https://spa-app.com --mode render
 
 # Auto (default) — smart pick
 anydownload https://example.com

@@ -42,7 +42,7 @@ function buildOptions(body) {
         outputDir: body.output || 'downloaded_site',
         userAgent: body.userAgent,
         cookie: body.cookie,
-        engineMode: body.engineMode ||
+        mode: body.mode || body.engineMode ||
             (body.dynamic === true || body.dynamic === 'true' ? 'render' : 'auto'),
         dynamic: body.dynamic === true || body.dynamic === 'true',
         autoDynamic: body.autoDynamic !== false && body.autoDynamic !== 'false',

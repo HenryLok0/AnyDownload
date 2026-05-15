@@ -1,6 +1,17 @@
 const { extractFromHtml } = require('../src/downloader/parsers/HtmlParser');
 
 describe('HtmlParser', () => {
+    test('extracts module scripts and preload links', () => {
+        const html = `
+            <html><head>
+            <link rel="preload" as="style" href="/assets/app.css">
+            <script type="module" src="/assets/app.js"></script>
+            </head><body></body></html>`;
+        const { resources } = extractFromHtml(html, 'https://example.com/');
+        expect(resources.some(u => u.includes('app.css'))).toBe(true);
+        expect(resources.some(u => u.includes('app.js'))).toBe(true);
+    });
+
     test('extracts stylesheets and images', () => {
         const html = `
             <html><head>

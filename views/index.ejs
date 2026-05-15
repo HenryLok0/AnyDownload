@@ -62,6 +62,26 @@
                     <div class="accordion-body">
                       <div class="row g-3">
                         <div class="col-md-6">
+                          <label class="form-label" data-i18n="engineMode">引擎模式</label>
+                          <select class="form-select" id="mode" name="mode">
+                            <option value="auto" selected>auto（自動）</option>
+                            <option value="static">static（靜態）</option>
+                            <option value="render">render（瀏覽器）</option>
+                          </select>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label" data-i18n="resourceType">資源類型</label>
+                          <select class="form-select" id="type" name="type">
+                            <option value="all" selected>全部格式</option>
+                            <option value="image">僅圖片</option>
+                            <option value="css">僅 CSS</option>
+                            <option value="js">僅 JS</option>
+                            <option value="html">僅 HTML</option>
+                            <option value="media">僅媒體</option>
+                            <option value="font">僅字型</option>
+                          </select>
+                        </div>
+                        <div class="col-md-6">
                           <label class="form-label" data-i18n="browser">瀏覽器引擎</label>
                           <select class="form-select" id="browser" name="browser">
                             <option value="playwright">Playwright</option>
@@ -161,7 +181,8 @@
       'zh-TW': {
         title: '下載網站', url: '網站網址', output: '輸出資料夾', preset: '下載模式',
         presetPage: '單頁 + 全部資源（預設）', presetFull: '完整站點（深度 2）', presetMirror: '鏡像模式（深度 5）',
-        advanced: '進階選項', expert: '專家選項', browser: '瀏覽器引擎', depth: '遞迴深度',
+        advanced: '進階選項', expert: '專家選項', engineMode: '引擎模式', resourceType: '資源類型',
+        browser: '瀏覽器引擎', depth: '遞迴深度',
         concurrency: '並發數', wait: '載入等待 (ms)', forceDynamic: '強制動態模式',
         sitemap: '使用 Sitemap', ignoreRobots: '忽略 robots.txt', proxy: 'Proxy',
         filter: 'URL 正則過濾', loginForm: '登入表單 JSON', loginCredentials: '登入憑證 JSON',
@@ -171,7 +192,8 @@
       en: {
         title: 'Download Website', url: 'Website URL', output: 'Output folder', preset: 'Mode',
         presetPage: 'Single page + assets', presetFull: 'Full site (depth 2)', presetMirror: 'Mirror (depth 5)',
-        advanced: 'Advanced', expert: 'Expert', browser: 'Browser engine', depth: 'Max depth',
+        advanced: 'Advanced', expert: 'Expert', engineMode: 'Engine mode', resourceType: 'Resource type',
+        browser: 'Browser engine', depth: 'Max depth',
         concurrency: 'Concurrency', wait: 'Extra wait (ms)', forceDynamic: 'Force dynamic mode',
         sitemap: 'Use sitemap', ignoreRobots: 'Ignore robots.txt', proxy: 'Proxy',
         filter: 'URL regex filter', loginForm: 'Login form JSON', loginCredentials: 'Login credentials JSON',

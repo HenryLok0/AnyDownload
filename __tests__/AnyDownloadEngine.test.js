@@ -1,6 +1,13 @@
 const { AnyDownloadEngine } = require('../src/engine');
 
 describe('AnyDownloadEngine', () => {
+    test('htmlNeedsRender detects Vite module scripts', () => {
+        const html = '<html><head></head><body><div id="root"></div>' +
+            '<script type="module" crossorigin src="/assets/index-abc123.js"></script>' +
+            '<link rel="stylesheet" href="/assets/index-def456.css"></body></html>';
+        expect(AnyDownloadEngine.htmlNeedsRender(html)).toBe(true);
+    });
+
     test('needsRender detects SPA markers', async () => {
         const axios = require('axios');
         jest.spyOn(axios, 'get').mockResolvedValue({

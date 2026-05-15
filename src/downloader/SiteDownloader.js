@@ -20,7 +20,7 @@ class SiteDownloader extends EventEmitter {
         super();
         this.outputDir = options.outputDir || path.join(process.cwd(), 'downloaded_site');
         this.userAgent = options.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-        this.engineMode = options.engineMode ||
+        this.engineMode = options.mode || options.engineMode ||
             (options.dynamic ? 'render' : (options.autoDynamic === false ? 'static' : 'auto'));
         this.browserType = options.browserType || options.provider || 'puppeteer';
         this.browser = options.browser || 'chromium';
@@ -121,27 +121,19 @@ class SiteDownloader extends EventEmitter {
         );
     }
 
-    async downloadPage(url, depth, baseDir) {
-        if (this.cancelled || this.visited.has(url)) return;
-        this.visited.add(url);
-        this.crawler.markVisited(url);
-
-        const allowed = await this.crawler.checkRobots(url);
-        if (!allowed) {
-            if (this.verbose) console.log(`Blocked by robots.txt: ${url}`);
-            return;
-        }
-
+    async _fetchAndDownloadAssets(url, baseDir, engineMode) {
         const pathMapper = new PathMapper(url);
         const pipeline = new AssetPipeline(this.pipelineOptions);
         let html;
         let capture = null;
+        let usedEngine = engineMode;
 
         const engine = this._createEngine();
         try {
-            const result = await engine.fetchPage(url, { mode: this.engineMode });
+            const result = await engine.fetchPage(url, { mode: engineMode });
             html = result.html;
             capture = result.capture;
+            usedEngine = result.engine || engineMode;
             if (this.verbose && result.engine) {
                 console.log(`[AnyDownload] Engine: ${result.engine}`);
             }
@@ -163,6 +155,34 @@ class SiteDownloader extends EventEmitter {
         await fs.writeFile(path.join(baseDir, pageFile), rewrittenHtml, 'utf8');
 
         await pipeline.run(baseDir);
+
+        const shouldFallback = engineMode === 'auto' &&
+            usedEngine !== 'render' &&
+            pipeline.hasCriticalFailures() &&
+            AnyDownloadEngine.htmlNeedsRender(html)
+
+        if (shouldFallback) {
+            if (this.verbose) {
+                console.log('[AnyDownload] Static assets failed; retrying with render engine');
+            }
+            return this._fetchAndDownloadAssets(url, baseDir, 'render');
+        }
+
+        return { html, pipeline, usedEngine };
+    }
+
+    async downloadPage(url, depth, baseDir) {
+        if (this.cancelled || this.visited.has(url)) return;
+        this.visited.add(url);
+        this.crawler.markVisited(url);
+
+        const allowed = await this.crawler.checkRobots(url);
+        if (!allowed) {
+            if (this.verbose) console.log(`Blocked by robots.txt: ${url}`);
+            return;
+        }
+
+        const { html, pipeline } = await this._fetchAndDownloadAssets(url, baseDir, this.engineMode);
 
         this.successCount += pipeline.successCount;
         this.failCount += pipeline.failCount;

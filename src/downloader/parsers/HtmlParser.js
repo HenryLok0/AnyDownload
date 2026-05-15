@@ -6,10 +6,12 @@ const RESOURCE_SELECTORS = [
     'img[data-src]',
     'link[rel="stylesheet"][href]',
     'link[rel="preload"][href]',
+    'link[rel="prefetch"][href]',
     'link[rel="icon"][href]',
     'link[rel="shortcut icon"][href]',
     'link[rel="apple-touch-icon"][href]',
     'script[src]',
+    'script[type="module"][src]',
     'link[rel="manifest"][href]',
     'video[src]',
     'audio[src]',
@@ -33,6 +35,16 @@ function extractFromHtml(html, pageUrl) {
             const src = $(el).attr('src') || $(el).attr('href') || $(el).attr('data');
             if (src) add(src);
         });
+    });
+
+    $('link[rel="preload"][as="font"], link[rel="preload"][as="style"], link[rel="preload"][as="image"], link[rel="preload"][as="script"]').each((_, el) => {
+        const href = $(el).attr('href');
+        if (href) add(href);
+    });
+
+    $('meta[property="og:image"], meta[name="twitter:image"]').each((_, el) => {
+        const content = $(el).attr('content');
+        if (content) add(content);
     });
 
     $('[srcset]').each((_, el) => {

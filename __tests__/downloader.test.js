@@ -27,4 +27,9 @@ describe('SiteDownloader', () => {
         expect(dl.outputDir).toBe('out');
         expect(dl.engineMode).toBe('auto');
     });
+
+    test('accepts mode option', () => {
+        const dl = new SiteDownloader({ outputDir: 'out', mode: 'static' });
+        expect(dl.engineMode).toBe('static');
+    });
 });

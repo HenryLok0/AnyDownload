@@ -30,20 +30,27 @@ class AnyDownloadEngine {
         this._render = null;
     }
 
+    static htmlNeedsRender(html) {
+        if (!html || html.length < 3000) return true;
+        if (/<script[^>]+type=["']module["']/i.test(html)) return true;
+        if (/<script[^>]+src=["'][^"']*\/assets\/[^"']+\.js/i.test(html)) return true;
+        if (/<script[^>]+src=[^>]*(react|vue|angular|next|nuxt|vite)/i.test(html)) return true;
+        if (/__NEXT_DATA__|ng-app|id=["'](app|root)["']|window\.__INITIAL_STATE__/i.test(html)) {
+            return true;
+        }
+        const hasContent = /<link[^>]+stylesheet/i.test(html) || /<img\s/i.test(html);
+        const bodyText = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<[^>]+>/g, '').trim();
+        if (!hasContent && bodyText.length < 200) return true;
+        return false;
+    }
+
     static async needsRender(url, userAgent) {
         try {
             const res = await axios.get(url, {
                 headers: { 'User-Agent': userAgent || 'Mozilla/5.0' },
                 timeout: 15000
             });
-            const html = String(res.data);
-            if (html.length < 3000) return true;
-            if (/<script[^>]+src=[^>]*(react|vue|angular|next|nuxt)/i.test(html)) return true;
-            if (/__NEXT_DATA__|ng-app|id=["']app["']|window\.__INITIAL_STATE__/i.test(html)) return true;
-            const hasContent = /<link[^>]+stylesheet/i.test(html) || /<img\s/i.test(html);
-            const bodyText = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<[^>]+>/g, '').trim();
-            if (!hasContent && bodyText.length < 200) return true;
-            return false;
+            return AnyDownloadEngine.htmlNeedsRender(String(res.data));
         } catch {
             return true;
         }
@@ -74,8 +81,7 @@ class AnyDownloadEngine {
         const mode = options.mode || this.mode;
 
         if (mode === 'static') {
-            const result = await this._static.fetchPage(url);
-            return result;
+            return this._static.fetchPage(url);
         }
 
         if (mode === 'render') {

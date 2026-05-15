@@ -13,6 +13,8 @@ const PathMapper = require('./storage/PathMapper');
 
 const streamPipeline = promisify(pipeline);
 
+const OPTIONAL_RESOURCE = /favicon\.(ico|png|svg|gif)$/i;
+
 class AssetPipeline {
     constructor(options = {}) {
         this.concurrency = options.concurrency || 5;
@@ -38,21 +40,46 @@ class AssetPipeline {
         this.failCount = 0;
         this.downloadedBytes = 0;
         this.failedResources = [];
+        this.optionalFailures = [];
         this.cancelled = false;
     }
 
-    _headers() {
-        const headers = {};
+    _isOptionalResource(url) {
+        return OPTIONAL_RESOURCE.test(url);
+    }
+
+    _acceptHeader(url) {
+        const ext = path.extname(new URL(url).pathname).toLowerCase();
+        if (ext === '.css') return 'text/css,*/*;q=0.1';
+        if (ext === '.js' || ext === '.mjs') return '*/*';
+        if (/\.(png|jpe?g|gif|svg|webp|ico|avif|woff2?|ttf|eot)$/i.test(ext)) {
+            return 'image/*,*/*;q=0.8';
+        }
+        return 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+    }
+
+    _headers(pageUrl, resourceUrl) {
+        const headers = {
+            'Accept-Encoding': 'gzip, deflate, br',
+            Accept: this._acceptHeader(resourceUrl || pageUrl)
+        };
         if (this.userAgent) headers['User-Agent'] = this.userAgent;
         if (this.cookie) headers.Cookie = this.cookie;
-        headers['Accept-Encoding'] = 'gzip, deflate, br';
+        if (pageUrl) {
+            headers.Referer = pageUrl;
+            try {
+                headers.Origin = new URL(pageUrl).origin;
+            } catch {
+                // ignore invalid page URL
+            }
+        }
         return headers;
     }
 
-    _requestOptions() {
+    _requestOptions(pageUrl, resourceUrl) {
         const opts = {
             method: 'GET',
-            headers: this._headers(),
+            headers: this._headers(pageUrl, resourceUrl),
             maxRedirections: this.followRedirects ? this.maxRedirects : 0,
             headersTimeout: this.timeout,
             bodyTimeout: this.timeout
@@ -69,9 +96,10 @@ class AssetPipeline {
         const rules = {
             image: /\.(png|jpe?g|gif|svg|webp|bmp|ico|avif)$/i,
             css: /\.css$/i,
-            js: /\.js$/i,
+            js: /\.(js|mjs)$/i,
             html: /\.html?$/i,
-            media: /\.(mp4|mp3|ogg|wav|webm|m4a|aac)$/i
+            media: /\.(mp4|mp3|ogg|wav|webm|m4a|aac)$/i,
+            font: /\.(woff2?|ttf|otf|eot)$/i
         };
         const rule = rules[this.type];
         return rule ? rule.test(ext) : true;
@@ -89,10 +117,10 @@ class AssetPipeline {
         urls.forEach(u => this.enqueue(u, pageUrl));
     }
 
-    async validateResource(url) {
+    async validateResource(url, pageUrl) {
         try {
             const res = await axios.head(url, {
-                headers: this._headers(),
+                headers: this._headers(pageUrl, url),
                 timeout: this.timeout,
                 maxRedirects: this.maxRedirects,
                 validateStatus: s => s < 500
@@ -107,16 +135,16 @@ class AssetPipeline {
         }
     }
 
-    async _downloadToFile(url, savePath) {
+    async _downloadToFile(url, savePath, pageUrl) {
         if (await fs.pathExists(savePath)) {
             const stat = await fs.stat(savePath);
             this.downloadedBytes += stat.size;
             return { contentType: mime.lookup(savePath) || '', fromCache: true };
         }
 
-        await this.validateResource(url);
+        await this.validateResource(url, pageUrl);
 
-        const res = await undici.request(url, this._requestOptions());
+        const res = await undici.request(url, this._requestOptions(pageUrl, url));
 
         if (res.statusCode < 200 || res.statusCode >= 400) {
             throw new Error(`HTTP ${res.statusCode}`);
@@ -149,10 +177,25 @@ class AssetPipeline {
         await fs.writeFile(savePath, rewritten, 'utf8');
     }
 
+    _recordFailure(url, error, optional) {
+        const entry = { url, error };
+        if (optional) {
+            this.optionalFailures.push(entry);
+            if (this.verbose) {
+                this.onError(`Optional skip: ${url} (${error})`);
+            }
+        } else {
+            this.failCount++;
+            this.failedResources.push(entry);
+            this.onError(`Failed: ${url} (${error})`);
+        }
+    }
+
     async _downloadOne(item, index, total) {
         const { url, pageUrl, body, contentType: presetType } = item;
         const pathMapper = new PathMapper(pageUrl);
         const localPath = pathMapper.toLocalPath(url);
+        const optional = this._isOptionalResource(url);
 
         for (let attempt = 0; attempt < this.retry; attempt++) {
             if (this.cancelled) return;
@@ -169,7 +212,7 @@ class AssetPipeline {
                     const stat = await fs.stat(savePath);
                     this.downloadedBytes += stat.size;
                 } else {
-                    const result = await this._downloadToFile(url, savePath);
+                    const result = await this._downloadToFile(url, savePath, pageUrl);
                     contentType = result.contentType || contentType;
                     if (!path.extname(savePath) && contentType) {
                         const ext = mime.extension(contentType);
@@ -193,14 +236,16 @@ class AssetPipeline {
                 return;
             } catch (err) {
                 if (attempt >= this.retry - 1) {
-                    this.failCount++;
-                    this.failedResources.push({ url, error: err.message });
-                    this.onError(`Failed: ${url} (${err.message})`);
+                    this._recordFailure(url, err.message, optional);
                 } else {
                     await new Promise(r => setTimeout(r, this.retryDelay));
                 }
             }
         }
+    }
+
+    hasCriticalFailures() {
+        return this.failCount > 0 && this.successCount === 0;
     }
 
     async run(baseDir) {

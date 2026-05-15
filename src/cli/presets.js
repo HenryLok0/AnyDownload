@@ -2,7 +2,7 @@ const PRESETS = {
     page: {
         recursive: false,
         maxDepth: 1,
-        engineMode: 'auto',
+        mode: 'auto',
         dynamic: false,
         autoDynamic: true,
         useSitemap: false
@@ -10,7 +10,7 @@ const PRESETS = {
     full: {
         recursive: true,
         maxDepth: 2,
-        engineMode: 'auto',
+        mode: 'auto',
         dynamic: false,
         autoDynamic: true,
         useSitemap: true
@@ -18,7 +18,7 @@ const PRESETS = {
     mirror: {
         recursive: true,
         maxDepth: 5,
-        engineMode: 'auto',
+        mode: 'auto',
         dynamic: false,
         autoDynamic: true,
         useSitemap: true

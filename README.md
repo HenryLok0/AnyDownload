@@ -1,162 +1,222 @@
 # AnyDownload
 
+[![Code Size](https://img.shields.io/github/languages/code-size/HenryLok0/AnyDownload?style=flat-square&logo=github)](https://github.com/HenryLok0/AnyDownload)
 [![npm version](https://img.shields.io/npm/v/anydownload?style=flat-square)](https://www.npmjs.com/package/anydownload)
+
 [![MIT License](https://img.shields.io/github/license/HenryLok0/AnyDownload?style=flat-square)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/HenryLok0/AnyDownload?style=flat-square)](https://github.com/HenryLok0/AnyDownload/stargazers)
 
-Download entire websites for offline browsing, archiving, or learning. Supports static sites and JavaScript-heavy pages via a unified **BrowserEngine** (Puppeteer or Playwright) with network capture and recursive CSS asset resolution.
-
----
-
-## Quick Start
-
-```bash
-npm install -g anydownload
-
-# Download a page and all assets (domain without https:// also works)
-anydownload example.com
-anydownload https://example.com
-
-# Full site preset (recursive depth 2, sitemap, dynamic)
-anydownload https://example.com --preset full
-
-# Interactive wizard
-anydownload --wizard
-
-# Web GUI
-anydownload --gui
-```
+Download websites for **offline browsing** — HTML, CSS, JavaScript, images, fonts, and common SPA bundles (React, Vite, Vue).
 
 ---
 
-## Installation
+## Install
 
 ```bash
 npm install -g anydownload
-
-# Or from source
-git clone https://github.com/HenryLok0/AnyDownload
-cd AnyDownload
-npm install
 ```
 
-**No manual browser install needed for most sites.** AnyDownload uses its own **Static Engine** (HTTP + CSS parsing) by default. A headless browser is only used when a page requires JavaScript rendering—and Chromium is installed automatically on first use.
+From source: `git clone` → `cd AnyDownload` → `npm install`
+
+---
+
+## Choose your scenario (copy & run)
+
+| I want to… | Command |
+|------------|---------|
+| Download one page + assets (default) | `anydownload example.com` |
+| Download a simple static site (fast, no browser) | `anydownload example.com --mode static` |
+| Download a React / Vite / SPA site | `anydownload example.com --mode render` |
+| Download and open preview when done (SPA) | `anydownload example.com --mode render --open` |
+| Download full site (depth 2) | `anydownload example.com --preset full` |
+| Mirror many pages (depth 5) | `anydownload example.com --preset mirror` |
+| Preview an existing download folder | `anydownload serve test` (auto-finds `test/example.com/`) |
+| Interactive wizard (URL, scope, engine — no browser pick) | `anydownload --wizard` |
+| Only CSS files | `anydownload example.com --type css` |
+| Discover hidden / unlinked paths | `anydownload example.com -p -o mysite` |
+| Deep path discovery (Wayback + wordlist) | `anydownload example.com -p --path-deep --delay 500` |
+
+---
+
+## Important: how to view offline sites
+
+### Do NOT double-click `index.html`
+
+Modern sites (React, Vite, Next.js) use **ES modules**. Browsers block them on `file://` → you see a **white screen** even when files downloaded correctly.
+
+### DO use HTTP preview
+
+```bash
+# After download (render mode asks yes/no to open automatically)
+anydownload example.com --mode render
+
+# Or skip the prompt and open immediately
+anydownload example.com --mode render --open
+
+# Preview a folder you already downloaded (parent or host folder both work)
+anydownload serve test
+anydownload serve test/example.com
+```
+
+Preview runs at **http://127.0.0.1:8765/** (default) and always opens the site root `/`. Press **Ctrl+C** to stop the server.
+
+> **Note:** `--mode render` finishes with **Open offline preview? (Y/n)**. Choosing **Yes** runs `anydownload serve "<folder>"` and opens your browser.
+
+---
+
+## Engine modes (`--mode`)
+
+| Mode | Use when | Browser install? |
+|------|----------|------------------|
+| `auto` (default) | Unknown site; picks static or render | Only if SPA detected |
+| `static` | Blogs, docs, plain HTML | **No** |
+| `render` | SPAs, React, Vue, Vite, heavy JS | **Yes** — Playwright + Chromium (auto on install) |
+
+```bash
+anydownload https://example.com --mode static
+anydownload https://spa-app.com --mode render
+anydownload https://example.com                    # auto
+anydownload https://spa-app.com -d                 # same as --mode render
+```
+
+**Render mode** saves assets from the browser’s network capture (not plain HTTP re-download). Use `--wait 5000` if images load late (e.g. backgrounds).
+
+```bash
+anydownload example.com --mode render --wait 5000 -v
+```
 
 ---
 
 ## Presets
 
-| Preset | Description |
-|--------|-------------|
-| `page` (default) | Single page + all linked assets (CSS, images, fonts) |
-| `full` | Recursive depth 2, sitemap discovery, dynamic mode |
-| `mirror` | Deep mirror (depth 5), sitemap, dynamic mode |
+| Preset | What it does |
+|--------|----------------|
+| `page` (default) | One page + all assets on that page |
+| `full` | Same-hostname links, depth 2, sitemap |
+| `mirror` | Deep crawl, depth 5, sitemap |
+
+> **Mirror** follows links on the **exact same hostname** only (not `sub.example.com`). For single-page portfolios (SPA), prefer **`page`** preset — mirror crawls many routes and is slow on portfolio sites.
 
 ```bash
-anydownload https://example.com --preset mirror -o mysite
+anydownload https://example.com --preset full -o mysite
 ```
 
 ---
 
-## CLI Options
+## Common options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-o, --output` | Output folder | `downloaded_site` |
-| `--preset` | `page` \| `full` \| `mirror` | `page` |
-| `--wizard` | Interactive setup | - |
-| `--gui` | Start web interface | - |
-| `-d, --dynamic` | Force browser rendering | auto |
-| `--mode` | `static` \| `render` \| `auto` | `auto` |
-| `--engine-mode` | (deprecated) same as `--mode` | - |
-| `--browser` | Render backend: `puppeteer` \| `playwright` | `puppeteer` |
-| `--browser-engine` | `chromium` \| `firefox` \| `webkit` | `chromium` |
-| `-r, --recursive` | Follow same-domain links | preset |
-| `-m, --max-depth` | Recursion depth | preset |
-| `--sitemap` | Read sitemap.xml + write sitemap.xml.gz | preset |
-| `--ignore-robots` | Skip robots.txt check | `false` |
-| `--wait` | Extra ms after page load | `2000` |
+| `-o, --output <dir>` | Output parent folder (files go in `<dir>/<hostname>/`) | `downloaded_site` |
+| `--mode <mode>` | `static` \| `render` \| `auto` | `auto` |
+| `-p, --path` | Discover URLs; save `paths.txt` only (uses Playwright by default) | off |
+| `--path-deep` | Add Wayback Machine + extended path wordlist | off |
+| `--path-no-render` | Skip Playwright during `-p` | off |
+| `--open` | Start HTTP preview + open browser | off |
+| `--serve` | Start HTTP preview after download | off |
+| `--serve-port <n>` | Preview port (download command) | `8765` |
+| `--wait <ms>` | Extra wait after page load (**render** only) | `2000` |
+| `-v, --verbose` | Verbose logs | off |
+| `--preset <name>` | `page` \| `full` \| `mirror` | `page` |
+| `-r, --recursive` | Follow same-**hostname** links | preset |
+| `-m, --max-depth <n>` | Crawl / path-discovery depth | `1` |
+| `--type <type>` | Filter assets: `all` \| `image` \| `css` \| `js` \| `html` \| `media` \| `font` | `all` |
+| `--sitemap` | Use sitemap when crawling + write `sitemap.xml.gz` | off |
+| `--delay <ms>` | Delay between requests (path probe / download) | `500` |
+| `--concurrency <n>` | Parallel asset downloads | `5` |
+| `--filter <regex>` | Only URLs matching regex | — |
+| `-d, --dynamic` | Same as `--mode render` | off |
 
-### Advanced subcommand
+**Render-only:** `--browser` (`playwright` default, or `puppeteer`), `--browser-engine`, `--headless`
 
-```bash
-anydownload advanced https://example.com --proxy http://127.0.0.1:8080 --type css
-```
+**`serve` subcommand:** `-p, --port <n>` — preview server port (default `8765`)
 
----
+Full list: `anydownload --help`
 
-## Web GUI
-
-```bash
-anydownload --gui
-# Visit http://localhost:3000
-```
-
-The GUI has three levels: **simple** (URL, output, preset), **advanced** (browser, depth, concurrency), and **expert** (proxy, filters, login JSON).
-
----
-
-## AnyDownload Engine
-
-AnyDownload has its own engine with three modes—no Playwright install required unless render mode is triggered:
-
-| Mode | When used | Browser needed? |
-|------|-----------|-----------------|
-| `static` | Simple HTML sites, blogs, docs | **No** |
-| `auto` (default) | Detects if page needs JS; uses static when possible | Only if detected |
-| `render` | SPAs, React/Vue/Next.js sites (`-d` flag) | Yes (auto-installed) |
+### Path discovery (`-p`)
 
 ```bash
-# Static only — fastest, zero browser
-anydownload https://example.com --mode static
-
-# Force browser rendering
-anydownload https://spa-app.com --mode render
-
-# Auto (default) — smart pick
-anydownload https://example.com
+anydownload example.com -p -o mysite
+# → mysite/example.com/paths.txt
 ```
 
-Render backend defaults to **Puppeteer** (Chromium downloads with `npm install`). Use `--browser playwright` only if you prefer Playwright; it will auto-install Chromium on first render download.
-
----
-
-## Docker
+Sources: sitemap, `robots.txt`, same-hostname crawl, path probes, JS hints, web manifest, source maps, **Playwright network capture** (default). With `--path-deep`: [Wayback Machine](https://web.archive.org) historical URLs + ~150 path wordlist probes.
 
 ```bash
-docker build -t anydownload .
-docker run -p 3000:3000 anydownload
+anydownload example.com -p --path-deep --delay 500 -o mysite
+anydownload example.com -p --path-no-render   # static discovery only, faster
 ```
+
+Does **not** download the full site. Cannot guarantee login-only or CAPTCHA-protected routes. Use only on sites you are allowed to scan.
 
 ---
 
-## Library API
+## Project limitations
 
-```javascript
-const { SiteDownloader } = require('anydownload/downloader');
+AnyDownload builds **offline-browsable mirrors**. It is **not** a universal “download anything from the internet” tool.
 
-const downloader = new SiteDownloader({
-  outputDir: './output',
-  preset: 'page',
-  browserType: 'playwright'
-});
+### Works well
 
-await downloader.downloadWebsite('https://example.com');
-```
+- Public HTTP(S) pages and same-origin assets
+- Static sites, blogs, documentation
+- Many SPAs with `--mode render` + HTTP preview
+- HTML, CSS, JS (including `type="module"`), images, fonts, preload/modulepreload
+- WASM, JSON, webp/avif, media when captured in render mode
+
+### Does not work (or unreliable)
+
+| Case | Why |
+|------|-----|
+| Login / paywall | No credentials unless you pass cookies |
+| DRM video (Netflix, etc.) | Encrypted streams |
+| CAPTCHA / bot protection | Needs human verification |
+| WebSocket / live streams | Not a static file |
+| `blob:` / `data:` URLs | Skipped by design |
+| Infinite scroll without scrolling | Content never loads |
+| Double-clicking `index.html` | `file://` breaks ES modules → white screen |
+| “Download every file on the internet” | Out of scope |
+
+Optional failures (e.g. `favicon`, `banner.png`, cross-origin CDN fonts) may be reported in verbose mode but do not increment the failed count or block the main page.
 
 ---
 
-## Architecture (v2)
+## Output layout
+
+Files are saved under **`<output-folder>/<hostname>/`**, not directly in the output folder root:
 
 ```
-src/
-├── engine/          # Unified BrowserEngine (Puppeteer + Playwright)
-├── downloader/      # SiteDownloader, AssetPipeline, parsers, Crawler
-├── cli/             # Simplified CLI with presets
-└── server/          # Web GUI
+test/                          ← folder you pass with -o or wizard
+└── example.com/               ← hostname subfolder (always created)
+    ├── index.html
+    ├── paths.txt              ← when using -p / --path
+    ├── sitemap.xml.gz         ← when --sitemap is used
+    └── assets/
+        ├── index-xxxxx.js
+        └── index-xxxxx.css
 ```
+
+If you choose output `test`, the site lives at `test/example.com/`. A separate default `downloaded_site/` folder is only used when you omit `-o` entirely (not from wizard defaults leaking into CLI).
 
 ---
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Contributors
+
+<a href="https://github.com/HenryLok0/AnyDownload/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=HenryLok0/AnyDownload" />
+</a>
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Support
+
+- GitHub Issues: [Open an issue](https://github.com/HenryLok0/AnyDownload/issues)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=HenryLok0/AnyDownload&type=Date)](https://star-history.com/#HenryLok0/AnyDownload&Date)

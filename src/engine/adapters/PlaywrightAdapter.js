@@ -1,5 +1,15 @@
-const playwright = require('playwright');
 const NetworkCapture = require('../NetworkCapture');
+
+function loadPlaywright() {
+    try {
+        return require('playwright');
+    } catch {
+        throw new Error(
+            'Playwright is not installed. For render mode run: npm install playwright'
+        );
+    }
+}
+const { collectDomResourceUrls } = require('../DomResourceCollector');
 
 const BROWSER_MAP = {
     chromium: 'chromium',
@@ -23,6 +33,7 @@ class PlaywrightAdapter {
     }
 
     async launch() {
+        const playwright = loadPlaywright();
         const launcher = playwright[this.browserName];
         if (!launcher) {
             throw new Error(`Unsupported Playwright browser: ${this.browserName}`);
@@ -87,6 +98,20 @@ class PlaywrightAdapter {
 
     async getContent(page) {
         return page.content();
+    }
+
+    async getCookies(page) {
+        return page.context().cookies();
+    }
+
+    async collectDomResourceUrls(page) {
+        return collectDomResourceUrls(page);
+    }
+
+    async closePage(page) {
+        if (page && !page.isClosed()) {
+            await page.close();
+        }
     }
 
     async getUrl(page) {

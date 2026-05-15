@@ -7,15 +7,19 @@ const RESOURCE_SELECTORS = [
     'link[rel="stylesheet"][href]',
     'link[rel="preload"][href]',
     'link[rel="prefetch"][href]',
+    'link[rel="modulepreload"][href]',
     'link[rel="icon"][href]',
     'link[rel="shortcut icon"][href]',
     'link[rel="apple-touch-icon"][href]',
+    'link[rel="image_src"][href]',
     'script[src]',
     'script[type="module"][src]',
     'link[rel="manifest"][href]',
     'video[src]',
+    'video[poster]',
     'audio[src]',
     'source[src]',
+    'track[src]',
     'iframe[src]',
     'object[data]',
     'embed[src]'
@@ -32,7 +36,10 @@ function extractFromHtml(html, pageUrl) {
 
     RESOURCE_SELECTORS.forEach((selector) => {
         $(selector).each((_, el) => {
-            const src = $(el).attr('src') || $(el).attr('href') || $(el).attr('data');
+            const src = $(el).attr('src') ||
+                $(el).attr('href') ||
+                $(el).attr('data') ||
+                $(el).attr('poster');
             if (src) add(src);
         });
     });

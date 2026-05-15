@@ -21,4 +21,13 @@ describe('CLI', () => {
         expect(result.stdout).toMatch(/Download a website/i);
         expect(result.stdout).toMatch(/--mode/);
     });
+
+    test('serve command is registered', () => {
+        const result = spawnSync(process.execPath, [CLI, 'serve', '--help'], {
+            encoding: 'utf8',
+            timeout: 10000
+        });
+        expect(result.status).toBe(0);
+        expect(result.stdout).toMatch(/Serve a downloaded folder/i);
+    });
 });

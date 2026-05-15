@@ -7,8 +7,8 @@ RUN npm install --production
 
 COPY . .
 
-# Chromium for render engine (auto-used only when needed)
-RUN npx puppeteer browsers install chrome || true
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
+RUN npx playwright install chromium || true
 
 EXPOSE 3000
 CMD ["node", "web-gui.js"]

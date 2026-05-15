@@ -18,7 +18,7 @@ class AnyDownloadEngine {
         this.cookie = options.cookie;
         this.timeout = options.timeout || 30000;
         this.extraWait = options.extraWait || 2000;
-        this.renderProvider = options.renderProvider || options.browserType || 'puppeteer';
+        this.renderProvider = options.renderProvider || options.browserType || 'playwright';
         this.browser = options.browser || 'chromium';
         this.headless = options.headless !== false;
         this.loginUrl = options.loginUrl;
@@ -86,8 +86,8 @@ class AnyDownloadEngine {
 
         if (mode === 'render') {
             const engine = await this._getRenderEngine();
-            const { html, capture } = await engine.fetchPage(url, options);
-            return { html, capture, engine: 'render' };
+            const { html, capture, cookies, domUrls } = await engine.fetchPage(url, options);
+            return { html, capture, cookies, domUrls, engine: 'render' };
         }
 
         // auto
@@ -101,8 +101,8 @@ class AnyDownloadEngine {
         }
 
         const engine = await this._getRenderEngine();
-        const { html, capture } = await engine.fetchPage(url, options);
-        return { html, capture, engine: 'render' };
+        const { html, capture, cookies, domUrls } = await engine.fetchPage(url, options);
+        return { html, capture, cookies, domUrls, engine: 'render' };
     }
 
     async close() {

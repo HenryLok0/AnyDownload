@@ -5,6 +5,7 @@ const { SitemapStream } = require('sitemap');
 const { createGzip } = require('zlib');
 const { AnyDownloadEngine } = require('../engine');
 const { isValidUrl } = require('../utils/url');
+const { mergeCookieHeader, cookiesToHeader } = require('../utils/cookies');
 const { extractFromHtml } = require('./parsers/HtmlParser');
 const PathMapper = require('./storage/PathMapper');
 const UrlRewriter = require('./rewrite/UrlRewriter');
@@ -22,7 +23,7 @@ class SiteDownloader extends EventEmitter {
         this.userAgent = options.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
         this.engineMode = options.mode || options.engineMode ||
             (options.dynamic ? 'render' : (options.autoDynamic === false ? 'static' : 'auto'));
-        this.browserType = options.browserType || options.provider || 'puppeteer';
+        this.browserType = options.browserType || options.provider || 'playwright';
         this.browser = options.browser || 'chromium';
         this.headless = options.headless !== false;
         this.extraWait = options.extraWait || options.wait || 2000;
@@ -96,8 +97,8 @@ class SiteDownloader extends EventEmitter {
         });
     }
 
-    async _writeSitemap() {
-        if (!this.useSitemap || !this.visited.size) return;
+    async _writeSitemap(baseDir) {
+        if (!this.useSitemap || !this.visited.size || !baseDir) return;
         const baseUrl = new URL([...this.visited][0]).origin;
         const sitemap = new SitemapStream({ hostname: baseUrl });
         const gzip = createGzip();
@@ -116,16 +117,17 @@ class SiteDownloader extends EventEmitter {
         });
 
         await fs.writeFile(
-            path.join(this.outputDir, 'sitemap.xml.gz'),
+            path.join(baseDir, 'sitemap.xml.gz'),
             Buffer.concat(chunks)
         );
     }
 
     async _fetchAndDownloadAssets(url, baseDir, engineMode) {
         const pathMapper = new PathMapper(url);
-        const pipeline = new AssetPipeline(this.pipelineOptions);
+        const pipelineOptions = { ...this.pipelineOptions };
         let html;
         let capture = null;
+        let domUrls = [];
         let usedEngine = engineMode;
 
         const engine = this._createEngine();
@@ -133,7 +135,14 @@ class SiteDownloader extends EventEmitter {
             const result = await engine.fetchPage(url, { mode: engineMode });
             html = result.html;
             capture = result.capture;
+            domUrls = result.domUrls || [];
             usedEngine = result.engine || engineMode;
+            if (result.cookies) {
+                pipelineOptions.cookie = mergeCookieHeader(
+                    pipelineOptions.cookie,
+                    cookiesToHeader(result.cookies)
+                );
+            }
             if (this.verbose && result.engine) {
                 console.log(`[AnyDownload] Engine: ${result.engine}`);
             }
@@ -141,12 +150,18 @@ class SiteDownloader extends EventEmitter {
             await engine.close();
         }
 
-        const { resources } = extractFromHtml(html, url);
-        pipeline.enqueueMany(resources, url);
+        const pipeline = new AssetPipeline(pipelineOptions);
 
         if (capture) {
-            await pipeline.saveCapturedResponses(capture, url, baseDir);
+            await pipeline.saveCapturedResponses(capture, url);
         }
+
+        if (domUrls.length) {
+            pipeline.enqueueMany(domUrls, url);
+        }
+
+        const { resources } = extractFromHtml(html, url);
+        pipeline.enqueueMany(resources, url);
 
         const rewriter = new UrlRewriter(url, pathMapper);
         const rewrittenHtml = rewriter.rewriteHtml(html);
@@ -207,7 +222,7 @@ class SiteDownloader extends EventEmitter {
         await fs.ensureDir(baseDir);
 
         await this.downloadPage(url, 0, baseDir);
-        await this._writeSitemap();
+        await this._writeSitemap(baseDir);
 
         return {
             outputDir: baseDir,

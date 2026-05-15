@@ -1,62 +1,86 @@
-const { execSync } = require('child_process');
 const fs = require('fs');
+const { execSync } = require('child_process');
 
-let installAttempted = false;
+const INSTALL_HINT = {
+    puppeteer: 'npm install puppeteer',
+    playwright: 'npx playwright install chromium'
+};
+
+function tryRequire(moduleName) {
+    try {
+        return require(moduleName);
+    } catch {
+        return null;
+    }
+}
+
+function isPeerInstalled(provider) {
+    if (provider === 'puppeteer') return !!tryRequire('puppeteer');
+    if (provider === 'playwright') return !!tryRequire('playwright');
+    return false;
+}
+
+function missingPeerError(provider) {
+    if (provider === 'playwright') {
+        return new Error(
+            'Playwright is not available. Reinstall anydownload or run: npx playwright install chromium'
+        );
+    }
+    return new Error(
+        `Render mode requires a browser package.\n` +
+        `  Bundled: Playwright (default)\n` +
+        `  Optional: ${INSTALL_HINT.puppeteer}\n` +
+        `(You selected: ${provider}. Run: ${INSTALL_HINT[provider] || INSTALL_HINT.puppeteer})`
+    );
+}
 
 function isMissingBrowserError(err) {
     const msg = String(err?.message || err);
     return /executable doesn't exist|browser.*not found|Failed to launch|ENOENT.*chrome|playwright install/i.test(msg);
 }
 
-/**
- * Ensure a render backend is ready. Puppeteer downloads Chromium on npm install;
- * Playwright requires a separate browser install step.
- */
-async function ensureRenderBackend(provider = 'puppeteer') {
-    if (provider === 'puppeteer') {
-        try {
-            const puppeteer = require('puppeteer');
-            const executable = puppeteer.executablePath?.();
-            if (executable && fs.existsSync(executable)) {
-                return { provider: 'puppeteer', ready: true };
-            }
-        } catch {
-            // fall through to install attempt
-        }
-        if (!installAttempted) {
-            installAttempted = true;
-            console.log('[AnyDownload] Downloading Chromium for Puppeteer (one-time, ~150MB)...');
-            try {
-                execSync('npx puppeteer browsers install chrome', {
-                    stdio: 'inherit',
-                    env: process.env
-                });
-                return { provider: 'puppeteer', ready: true };
-            } catch {
-                // older puppeteer versions bundle on postinstall; try anyway
-            }
-        }
-        return { provider: 'puppeteer', ready: true };
-    }
+async function ensureRenderBackend(provider = 'playwright') {
+    const normalized = (provider || 'playwright').toLowerCase();
 
-    if (provider === 'playwright') {
+    if (normalized === 'playwright') {
+        const playwright = tryRequire('playwright');
+        if (!playwright) throw missingPeerError('playwright');
         try {
-            const { chromium } = require('playwright');
-            const browser = await chromium.launch({ headless: true });
+            const browser = await playwright.chromium.launch({ headless: true });
             await browser.close();
-            return { provider: 'playwright', ready: true };
         } catch (err) {
-            if (!isMissingBrowserError(err)) throw err;
-        }
-        if (!installAttempted) {
-            installAttempted = true;
-            console.log('[AnyDownload] Installing Playwright Chromium (one-time, ~150MB)...');
-            execSync('npx playwright install chromium', {
-                stdio: 'inherit',
-                env: process.env
-            });
+            if (isMissingBrowserError(err)) {
+                console.log('[AnyDownload] Downloading Playwright Chromium...');
+                try {
+                    execSync('npx playwright install chromium', {
+                        stdio: 'inherit',
+                        env: process.env
+                    });
+                    const browser = await playwright.chromium.launch({ headless: true });
+                    await browser.close();
+                } catch (installErr) {
+                    throw new Error(
+                        'Playwright browsers are missing. Run: npx playwright install chromium\n' +
+                        (installErr.message || installErr)
+                    );
+                }
+            } else {
+                throw err;
+            }
         }
         return { provider: 'playwright', ready: true };
+    }
+
+    if (normalized === 'puppeteer') {
+        const puppeteer = tryRequire('puppeteer');
+        if (!puppeteer) throw missingPeerError('puppeteer');
+        const executable = puppeteer.executablePath?.();
+        if (executable && !fs.existsSync(executable)) {
+            throw new Error(
+                'Puppeteer is installed but Chromium is missing. Run: npx puppeteer browsers install chrome'
+            );
+        }
+        return { provider: 'puppeteer', ready: true };
     }
 
     throw new Error(`Unknown render provider: ${provider}`);
@@ -64,5 +88,8 @@ async function ensureRenderBackend(provider = 'puppeteer') {
 
 module.exports = {
     ensureRenderBackend,
-    isMissingBrowserError
+    isMissingBrowserError,
+    isPeerInstalled,
+    missingPeerError,
+    INSTALL_HINT
 };

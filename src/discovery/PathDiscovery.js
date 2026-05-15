@@ -1,0 +1,412 @@
+const axios = require('axios');
+const cheerio = require('cheerio');
+const fs = require('fs-extra');
+const path = require('path');
+const Crawler = require('../downloader/Crawler');
+const { normalizeUrl, sameHostname, getOrigin } = require('../utils/url');
+const { isPeerInstalled } = require('../engine/BrowserInstaller');
+
+const COMMON_PATHS = [
+    '', 'robots.txt', 'sitemap.xml', 'sitemap_index.xml',
+    'admin', 'login', 'api', 'api/v1', 'api/v2', 'dashboard',
+    'wp-admin', 'wp-login.php', '.well-known/security.txt',
+    'about', 'contact', 'blog', 'docs', 'privacy', 'terms',
+    'feed', 'rss', 'atom.xml', 'favicon.ico', 'manifest.json',
+    'assets', 'static', 'public', 'health', 'status',
+    'swagger', 'swagger.json', 'api-docs', 'openapi.json', 'graphql',
+    '.git/HEAD', '_next', 'vite', 'server-status'
+];
+
+const JS_PATH_REGEX = /["'](\/[a-zA-Z0-9_\-./?#%&=+~]{1,200})["']/g;
+const HTML_PATH_COMMENT = /<!--\s*(\/[a-zA-Z0-9_\-./]+)\s*-->/g;
+
+class PathDiscovery {
+    constructor(options = {}) {
+        this.userAgent = options.userAgent || 'Mozilla/5.0 (compatible; AnyDownload/2.2)';
+        this.timeout = options.timeout || 15000;
+        this.maxDepth = options.maxDepth || 3;
+        this.delay = options.delay || 200;
+        this.verbose = options.verbose || false;
+        this.pathDeep = options.pathDeep === true;
+        this.useRender = options.useRender !== false;
+        this.renderProvider = options.renderProvider || 'playwright';
+        this.crawler = new Crawler({
+            recursive: true,
+            maxDepth: this.maxDepth,
+            useSitemap: true,
+            userAgent: this.userAgent
+        });
+        this.entries = new Map();
+        this._jsUrls = new Set();
+    }
+
+    _add(url, source, meta = {}) {
+        const normalized = normalizeUrl(url, url);
+        if (!normalized) return;
+        const existing = this.entries.get(normalized);
+        if (existing) {
+            if (!existing.sources.includes(source)) existing.sources.push(source);
+            return;
+        }
+        this.entries.set(normalized, { url: normalized, sources: [source], ...meta });
+    }
+
+    async _fetchText(url) {
+        const res = await axios.get(url, {
+            headers: { 'User-Agent': this.userAgent },
+            timeout: this.timeout,
+            validateStatus: s => s < 500
+        });
+        if (res.status >= 400) return null;
+        return String(res.data);
+    }
+
+    async _fetchRobots(startUrl) {
+        const origin = getOrigin(startUrl);
+        if (!origin) return;
+        try {
+            const text = await this._fetchText(`${origin}/robots.txt`);
+            if (!text) return;
+            for (const line of text.split('\n')) {
+                const trimmed = line.trim();
+                const sitemapMatch = trimmed.match(/^sitemap:\s*(.+)/i);
+                if (sitemapMatch) {
+                    const u = normalizeUrl(sitemapMatch[1].trim(), startUrl);
+                    if (u && sameHostname(u, startUrl)) this._add(u, 'robots-sitemap');
+                }
+                const disallowMatch = trimmed.match(/^disallow:\s*(\S+)/i);
+                if (disallowMatch) {
+                    const p = disallowMatch[1].trim();
+                    if (p && p !== '/') {
+                        const u = normalizeUrl(p, startUrl);
+                        if (u && sameHostname(u, startUrl)) this._add(u, 'robots-hint');
+                    }
+                }
+                const allowMatch = trimmed.match(/^allow:\s*(\S+)/i);
+                if (allowMatch) {
+                    const p = allowMatch[1].trim();
+                    if (p) {
+                        const u = normalizeUrl(p, startUrl);
+                        if (u && sameHostname(u, startUrl)) this._add(u, 'robots-hint');
+                    }
+                }
+            }
+        } catch {
+            // robots optional
+        }
+    }
+
+    async _fetchSitemap(startUrl) {
+        const urls = await this.crawler.fetchSitemapUrls(startUrl);
+        for (const u of urls) {
+            if (sameHostname(u, startUrl)) this._add(u, 'sitemap');
+        }
+    }
+
+    async _fetchWayback(startUrl) {
+        if (!this.pathDeep) return;
+        try {
+            const host = new URL(startUrl).hostname;
+            const api = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(host)}/*&output=json&fl=original&collapse=urlkey&limit=500`;
+            const res = await axios.get(api, {
+                timeout: this.timeout * 2,
+                headers: { 'User-Agent': this.userAgent },
+                validateStatus: s => s < 500
+            });
+            if (!Array.isArray(res.data) || res.data.length < 2) return;
+            for (let i = 1; i < res.data.length; i++) {
+                const row = res.data[i];
+                const original = Array.isArray(row) ? row[0] : row;
+                if (!original) continue;
+                const u = normalizeUrl(original, startUrl);
+                if (u && sameHostname(u, startUrl)) this._add(u, 'wayback');
+            }
+        } catch (err) {
+            if (this.verbose) console.log(`Wayback skipped: ${err.message}`);
+        }
+    }
+
+    _parseHtmlExtras(html, pageUrl) {
+        if (!html) return;
+        const $ = cheerio.load(html);
+
+        $('link[rel="canonical"], link[rel="alternate"]').each((_, el) => {
+            const href = $(el).attr('href');
+            const u = normalizeUrl(href, pageUrl);
+            if (u && sameHostname(u, pageUrl)) this._add(u, 'html-meta');
+        });
+
+        $('form[action]').each((_, el) => {
+            const u = normalizeUrl($(el).attr('action'), pageUrl);
+            if (u && sameHostname(u, pageUrl)) this._add(u, 'form');
+        });
+
+        $('button[formaction]').each((_, el) => {
+            const u = normalizeUrl($(el).attr('formaction'), pageUrl);
+            if (u && sameHostname(u, pageUrl)) this._add(u, 'form');
+        });
+
+        let m;
+        HTML_PATH_COMMENT.lastIndex = 0;
+        while ((m = HTML_PATH_COMMENT.exec(html)) !== null) {
+            const u = normalizeUrl(m[1], pageUrl);
+            if (u && sameHostname(u, pageUrl)) this._add(u, 'html-meta');
+        }
+    }
+
+    async _fetchManifest(startUrl) {
+        const origin = getOrigin(startUrl);
+        if (!origin) return;
+        for (const manifestPath of ['manifest.json', 'site.webmanifest']) {
+            try {
+                const text = await this._fetchText(`${origin}/${manifestPath}`);
+                if (!text) continue;
+                const data = JSON.parse(text);
+                if (data.start_url) {
+                    const u = normalizeUrl(data.start_url, startUrl);
+                    if (u && sameHostname(u, startUrl)) this._add(u, 'manifest');
+                }
+                if (data.scope) {
+                    const u = normalizeUrl(data.scope, startUrl);
+                    if (u && sameHostname(u, startUrl)) this._add(u, 'manifest');
+                }
+                const icons = data.icons || [];
+                for (const icon of icons) {
+                    if (icon.src) {
+                        const u = normalizeUrl(icon.src, startUrl);
+                        if (u && sameHostname(u, startUrl)) this._add(u, 'manifest');
+                    }
+                }
+            } catch {
+                // skip invalid manifest
+            }
+        }
+    }
+
+    _extractJsPaths(text, baseUrl) {
+        if (!text || text.length > 2_000_000) return;
+        let match;
+        JS_PATH_REGEX.lastIndex = 0;
+        while ((match = JS_PATH_REGEX.exec(text)) !== null) {
+            const p = match[1];
+            if (p.startsWith('//') || p.includes('${')) continue;
+            const u = normalizeUrl(p, baseUrl);
+            if (u && sameHostname(u, baseUrl)) this._add(u, 'js');
+        }
+    }
+
+    async _fetchSourceMaps(startUrl) {
+        const jsList = [...this._jsUrls].slice(0, 20);
+        for (const jsUrl of jsList) {
+            const mapUrl = jsUrl.replace(/\.m?js(\?.*)?$/i, '.map$1');
+            if (mapUrl === jsUrl) continue;
+            try {
+                const text = await this._fetchText(mapUrl);
+                if (!text) continue;
+                const data = JSON.parse(text);
+                const sources = data.sources || [];
+                for (const src of sources) {
+                    if (!src || src.startsWith('webpack:')) continue;
+                    const u = normalizeUrl(src, startUrl);
+                    if (u && sameHostname(u, startUrl)) this._add(u, 'sourcemap');
+                    else if (src.startsWith('/')) {
+                        const rel = normalizeUrl(src, startUrl);
+                        if (rel && sameHostname(rel, startUrl)) this._add(rel, 'sourcemap');
+                    }
+                }
+            } catch {
+                // no sourcemap
+            }
+            if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+        }
+    }
+
+    async _bfsCrawl(startUrl) {
+        const queue = [{ url: startUrl, depth: 0 }];
+        const visited = new Set();
+
+        while (queue.length > 0) {
+            const { url, depth } = queue.shift();
+            const key = normalizeUrl(url, startUrl);
+            if (!key || visited.has(key)) continue;
+            visited.add(key);
+            this._add(key, depth === 0 ? 'seed' : 'crawl');
+
+            if (depth >= this.maxDepth) continue;
+
+            try {
+                const html = await this._fetchText(key);
+                if (!html) continue;
+
+                this._parseHtmlExtras(html, startUrl);
+                const links = this.crawler.collectPageLinks(html, startUrl);
+                for (const link of links) {
+                    this._add(link, 'html');
+                    if (!visited.has(link)) queue.push({ url: link, depth: depth + 1 });
+                }
+
+                if (/\.js(\?|$)/i.test(key)) {
+                    this._jsUrls.add(key);
+                    this._extractJsPaths(html, startUrl);
+                } else {
+                    const scriptUrls = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
+                        .map(m => normalizeUrl(m[1], key))
+                        .filter(Boolean)
+                        .slice(0, 15);
+                    for (const scriptUrl of scriptUrls) {
+                        if (!sameHostname(scriptUrl, startUrl)) continue;
+                        this._jsUrls.add(scriptUrl);
+                        try {
+                            const js = await this._fetchText(scriptUrl);
+                            if (js) this._extractJsPaths(js, startUrl);
+                        } catch {
+                            // skip
+                        }
+                        if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+                    }
+                }
+            } catch {
+                // skip
+            }
+            if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+        }
+    }
+
+    _loadDeepWordlist() {
+        const file = path.join(__dirname, '..', '..', 'data', 'path-wordlist.txt');
+        try {
+            const lines = fs.readFileSync(file, 'utf8').split('\n')
+                .map(l => l.trim())
+                .filter(l => l && !l.startsWith('#'));
+            return [...new Set([...COMMON_PATHS, ...lines])];
+        } catch {
+            return COMMON_PATHS;
+        }
+    }
+
+    async _probePaths(startUrl, segments, sourceTag) {
+        const origin = getOrigin(startUrl);
+        if (!origin) return;
+
+        for (const segment of segments) {
+            const target = segment ? `${origin}/${segment.replace(/^\//, '')}` : `${origin}/`;
+            const u = normalizeUrl(target, startUrl);
+            if (!u || !sameHostname(u, startUrl)) continue;
+
+            try {
+                const res = await axios.head(u, {
+                    headers: { 'User-Agent': this.userAgent },
+                    timeout: this.timeout,
+                    maxRedirects: 5,
+                    validateStatus: () => true
+                });
+                if (res.status >= 200 && res.status < 400) {
+                    this._add(u, sourceTag, { status: res.status });
+                }
+            } catch {
+                try {
+                    const res = await axios.get(u, {
+                        headers: { 'User-Agent': this.userAgent },
+                        timeout: this.timeout,
+                        maxRedirects: 5,
+                        validateStatus: s => s < 500
+                    });
+                    if (res.status >= 200 && res.status < 400) {
+                        this._add(u, sourceTag, { status: res.status });
+                    }
+                } catch {
+                    // not found
+                }
+            }
+            if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+        }
+    }
+
+    async _probeCommonPaths(startUrl) {
+        await this._probePaths(startUrl, COMMON_PATHS, 'probe');
+    }
+
+    async _probeDeepPaths(startUrl) {
+        if (!this.pathDeep) return;
+        const wordlist = this._loadDeepWordlist();
+        const extra = wordlist.filter(p => !COMMON_PATHS.includes(p));
+        await this._probePaths(startUrl, extra, 'probe-deep');
+    }
+
+    async _renderEnhance(startUrl) {
+        if (!this.useRender) return;
+        const hasBrowser = isPeerInstalled('playwright') || isPeerInstalled('puppeteer');
+        if (!hasBrowser) return;
+        try {
+            const AnyDownloadEngine = require('../engine/AnyDownloadEngine');
+            const engine = new AnyDownloadEngine({
+                mode: 'render',
+                renderProvider: this.renderProvider,
+                browserType: this.renderProvider,
+                userAgent: this.userAgent,
+                timeout: this.timeout
+            });
+            const { capture } = await engine.fetchPage(startUrl);
+            await engine.close();
+            if (capture?.getAll) {
+                for (const entry of capture.getAll()) {
+                    const u = entry.url;
+                    if (u && sameHostname(u, startUrl)) this._add(u, 'render');
+                }
+            }
+        } catch (err) {
+            if (this.verbose) console.log(`Render path discovery skipped: ${err.message}`);
+        }
+    }
+
+    async discover(startUrl) {
+        startUrl = normalizeUrl(startUrl, startUrl);
+        if (!startUrl) throw new Error('Invalid URL');
+
+        await this._fetchRobots(startUrl);
+        await this._fetchSitemap(startUrl);
+        if (this.pathDeep) await this._fetchWayback(startUrl);
+        await this._fetchManifest(startUrl);
+        await this._bfsCrawl(startUrl);
+        await this._fetchSourceMaps(startUrl);
+        await this._probeCommonPaths(startUrl);
+        await this._probeDeepPaths(startUrl);
+        await this._renderEnhance(startUrl);
+
+        return this.getResults(startUrl);
+    }
+
+    getResults(startUrl) {
+        const sorted = [...this.entries.values()].sort((a, b) => a.url.localeCompare(b.url));
+        const bySource = {};
+        for (const entry of sorted) {
+            for (const src of entry.sources) {
+                bySource[src] = (bySource[src] || 0) + 1;
+            }
+        }
+        return { startUrl, paths: sorted, total: sorted.length, bySource };
+    }
+
+    static formatTxt(results) {
+        const lines = [
+            `# AnyDownload path discovery — ${results.startUrl}`,
+            `# Generated: ${new Date().toISOString()}`,
+            `# Total: ${results.total}`,
+            ''
+        ];
+        for (const entry of results.paths) {
+            const tags = entry.sources.join(',');
+            const status = entry.status ? ` [status:${entry.status}]` : '';
+            lines.push(`${entry.url}  [${tags}]${status}`);
+        }
+        return lines.join('\n') + '\n';
+    }
+
+    static async writeTxt(results, filePath) {
+        await fs.ensureDir(path.dirname(filePath));
+        await fs.writeFile(filePath, PathDiscovery.formatTxt(results), 'utf8');
+        return filePath;
+    }
+}
+
+module.exports = PathDiscovery;

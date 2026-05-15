@@ -17,6 +17,10 @@ class UrlRewriter {
     rewriteHtml(html) {
         const $ = cheerio.load(html);
 
+        if ($('base').length === 0) {
+            $('head').prepend('<base href="./">');
+        }
+
         const rewriteAttr = (el, attr) => {
             const orig = $(el).attr(attr);
             if (!orig || orig.startsWith('data:') || orig.startsWith('#')) return;
@@ -35,6 +39,20 @@ class UrlRewriter {
                 rewriteAttr(el, 'src');
                 rewriteAttr(el, 'data');
             }
+        });
+
+        $('link[rel="modulepreload"][href]').each((_, el) => {
+            rewriteAttr(el, 'href');
+        });
+
+        $('script[src]').each((_, el) => {
+            $(el).removeAttr('crossorigin');
+            $(el).removeAttr('integrity');
+        });
+
+        $('link[rel="stylesheet"], link[rel="modulepreload"]').each((_, el) => {
+            $(el).removeAttr('crossorigin');
+            $(el).removeAttr('integrity');
         });
 
         $('[srcset]').each((_, el) => {

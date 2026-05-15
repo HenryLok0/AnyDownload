@@ -33,7 +33,11 @@ class NetworkCapture {
 
     add(entry) {
         const { url, status, contentType, body, headers } = entry;
-        if (!this.shouldCapture(url, status, body?.length || 0)) {
+        const size = body?.length || 0;
+        if (!size) {
+            return;
+        }
+        if (!this.shouldCapture(url, status, size)) {
             return;
         }
         this.responses.set(url, {

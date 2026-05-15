@@ -6,6 +6,9 @@ const fs = require('fs-extra');
 const { exec } = require('child_process');
 const { SiteDownloader } = require('../downloader');
 const { applyPreset } = require('../cli/presets');
+const { startPreview } = require('./PreviewServer');
+
+const previewServers = new Map();
 
 const app = express();
 const server = http.createServer(app);
@@ -46,7 +49,7 @@ function buildOptions(body) {
             (body.dynamic === true || body.dynamic === 'true' ? 'render' : 'auto'),
         dynamic: body.dynamic === true || body.dynamic === 'true',
         autoDynamic: body.autoDynamic !== false && body.autoDynamic !== 'false',
-        browserType: body.browser || body.browserType || 'puppeteer',
+        browserType: body.browser || body.browserType || 'playwright',
         browser: body.browserEngine || 'chromium',
         headless: body.headless !== false && body.headless !== 'false',
         extraWait: Number(body.wait) || 2000,
@@ -138,21 +141,24 @@ app.post('/api/open-website', async (req, res) => {
     if (!folder) return res.json({ success: false, error: 'Folder required' });
 
     const absoluteFolder = path.resolve(folder);
-    let indexFile = path.join(absoluteFolder, 'index.html');
-    if (!(await fs.pathExists(indexFile))) {
-        const files = (await fs.readdir(absoluteFolder)).filter(f => f.endsWith('.html'));
-        if (files.length) indexFile = path.join(absoluteFolder, files[0]);
-        else return res.json({ success: false, error: 'No HTML file found' });
+    if (!(await fs.pathExists(absoluteFolder))) {
+        return res.json({ success: false, error: 'Folder not found' });
     }
 
-    const cmd = process.platform === 'win32'
-        ? `start "" "${indexFile.replace(/\\/g, '/')}"`
-        : process.platform === 'darwin'
-            ? `open "${indexFile}"`
-            : `xdg-open "${indexFile}"`;
-    exec(cmd, (err) => {
-        res.json(err ? { success: false, error: err.message } : { success: true });
-    });
+    try {
+        let entry = previewServers.get(absoluteFolder);
+        if (!entry) {
+            const { server, url } = await startPreview(absoluteFolder, { open: true });
+            entry = { server, url };
+            previewServers.set(absoluteFolder, entry);
+        } else {
+            const { openBrowser } = require('./PreviewServer');
+            openBrowser(entry.url);
+        }
+        res.json({ success: true, previewUrl: entry.url });
+    } catch (err) {
+        res.json({ success: false, error: err.message });
+    }
 });
 
 const PORT = process.env.PORT || 3000;

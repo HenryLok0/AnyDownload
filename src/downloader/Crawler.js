@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { normalizeUrl, sameOrigin, getOrigin } = require('../utils/url');
+const { normalizeUrl, sameHostname, getOrigin } = require('../utils/url');
 const { extractFromHtml } = require('./parsers/HtmlParser');
 
 class Crawler {
@@ -95,7 +95,7 @@ class Crawler {
                         } catch {
                             // skip sub-sitemap
                         }
-                    } else if (sameOrigin(u, startUrl)) {
+                    } else if (sameHostname(u, startUrl)) {
                         found.add(u);
                     }
                 }
@@ -109,7 +109,7 @@ class Crawler {
     collectPageLinks(html, pageUrl) {
         const { links } = extractFromHtml(html, pageUrl);
         return links.filter(link => {
-            if (!sameOrigin(link, pageUrl)) return false;
+            if (!sameHostname(link, pageUrl)) return false;
             if (this.filterRegex && !this.filterRegex.test(link)) return false;
             return true;
         });

@@ -23,6 +23,15 @@ Thank you for your interest in contributing! Your help is greatly appreciated. P
 - Add or update comments and docstrings as needed.
 - Run linters and tests if available.
 
+### Running tests locally
+
+```bash
+npm install
+npm test
+```
+
+Set `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` (or `CI=true`) to skip Chromium download during `npm install`. Tests use bundled Playwright; optional Puppeteer remains in `devDependencies` for adapter coverage.
+
 ---
 
 ## Pull Requests

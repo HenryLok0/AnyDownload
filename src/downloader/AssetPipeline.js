@@ -5,7 +5,6 @@ const undici = require('undici');
 const { ProxyAgent } = undici;
 const { pipeline } = require('stream');
 const { promisify } = require('util');
-const { createGunzip, createInflate, createBrotliDecompress } = require('zlib');
 const mime = require('mime-types');
 const { hashUrl } = require('../utils/url');
 const { extractUrls, rewriteCss } = require('./parsers/CssParser');
@@ -13,7 +12,7 @@ const PathMapper = require('./storage/PathMapper');
 
 const streamPipeline = promisify(pipeline);
 
-const OPTIONAL_RESOURCE = /favicon\.(ico|png|svg|gif)$/i;
+const OPTIONAL_RESOURCE = /(?:favicon|banner)\.(ico|png|svg|gif|jpe?g|webp)$/i;
 
 class AssetPipeline {
     constructor(options = {}) {
@@ -44,8 +43,26 @@ class AssetPipeline {
         this.cancelled = false;
     }
 
-    _isOptionalResource(url) {
-        return OPTIONAL_RESOURCE.test(url);
+    _isOptionalResource(url, pageUrl) {
+        if (OPTIONAL_RESOURCE.test(url)) return true;
+        if (!pageUrl) return false;
+        try {
+            const pageHost = new URL(pageUrl).hostname;
+            const resourceHost = new URL(url).hostname;
+            return pageHost !== resourceHost;
+        } catch {
+            return false;
+        }
+    }
+
+    _hasBody(body) {
+        if (!body) return false;
+        return Buffer.isBuffer(body) ? body.length > 0 : body.length > 0;
+    }
+
+    _findQueueItem(url) {
+        const key = hashUrl(url);
+        return this.queue.find(item => hashUrl(item.url) === key);
     }
 
     _acceptHeader(url) {
@@ -60,7 +77,6 @@ class AssetPipeline {
 
     _headers(pageUrl, resourceUrl) {
         const headers = {
-            'Accept-Encoding': 'gzip, deflate, br',
             Accept: this._acceptHeader(resourceUrl || pageUrl)
         };
         if (this.userAgent) headers['User-Agent'] = this.userAgent;
@@ -106,10 +122,23 @@ class AssetPipeline {
     }
 
     enqueue(url, pageUrl, meta = {}) {
-        if (!url || this.seen.has(hashUrl(url))) return;
+        if (!url) return;
         if (this.filterRegex && !this.filterRegex.test(url)) return;
         if (!this._passesTypeFilter(url)) return;
-        this.seen.add(hashUrl(url));
+
+        const key = hashUrl(url);
+        if (this.seen.has(key)) {
+            if (this._hasBody(meta.body)) {
+                const existing = this._findQueueItem(url);
+                if (existing) {
+                    existing.body = meta.body;
+                    existing.contentType = meta.contentType || existing.contentType;
+                }
+            }
+            return;
+        }
+
+        this.seen.add(key);
         this.queue.push({ url, pageUrl, ...meta });
     }
 
@@ -135,6 +164,19 @@ class AssetPipeline {
         }
     }
 
+    async _removeEmptyParentDir(savePath) {
+        try {
+            const dir = path.dirname(savePath);
+            if (!dir || dir === '.' || dir === savePath) return;
+            const entries = await fs.readdir(dir);
+            if (entries.length === 0) {
+                await fs.rmdir(dir);
+            }
+        } catch {
+            // ignore cleanup errors
+        }
+    }
+
     async _downloadToFile(url, savePath, pageUrl) {
         if (await fs.pathExists(savePath)) {
             const stat = await fs.stat(savePath);
@@ -151,17 +193,11 @@ class AssetPipeline {
         }
 
         const contentType = res.headers['content-type'] || '';
-        const encoding = res.headers['content-encoding'] || '';
 
         await fs.ensureDir(path.dirname(savePath));
         const fileStream = fs.createWriteStream(savePath);
+        await streamPipeline(res.body, fileStream);
 
-        let bodyStream = res.body;
-        if (encoding === 'gzip') bodyStream = res.body.pipe(createGunzip());
-        else if (encoding === 'deflate') bodyStream = res.body.pipe(createInflate());
-        else if (encoding === 'br') bodyStream = res.body.pipe(createBrotliDecompress());
-
-        await streamPipeline(bodyStream, fileStream);
         const stat = await fs.stat(savePath);
         this.downloadedBytes += stat.size;
         return { contentType, fromCache: false };
@@ -195,7 +231,8 @@ class AssetPipeline {
         const { url, pageUrl, body, contentType: presetType } = item;
         const pathMapper = new PathMapper(pageUrl);
         const localPath = pathMapper.toLocalPath(url);
-        const optional = this._isOptionalResource(url);
+        const optional = this._isOptionalResource(url, pageUrl);
+        let savePath = null;
 
         for (let attempt = 0; attempt < this.retry; attempt++) {
             if (this.cancelled) return;
@@ -203,11 +240,11 @@ class AssetPipeline {
                 this.onResource(url, index + 1, total);
 
                 let localPathWithExt = pathMapper.ensureExtension(localPath, presetType || '');
-                let savePath = path.join(item.baseDir, localPathWithExt);
-                await fs.ensureDir(path.dirname(savePath));
+                savePath = path.join(item.baseDir, localPathWithExt);
 
                 let contentType = presetType || '';
-                if (body) {
+                if (this._hasBody(body)) {
+                    await fs.ensureDir(path.dirname(savePath));
                     await fs.writeFile(savePath, body);
                     const stat = await fs.stat(savePath);
                     this.downloadedBytes += stat.size;
@@ -236,6 +273,7 @@ class AssetPipeline {
                 return;
             } catch (err) {
                 if (attempt >= this.retry - 1) {
+                    if (savePath) await this._removeEmptyParentDir(savePath);
                     this._recordFailure(url, err.message, optional);
                 } else {
                     await new Promise(r => setTimeout(r, this.retryDelay));
@@ -263,13 +301,12 @@ class AssetPipeline {
         }
     }
 
-    async saveCapturedResponses(capture, pageUrl, baseDir) {
+    async saveCapturedResponses(capture, pageUrl) {
         for (const entry of capture.getAll()) {
             if (entry.url === pageUrl) continue;
             this.enqueue(entry.url, pageUrl, {
                 body: entry.body,
-                contentType: entry.contentType,
-                baseDir
+                contentType: entry.contentType
             });
         }
     }

@@ -32,6 +32,14 @@ function hashUrl(url) {
     return crypto.createHash('sha1').update(url).digest('hex');
 }
 
+function sameHostname(urlA, urlB) {
+    try {
+        return new URL(urlA).hostname === new URL(urlB).hostname;
+    } catch {
+        return false;
+    }
+}
+
 function sameOrigin(urlA, urlB) {
     try {
         const a = new URL(urlA);
@@ -58,6 +66,7 @@ module.exports = {
     isValidUrl,
     normalizeUrl,
     hashUrl,
+    sameHostname,
     sameOrigin,
     getOrigin
 };

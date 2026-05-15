@@ -1,5 +1,15 @@
-const puppeteer = require('puppeteer');
 const NetworkCapture = require('../NetworkCapture');
+
+function loadPuppeteer() {
+    try {
+        return require('puppeteer');
+    } catch {
+        throw new Error(
+            'Puppeteer is not installed. For render mode run: npm install puppeteer'
+        );
+    }
+}
+const { collectDomResourceUrls } = require('../DomResourceCollector');
 
 class PuppeteerAdapter {
     constructor(options = {}) {
@@ -10,6 +20,7 @@ class PuppeteerAdapter {
         this.timeout = options.timeout || 60000;
         this.browser = null;
         this.capture = new NetworkCapture({ maxFileSize: options.maxFileSize });
+        this._cdpBodies = new Map();
     }
 
     async launch() {
@@ -17,6 +28,7 @@ class PuppeteerAdapter {
         if (this.proxy) {
             args.push(`--proxy-server=${this.proxy}`);
         }
+        const puppeteer = loadPuppeteer();
         this.browser = await puppeteer.launch({
             headless: this.headless ? 'new' : false,
             args
@@ -35,8 +47,37 @@ class PuppeteerAdapter {
         return page;
     }
 
-    enableNetworkCapture(page, capture = this.capture) {
+    async enableNetworkCapture(page, capture = this.capture) {
         capture.reset();
+        this._cdpBodies.clear();
+
+        try {
+            const client = await page.createCDPSession();
+            await client.send('Network.enable');
+            page._anydownloadCdp = client;
+            page._anydownloadCdpRequests = new Map();
+            client.on('Network.responseReceived', (params) => {
+                page._anydownloadCdpRequests.set(params.requestId, params.response.url);
+            });
+            client.on('Network.loadingFinished', async (params) => {
+                try {
+                    const result = await client.send('Network.getResponseBody', {
+                        requestId: params.requestId
+                    });
+                    const body = result.base64Encoded
+                        ? Buffer.from(result.body, 'base64')
+                        : Buffer.from(result.body);
+                    if (body.length) {
+                        this._cdpBodies.set(params.requestId, body);
+                    }
+                } catch {
+                    // Response body not available
+                }
+            });
+        } catch {
+            // CDP unavailable; fall back to response.buffer() only
+        }
+
         page.on('response', async (response) => {
             try {
                 const url = response.url();
@@ -47,7 +88,16 @@ class PuppeteerAdapter {
                 try {
                     body = await response.buffer();
                 } catch {
-                    // Some responses cannot be buffered
+                    // Fall back to CDP-captured body
+                }
+                if (!body.length && page._anydownloadCdp && page._anydownloadCdpRequests) {
+                    const request = response.request();
+                    for (const [reqId, reqUrl] of page._anydownloadCdpRequests.entries()) {
+                        if (reqUrl === url && this._cdpBodies.has(reqId)) {
+                            body = this._cdpBodies.get(reqId);
+                            break;
+                        }
+                    }
                 }
                 capture.add({ url, status, contentType, body, headers });
             } catch {
@@ -70,6 +120,20 @@ class PuppeteerAdapter {
 
     async getContent(page) {
         return page.content();
+    }
+
+    async getCookies(page) {
+        return page.cookies();
+    }
+
+    async collectDomResourceUrls(page) {
+        return collectDomResourceUrls(page);
+    }
+
+    async closePage(page) {
+        if (page && !page.isClosed()) {
+            await page.close();
+        }
     }
 
     async getUrl(page) {

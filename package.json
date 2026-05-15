@@ -2,18 +2,35 @@
   "name": "anydownload",
   "version": "2.0.0",
   "description": "A powerful website downloader with GUI support",
-  "repository": "https://github.com/HenryLok0/AnyDownload.git",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HenryLok0/AnyDownload.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HenryLok0/AnyDownload/issues"
+  },
+  "homepage": "https://github.com/HenryLok0/AnyDownload#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "main": "web-gui.js",
+  "files": [
+    "bin/",
+    "src/",
+    "views/",
+    "public/",
+    "web-gui.js",
+    "LICENSE",
+    "README.md"
+  ],
   "exports": {
     ".": "./web-gui.js",
     "./downloader": "./src/downloader/index.js",
     "./engine": "./src/engine/index.js"
   },
   "bin": {
-    "anydownload": "./bin/cli.js"
+    "anydownload": "bin/cli.js"
   },
   "scripts": {
     "start": "node web-gui.js",

@@ -35,5 +35,8 @@ coverage/
 playwright-report/
 test-results/
 
+# Build artifacts
+*.tgz
+
 # Optional local npm config (keep .npmrc out of repo if it has tokens)
 # .npmrc

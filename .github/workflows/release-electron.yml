@@ -1,0 +1,112 @@
+# Build Windows, macOS, and Linux Electron artifacts and attach them to a GitHub Release
+# Trigger: push tag v* (e.g. v2.4.0). Runners cannot cross-compile all targets on one OS; CI splits per platform.
+
+name: Release Electron builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: electron-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Desktop app renders via Electron/Chromium at runtime; skip huge Playwright browser download in CI install
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+jobs:
+  electron-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: dist-win
+            eb_flag: --win
+          - os: macos-latest
+            artifact: dist-mac
+            eb_flag: --mac
+          - os: ubuntu-latest
+            artifact: dist-linux
+            eb_flag: --linux
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Linux dependencies for AppImage/deb packaging
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2
+
+      - run: npm ci
+
+      - name: Package frontend + Electron (${{ matrix.artifact }})
+        run: npx vite build && npx electron-builder ${{ matrix.eb_flag }} --publish never
+
+      - name: Stage installer binaries only (skip unpacked dirs)
+        shell: bash
+        env:
+          TARGET: ${{ matrix.eb_flag }}
+        run: |
+          set -euo pipefail
+          mkdir -p upload
+          case "${TARGET}" in
+            --win)
+              find dist-electron -maxdepth 1 -type f \( -iname '*.exe' \) -exec cp -t upload {} +
+              ;;
+            --mac)
+              find dist-electron -maxdepth 1 -type f \( -iname '*.dmg' \) -exec cp -t upload {} +
+              ;;
+            --linux)
+              find dist-electron -maxdepth 1 -type f \( -iname '*.AppImage' -o -iname '*.deb' \) -exec cp -t upload {} +
+              ;;
+            *)
+              echo "Unknown TARGET=${TARGET}"
+              exit 1
+              ;;
+          esac
+          if [[ -z "$(ls -A upload)" ]]; then
+            echo "No installer files found under dist-electron"
+            ls -la dist-electron || true
+            exit 1
+          fi
+          ls -la upload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: upload/
+
+  release:
+    needs: electron-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge platform artifacts into one folder for upload
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: release-assets
+
+      # Ensure something was produced before creating the Release
+      - name: List release assets
+        run: ls -la release-assets
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/**/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

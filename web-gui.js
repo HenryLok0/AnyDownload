@@ -1,1 +1,2 @@
-require('./src/server/gui');
+const { startServer } = require('./src/server/gui');
+startServer();

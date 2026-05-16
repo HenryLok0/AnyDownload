@@ -1,0 +1,476 @@
+:root {
+    --primary-color: #243b53;
+    --secondary-color: #2f80ed;
+    --success-color: #27ae60;
+    --danger-color: #d64545;
+    --warning-color: #f2c94c;
+    --light-bg: #f4f7fb;
+    --dark-bg: #111827;
+    --text-color: #243447;
+    --card-bg: rgba(255, 255, 255, 0.92);
+    --border-color: rgba(36, 59, 83, 0.14);
+    --input-bg: #ffffff;
+    --input-text: #243447;
+    --placeholder-color: #6b7280;
+    --dropdown-bg: #ffffff;
+    --dropdown-text: #243447;
+    --dropdown-hover-bg: #eef4fb;
+    --dropdown-hover-text: #243447;
+    --progress-text: #243447;
+    --card-header-text: #243447;
+    --surface-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+    --surface-shadow-hover: 0 24px 60px rgba(15, 23, 42, 0.18);
+}
+
+body {
+    min-height: 100vh;
+    color: var(--text-color);
+    background:
+        radial-gradient(circle at top left, rgba(47, 128, 237, 0.15), transparent 28%),
+        radial-gradient(circle at top right, rgba(39, 174, 96, 0.12), transparent 26%),
+        linear-gradient(180deg, #f8fbff 0%, #edf2f7 100%);
+    font-family: 'Segoe UI Variable', 'Segoe UI', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    position: relative;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px);
+    background-size: 44px 44px;
+    opacity: 0.35;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.16), transparent 72%);
+}
+
+body.dark-mode {
+    --light-bg: #111827;
+    --dark-bg: #0f172a;
+    --text-color: #f8fafc;
+    --card-bg: rgba(17, 24, 39, 0.92);
+    --border-color: rgba(148, 163, 184, 0.18);
+    --input-bg: #111827;
+    --input-text: #f8fafc;
+    --placeholder-color: #94a3b8;
+    --dropdown-bg: #111827;
+    --dropdown-text: #f8fafc;
+    --dropdown-hover-bg: #1f2937;
+    --dropdown-hover-text: #f8fafc;
+    --progress-text: #f8fafc;
+    --card-header-text: #f8fafc;
+    --surface-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+    --surface-shadow-hover: 0 24px 60px rgba(0, 0, 0, 0.48);
+    background:
+        radial-gradient(circle at top left, rgba(47, 128, 237, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(39, 174, 96, 0.12), transparent 26%),
+        linear-gradient(180deg, #0b1220 0%, #111827 100%);
+}
+
+body.dark-mode::before {
+    opacity: 0.18;
+}
+
+.navbar {
+    background: linear-gradient(135deg, var(--primary-color), #1e3a5f);
+    box-shadow: 0 10px 32px rgba(15, 23, 42, 0.18);
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(12px);
+}
+
+body.dark-mode .navbar {
+    background: linear-gradient(135deg, #0f172a, #172554);
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white !important;
+    letter-spacing: 0.2px;
+}
+
+.navbar-brand i {
+    margin-right: 0.5rem;
+}
+
+.main-container {
+    padding: 2rem 0 3rem;
+}
+
+.card {
+    border-radius: 1.25rem;
+    box-shadow: var(--surface-shadow);
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--surface-shadow-hover);
+}
+
+.card-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(90deg, rgba(47, 128, 237, 0.12), rgba(39, 174, 96, 0.08));
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+.card-header h4 {
+    color: var(--card-header-text);
+    font-weight: 700;
+    margin: 0;
+}
+
+.option-group {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+    border-radius: 0.9rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+body.dark-mode .option-group {
+    background: rgba(17, 24, 39, 0.96);
+}
+
+.option-group h5 {
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 700;
+}
+
+.option-group .row {
+    margin-bottom: 0.5rem;
+}
+
+.form-label {
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.form-control,
+.form-select {
+    padding: 0.8rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 0.2rem rgba(47, 128, 237, 0.18);
+    background-color: var(--input-bg);
+    color: var(--input-text);
+}
+
+.form-control::placeholder {
+    color: var(--placeholder-color);
+    opacity: 0.85;
+}
+
+.input-group {
+    margin-bottom: 1rem;
+}
+
+.input-group-text {
+    padding: 0.8rem 1rem;
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.form-check {
+    margin-bottom: 1rem;
+    padding-left: 2.5rem;
+}
+
+.form-check-input {
+    width: 2.5rem;
+    height: 1.25rem;
+    margin-left: -2.5rem;
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+}
+
+.form-check-input:checked {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.form-check-label {
+    padding-top: 0.25rem;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.btn-primary {
+    padding: 0.85rem 1.5rem;
+    font-weight: 700;
+    border-radius: 0.8rem;
+    margin-top: 1rem;
+    background: linear-gradient(135deg, var(--secondary-color), #2563eb);
+    border: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    box-shadow: 0 10px 22px rgba(47, 128, 237, 0.28);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.03);
+    box-shadow: 0 14px 28px rgba(47, 128, 237, 0.34);
+}
+
+.btn-outline-primary,
+.btn-outline-success,
+.btn-outline-light {
+    border-radius: 0.8rem;
+}
+
+.btn-outline-light {
+    color: white;
+    border-color: rgba(255, 255, 255, 0.75);
+}
+
+.btn-outline-light:hover {
+    background-color: white;
+    color: var(--primary-color);
+}
+
+.btn-outline-primary {
+    color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.btn-outline-success {
+    color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.status-card {
+    background: var(--card-bg);
+    border-radius: 0.9rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.status-card h5 {
+    margin-bottom: 1.25rem;
+    font-weight: 700;
+}
+
+.progress {
+    height: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 999px;
+    overflow: hidden;
+    background-color: rgba(148, 163, 184, 0.18);
+}
+
+.progress-bar {
+    background-color: var(--secondary-color);
+    transition: width 0.3s ease;
+}
+
+.progress-bar-animated {
+    background: linear-gradient(45deg, var(--secondary-color), #1d4ed8, var(--secondary-color));
+    background-size: 200% 200%;
+    animation: progress-animation 2s ease infinite;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--progress-text);
+    font-weight: 600;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.18);
+}
+
+.download-info {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.92rem;
+    flex-wrap: wrap;
+}
+
+.download-status {
+    margin-top: 2rem;
+}
+
+.alert {
+    border-radius: 0.8rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background-color: #dcfce7;
+    border-color: #bbf7d0;
+    color: #14532d;
+}
+
+.alert-danger {
+    background-color: #fee2e2;
+    border-color: #fecaca;
+    color: #7f1d1d;
+}
+
+.login-section {
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.login-section h6 {
+    margin-bottom: 1.25rem;
+    font-weight: 700;
+}
+
+.login-section .form-text {
+    color: var(--placeholder-color) !important;
+}
+
+body.dark-mode .login-section {
+    background: rgba(17, 24, 39, 0.86);
+}
+
+.dropdown-menu {
+    background-color: var(--dropdown-bg);
+    border-color: var(--border-color);
+    border-radius: 0.75rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12);
+    padding: 0.5rem;
+}
+
+.dropdown-item {
+    color: var(--dropdown-text);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+}
+
+.dropdown-item:hover {
+    background-color: var(--dropdown-hover-bg);
+    color: var(--dropdown-hover-text);
+}
+
+.card-body .row {
+    margin-bottom: 0.5rem;
+}
+
+body.dark-mode .card,
+body.dark-mode .status-card,
+body.dark-mode .login-section,
+body.dark-mode .option-group {
+    border-color: var(--border-color);
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select,
+body.dark-mode .input-group-text {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--input-text);
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: var(--input-bg);
+    border-color: var(--secondary-color);
+    color: var(--input-text);
+}
+
+body.dark-mode .form-control::placeholder {
+    color: var(--placeholder-color);
+}
+
+body.dark-mode .form-check-label,
+body.dark-mode .form-label,
+body.dark-mode .card-header h4,
+body.dark-mode .status-card,
+body.dark-mode .download-info,
+body.dark-mode .option-group h5,
+body.dark-mode .login-section h6,
+body.dark-mode .login-section .form-text {
+    color: var(--text-color);
+}
+
+body.dark-mode .btn-outline-primary {
+    color: #93c5fd;
+    border-color: #93c5fd;
+}
+
+body.dark-mode .btn-outline-success {
+    color: #86efac;
+    border-color: #86efac;
+}
+
+body.dark-mode .btn-outline-light {
+    color: var(--text-color);
+    border-color: var(--text-color);
+}
+
+body.dark-mode .btn-outline-light:hover {
+    background-color: var(--text-color);
+    color: var(--dark-bg);
+}
+
+@keyframes progress-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@media (max-width: 768px) {
+    .main-container {
+        padding: 1rem 0 2rem;
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+
+    .option-group {
+        padding: 1rem;
+    }
+
+    .option-group h5 {
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .download-info {
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .navbar {
+        position: static;
+    }
+}

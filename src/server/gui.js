@@ -281,15 +281,29 @@ app.post('/api/open-website', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Web GUI running at http://localhost:${PORT}`);
-}).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        server.listen(PORT + 1, () => {
-            console.log(`Web GUI running at http://localhost:${PORT + 1}`);
+function startServer() {
+    return new Promise((resolve) => {
+        const PORT = process.env.PORT || 3000;
+        server.listen(PORT, () => {
+            const url = `http://localhost:${PORT}`;
+            console.log(`Web GUI running at ${url}`);
+            resolve(url);
+        }).on('error', (err) => {
+            if (err.code === 'EADDRINUSE') {
+                server.listen(PORT + 1, () => {
+                    const url = `http://localhost:${PORT + 1}`;
+                    console.log(`Web GUI running at ${url}`);
+                    resolve(url);
+                });
+            } else {
+                console.error(err);
+            }
         });
-    } else {
-        console.error(err);
-    }
-});
+    });
+}
+
+if (require.main === module) {
+    startServer();
+}
+
+module.exports = { startServer };

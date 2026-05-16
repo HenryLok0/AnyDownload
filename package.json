@@ -56,7 +56,10 @@
     "scraper",
     "gui"
   ],
-  "author": "HenryLok0",
+  "author": {
+    "name": "HenryLok0",
+    "email": "mail@henrylok.me"
+  },
   "license": "MIT",
   "dependencies": {
     "archiver": "^7.0.1",

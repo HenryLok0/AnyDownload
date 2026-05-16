@@ -96,6 +96,35 @@ describe('PreviewServer', () => {
         expect(nested).toContain('ok');
     });
 
+    test('nested …/static/… serves site-root static (CRA / some Next exports)', async () => {
+        await fs.ensureDir(path.join(rootDir, 'static'));
+        await fs.writeFile(path.join(rootDir, 'static', 'main.css'), '.x{color:blue}');
+        await fs.ensureDir(path.join(rootDir, 'blog'));
+        await fs.writeFile(path.join(rootDir, 'blog', 'index.html'), '<html>B</html>');
+
+        server = new PreviewServer(rootDir);
+        const baseUrl = await server.start();
+
+        const direct = await fetch(`${baseUrl}static/main.css`).then(r => r.text());
+        expect(direct).toContain('blue');
+
+        const nestedWrong = `${baseUrl}blog/static/main.css`;
+        const nested = await fetch(nestedWrong).then(r => r.text());
+        expect(nested).toContain('blue');
+    });
+
+    test('nested /blog/file.svg resolves to root file.svg (root-relative-ish public assets)', async () => {
+        await fs.writeFile(path.join(rootDir, 'avatar.svg'), '<svg />');
+        await fs.ensureDir(path.join(rootDir, 'blog'));
+        await fs.writeFile(path.join(rootDir, 'blog', 'index.html'), '<html>B</html>');
+
+        server = new PreviewServer(rootDir);
+        const baseUrl = await server.start();
+
+        const text = await fetch(`${baseUrl}blog/avatar.svg`).then(r => r.text());
+        expect(text).toContain('<svg');
+    });
+
     test('redirects /index.html to /', async () => {
         server = new PreviewServer(rootDir);
         const baseUrl = await server.start();

@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openTaskFolder: (path) => ipcRenderer.invoke('open-task-folder', path),
   exportTasks: (ids) => ipcRenderer.invoke('export-tasks', ids),
   deleteTasks: (ids) => ipcRenderer.invoke('delete-tasks', ids),
+  startOfflinePreview: (folderPath) => ipcRenderer.invoke('start-offline-preview', folderPath),
   startTask: (config) => ipcRenderer.send('start-task', config),
   onTaskUpdate: (callback) => {
     const handler = (event, data) => callback(data);

@@ -56,10 +56,17 @@ function buildHiddenWordlist() {
     }
 
     const pageTail = ['home', 'about', 'contact', 'cv', 'resume', 'work', 'projects', 'gallery', 'blog',
-        'main', 'index', 'draft', 'preview', 'test', 'demo', 'old', 'new', 'v1', 'v2'];
+        'main', 'index', 'draft', 'preview', 'test', 'demo', 'old', 'new', 'v1', 'v2', 'me'];
     for (const t of pageTail) {
         add(`page-${t}`);
         add(`page/${t}`);
+    }
+
+    const mePrefixes = ['about', 'contact', 'hire', 'find', 'reach', 'ping', 'page', 'site', 'cv', 'resume', 'portfolio', 'work', 'hello', 'meet'];
+    for (const p of mePrefixes) {
+        add(`${p}-me`);
+        add(`${p}me`);
+        add(`${p}/me`);
     }
 
     for (let i = 1; i <= 120; i++) {

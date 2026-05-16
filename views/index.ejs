@@ -160,6 +160,7 @@
                 <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
               </div>
               <small id="currentFile" class="text-muted d-block"></small>
+              <small id="progressMeta" class="text-muted d-block mt-1 font-monospace"></small>
               <div id="actionButtons" class="mt-3" style="display:none;">
                 <button type="button" class="btn btn-outline-secondary me-2" id="btnOpenFolder">
                   <i class="bi bi-folder2-open"></i> <span data-i18n="openFolder">開啟資料夾</span>
@@ -188,7 +189,8 @@
         sitemap: '使用 Sitemap', ignoreRobots: '忽略 robots.txt', proxy: 'Proxy',
         filter: 'URL 正則過濾', loginForm: '登入表單 JSON', loginCredentials: '登入憑證 JSON',
         start: '開始下載', progress: '下載進度', openFolder: '開啟資料夾', openSite: '開啟離線首頁',
-        downloading: '下載中...', complete: '下載完成', error: '錯誤：'
+        downloading: '下載中...', complete: '下載完成', error: '錯誤：',
+        elapsed: '已執行', eta: '預估剩餘'
       },
       en: {
         title: 'Download Website', url: 'Website URL', output: 'Output folder', preset: 'Mode',
@@ -199,7 +201,8 @@
         sitemap: 'Use sitemap', ignoreRobots: 'Ignore robots.txt', proxy: 'Proxy',
         filter: 'URL regex filter', loginForm: 'Login form JSON', loginCredentials: 'Login credentials JSON',
         start: 'Start download', progress: 'Progress', openFolder: 'Open folder', openSite: 'Open offline site',
-        downloading: 'Downloading...', complete: 'Complete', error: 'Error: '
+        downloading: 'Downloading...', complete: 'Complete', error: 'Error: ',
+        elapsed: 'Elapsed', eta: 'ETA ~'
       }
     };
 
@@ -241,6 +244,7 @@
     const status = document.getElementById('status');
     const progressBar = document.getElementById('progressBar');
     const currentFile = document.getElementById('currentFile');
+    const progressMeta = document.getElementById('progressMeta');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -252,6 +256,7 @@
 
       status.style.display = 'block';
       progressBar.style.width = '0%';
+      progressMeta.textContent = '';
       progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
       progressBar.classList.remove('bg-success', 'bg-danger');
       document.getElementById('actionButtons').style.display = 'none';
@@ -271,6 +276,7 @@
         document.getElementById('actionButtons').style.display = 'block';
         progressBar.style.width = '100%';
         currentFile.textContent = translations[currentLang].complete;
+        progressMeta.textContent = '';
         progressBar.classList.add('bg-success');
       } catch (err) {
         currentFile.textContent = translations[currentLang].error + err.message;
@@ -281,14 +287,21 @@
     });
 
     socket.on('download-progress', (d) => {
-      const pct = d.total ? Math.round((d.current / d.total) * 100) : 0;
+      const pct = d.percent != null ? Math.min(100, d.percent) : (d.total ? Math.round((d.current / d.total) * 100) : 0);
       progressBar.style.width = pct + '%';
-      currentFile.textContent = d.file || '';
+      currentFile.textContent = d.detailShort || d.file || '';
+      const metaParts = [];
+      if (d.elapsedFormatted) metaParts.push(`${translations[currentLang].elapsed || 'Elapsed'} ${d.elapsedFormatted}`);
+      if (d.etaFormatted) metaParts.push(`${translations[currentLang].eta || 'ETA ~'} ${d.etaFormatted}`);
+      if (d.speed) metaParts.push(d.speed);
+      if (d.phase) metaParts.push(d.phase);
+      progressMeta.textContent = metaParts.filter(Boolean).join(' · ');
     });
 
     socket.on('download-complete', () => {
       progressBar.style.width = '100%';
       currentFile.textContent = translations[currentLang].complete;
+      progressMeta.textContent = '';
     });
 
     document.getElementById('btnOpenFolder').addEventListener('click', async () => {

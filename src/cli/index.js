@@ -10,6 +10,7 @@ const cosmiconfig = require('cosmiconfig').cosmiconfigSync;
 const { version } = require('../../package.json');
 const { SiteDownloader } = require('../downloader');
 const { applyPreset } = require('./presets');
+const { createDownloadTimeline } = require('./downloadTimeline');
 const { startPreview, resolveSiteRoot } = require('../server/PreviewServer');
 const PathDiscovery = require('../discovery/PathDiscovery');
 
@@ -91,7 +92,10 @@ function buildDownloaderOptions(opts) {
         timeout: parseInt(merged.timeout, 10) || 30000,
         maxFileSize: merged.maxFileSize ? parseInt(merged.maxFileSize, 10) * 1024 * 1024 : 0,
         onResource: merged.onResource,
-        onError: merged.onError
+        onError: merged.onError,
+        legacyFlatPages: merged.legacyFlatPages === true,
+        noProgress: merged.noProgress === true,
+        onDownloadProgress: merged.onDownloadProgress
     };
 }
 
@@ -220,9 +224,27 @@ async function runDownload(url, opts) {
 
     const dlOpts = buildDownloaderOptions(opts);
     console.log(`${MSG.output} ${path.resolve(dlOpts.outputDir)}`);
-    const downloader = new SiteDownloader(dlOpts);
+
+    const siteStartedAt = Date.now();
     const spinner = ora(MSG.downloading + url).start();
-    const startTime = Date.now();
+
+    const userProgressCb = dlOpts.onDownloadProgress;
+    if (!dlOpts.noProgress) {
+        const timeline = createDownloadTimeline({
+            spinner,
+            noProgress: false,
+            siteStartedAt
+        });
+        dlOpts.onDownloadProgress = userProgressCb
+            ? (p) => {
+                timeline.handle(p);
+                userProgressCb(p);
+            }
+            : timeline.handle.bind(timeline);
+    }
+
+    const downloader = new SiteDownloader(dlOpts);
+    const startTime = siteStartedAt;
 
     try {
         const result = await downloader.downloadWebsite(url);
@@ -315,6 +337,8 @@ function addDownloadOptions(cmd) {
         .option('-p, --path', 'Discover site paths (sitemap, crawl, probes) and save paths.txt')
         .option('--path-deep', 'Extended wordlist + Wayback Machine URLs (slower)')
         .option('--path-no-render', 'Skip Playwright capture during path discovery')
+        .option('--legacy-flat-pages', 'Flat page filenames in site root (old layout)')
+        .option('--no-progress', 'Disable live progress timeline (useful for CI/logs)')
         .option('--open', 'Open offline preview via local HTTP server (required for SPAs)')
         .option('--serve', 'Start preview server after download (keeps running)')
         .option('--serve-port <port>', 'Preview server port', '8765')

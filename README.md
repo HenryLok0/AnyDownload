@@ -64,6 +64,21 @@ Preview runs at **http://127.0.0.1:8765/** (default) and always opens the site r
 
 ---
 
+## Mirrored HTML layout (framework docs)
+
+- Pages are mirrored to a folder tree aligned with URLs: `/` becomes `index.html`, `/learn` becomes `learn/index.html`, `/reference/react` becomes `reference/react/index.html`.
+- Scripts, stylesheets, and other same-origin URLs are rewritten **relative to the saved HTML file** so shared roots like `_next/static/...` still resolve offline at any depth.
+
+### Preview (`anydownload serve`)
+
+- Open `http://127.0.0.1:8765/learn/` **or** `http://127.0.0.1:8765/learn` once `learn/index.html` exists—the server probes `subdir/index.html` and `subdir.html` before falling back to the SPA bootstrap page.
+
+### Backward-compatible layout
+
+- Use **`--legacy-flat-pages`** if you rely on older behavior with every HTML file in the hostname root (`_underscore.html`). Default is hierarchical.
+
+---
+
 ## Engine modes (`--mode`)
 
 | Mode | Use when | Browser install? |
@@ -126,6 +141,7 @@ anydownload https://example.com --preset full -o mysite
 | `--concurrency <n>` | Parallel asset downloads | `5` |
 | `--filter <regex>` | Only URLs matching regex | — |
 | `-d, --dynamic` | Same as `--mode render` | off |
+| `--legacy-flat-pages` | Flat HTML in hostname root (`_learn.html` layout) | off |
 
 **Render-only:** `--browser` (`playwright` default, or `puppeteer`), `--browser-engine`, `--headless`
 
@@ -176,6 +192,8 @@ AnyDownload builds **offline-browsable mirrors**. It is **not** a universal “d
 | Double-clicking `index.html` | `file://` breaks ES modules → white screen |
 | “Download every file on the internet” | Out of scope |
 
+Themes, locale switching, or client bundles that lazy-load translations from CDN may behave differently offline—even when `_next`/React chunks load locally. Interactive features aren’t guaranteed. External links (`https://`, other hostnames, e.g. GitHub) intentionally stay absolute so browsers can reach the live network when available.
+
 Optional failures (e.g. `favicon`, `banner.png`, cross-origin CDN fonts) may be reported in verbose mode but do not increment the failed count or block the main page.
 
 ---
@@ -185,7 +203,7 @@ Optional failures (e.g. `favicon`, `banner.png`, cross-origin CDN fonts) may be 
 Files are saved under **`<output-folder>/<hostname>/`**, not directly in the output folder root:
 
 ```
-test/                          ← folder you pass with -o or wizard
+downloaded_site/                          ← folder you pass with -o or wizard
 └── example.com/               ← hostname subfolder (always created)
     ├── index.html
     ├── paths.txt              ← when using -p / --path

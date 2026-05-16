@@ -66,7 +66,7 @@ describe('SiteDownloader render capture path', () => {
         expect(js).toContain('__APP__');
 
         const indexHtml = await fs.readFile(path.join(siteDir, 'index.html'), 'utf8');
-        expect(indexHtml).toContain('<base href="./">');
-        expect(indexHtml).toContain('src="assets/app.js"');
+        expect(indexHtml).not.toMatch(/<base\s/i);
+        expect(indexHtml).toContain('src="./assets/app.js"');
     });
 });

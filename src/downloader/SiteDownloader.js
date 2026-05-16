@@ -37,8 +37,12 @@ class SiteDownloader extends EventEmitter {
         this.loginCredentials = options.loginCredentials || null;
         this.cookie = options.cookie || '';
         this.onResource = options.onResource || (() => {});
+        this.onDownloadProgress = typeof options.onDownloadProgress === 'function'
+            ? options.onDownloadProgress
+            : null;
         this.onError = options.onError || (() => {});
         this.cancelled = false;
+        this.legacyFlatPages = options.legacyFlatPages === true;
 
         this.crawler = new Crawler({
             recursive: this.recursive,
@@ -65,6 +69,7 @@ class SiteDownloader extends EventEmitter {
             filterRegex: options.filterRegex,
             verbose: this.verbose,
             onResource: this.onResource,
+            onDownloadProgress: this.onDownloadProgress,
             onError: this.onError
         };
 
@@ -132,6 +137,13 @@ class SiteDownloader extends EventEmitter {
 
         const engine = this._createEngine();
         try {
+            if (this.onDownloadProgress) {
+                this.onDownloadProgress({
+                    type: 'page-fetch-start',
+                    url,
+                    visitedCount: this.visited.size
+                });
+            }
             const result = await engine.fetchPage(url, { mode: engineMode });
             html = result.html;
             capture = result.capture;
@@ -163,11 +175,18 @@ class SiteDownloader extends EventEmitter {
         const { resources } = extractFromHtml(html, url);
         pipeline.enqueueMany(resources, url);
 
-        const rewriter = new UrlRewriter(url, pathMapper);
+        const pageMirrorPath = this.legacyFlatPages
+            ? pathMapper.getPageFilename(url)
+            : pathMapper.getMirrorRelPagePath(url);
+        const rewriter = new UrlRewriter(url, pathMapper, pageMirrorPath);
         const rewrittenHtml = rewriter.rewriteHtml(html);
-        const pageFile = pathMapper.getPageFilename(url);
-        await fs.ensureDir(baseDir);
-        await fs.writeFile(path.join(baseDir, pageFile), rewrittenHtml, 'utf8');
+        const pageDest = path.join(baseDir, pageMirrorPath);
+        await fs.ensureDir(path.dirname(pageDest));
+        await fs.writeFile(pageDest, rewrittenHtml, 'utf8');
+
+        if (this.onDownloadProgress) {
+            this.onDownloadProgress({ type: 'page-html-saved', url });
+        }
 
         await pipeline.run(baseDir);
 

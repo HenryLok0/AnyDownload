@@ -73,7 +73,7 @@ Preview runs at **http://127.0.0.1:8765/** (default) and always opens the site r
 
 - Open `http://127.0.0.1:8765/learn/` **or** `http://127.0.0.1:8765/learn` once `learn/index.html` exists—the server probes `subdir/index.html` and `subdir.html` before falling back to the SPA bootstrap page.
 
-- Nested framework folders often make the browser request **`/subdir/_next/...`** or **`/subdir/assets/...`** even though mirrored files live at **`/_next/...`** or **`/assets/...`**; `anydownload serve` maps those URLs back to the site root so nested pages still load CSS/JS.
+- Nested pages often request **`/subdir/_next/...`**, **`/subdir/static/...`**, **`/subdir/assets/...`**, or **`/subdir/logo.svg`** (relative links) while the mirror keeps those files at the site root; `anydownload serve` maps matching URLs back to the root bundles and public assets so nested routes still load.
 
 ### Backward-compatible layout
 

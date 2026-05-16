@@ -37,14 +37,27 @@ async function resolveSiteRoot(dir) {
     );
 }
 
+/** Resolved path stays under root (covers Windows drive-letter case drift). */
+function isPathUnderRoot(rootDir, candidateAbs) {
+    const root = path.resolve(rootDir);
+    const c = path.resolve(candidateAbs);
+    if (process.platform === 'win32') {
+        const rl = root.toLowerCase();
+        const cl = c.toLowerCase();
+        const sep = path.sep;
+        return cl === rl || cl.startsWith(rl.endsWith(sep) ? rl : rl + sep);
+    }
+    const sep = path.sep;
+    return c === root || c.startsWith(root + sep);
+}
+
 function resolveFile(rootDir, urlPath) {
     const decoded = decodeURIComponent(urlPath.split('?')[0]);
     let relative = decoded.replace(/^\//, '') || 'index.html';
     if (relative.endsWith('/')) relative += 'index.html';
 
     const candidate = path.normalize(path.join(rootDir, relative));
-    const root = path.normalize(rootDir);
-    if (!candidate.startsWith(root)) return null;
+    if (!isPathUnderRoot(rootDir, candidate)) return null;
     return candidate;
 }
 
@@ -66,8 +79,7 @@ async function resolveExtensionlessHtml(rootDir, urlPath) {
 
     const indexUnder = path.normalize(path.join(rootDir, decoded, 'index.html'));
     const dotted = path.normalize(path.join(rootDir, `${decoded}.html`));
-    const root = path.normalize(rootDir);
-    const inside = (p) => p.startsWith(root) && p !== root;
+    const inside = (p) => isPathUnderRoot(rootDir, p) && p !== path.resolve(rootDir);
     if (inside(indexUnder) && await fs.pathExists(indexUnder)) return indexUnder;
     if (inside(dotted) && await fs.pathExists(dotted)) return dotted;
     return null;
@@ -81,15 +93,15 @@ async function resolveSharedBundlePath(rootDir, urlPath) {
     const decoded = decodeURIComponent(urlPath.split('?')[0]).replace(/^\/+/u, '');
     if (!decoded) return null;
 
-    const root = path.normalize(rootDir);
-    const parts = decoded.split('/').filter(p => p.length);
+    const parts = decoded.split('/').filter(p => p.length && p !== '.' && p !== '..');
+    if (!parts.length) return null;
 
     const tryFromSegment = async (marker) => {
         const idx = parts.indexOf(marker);
         if (idx < 0) return null;
         const tail = parts.slice(idx).join('/');
         const candidate = path.normalize(path.join(rootDir, tail));
-        if (!candidate.startsWith(root)) return null;
+        if (!isPathUnderRoot(rootDir, candidate)) return null;
         if (await fs.pathExists(candidate)) {
             const st = await fs.stat(candidate);
             if (st.isFile()) return candidate;
@@ -100,7 +112,38 @@ async function resolveSharedBundlePath(rootDir, urlPath) {
     const nextPath = await tryFromSegment('_next');
     if (nextPath) return nextPath;
 
-    return tryFromSegment('assets');
+    const viteAssets = await tryFromSegment('assets');
+    if (viteAssets) return viteAssets;
+
+    /** CRA / some Next setups: `./static/...` under a nested page → `/route/static/...`. */
+    const staticPath = await tryFromSegment('static');
+    if (staticPath) return staticPath;
+
+    /**
+     * Public files referenced without a leading slash (e.g. `./next.svg` on `/blog/`
+     * → `/blog/next.svg`). If that path misses on disk but the same suffix exists at
+     * site root, serve it. Skip `.html` to avoid stealing real nested pages.
+     */
+    if (parts.length >= 2) {
+        const leaf = parts[parts.length - 1];
+        if (
+            leaf.includes('.') &&
+            !leaf.endsWith('.html') &&
+            !leaf.endsWith('.htm')
+        ) {
+            const tail = parts.slice(1).join('/');
+            const candidate = path.normalize(path.join(rootDir, tail));
+            if (
+                isPathUnderRoot(rootDir, candidate) &&
+                (await fs.pathExists(candidate))
+            ) {
+                const st = await fs.stat(candidate);
+                if (st.isFile()) return candidate;
+            }
+        }
+    }
+
+    return null;
 }
 
 class PreviewServer {

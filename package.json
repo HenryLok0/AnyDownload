@@ -1,6 +1,6 @@
 {
   "name": "anydownload",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "A powerful website downloader with GUI support",
   "repository": {
     "type": "git",
@@ -70,7 +70,9 @@
     "puppeteer": ">=22.0.0"
   },
   "peerDependenciesMeta": {
-    "puppeteer": { "optional": true }
+    "puppeteer": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=14.0.0"

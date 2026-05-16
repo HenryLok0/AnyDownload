@@ -14,7 +14,7 @@ Download websites for **offline browsing** — HTML, CSS, JavaScript, images, fo
 
 ### Desktop app (recommended for GUI users)
 
-Grab the installer for your OS from **[Releases](https://github.com/HenryLok0/AnyDownload/releases)** (.exe / .dmg / .AppImage or .deb, when published).
+Grab the installer for your OS from **[Releases](https://github.com/HenryLok0/AnyDownload/releases)** (windows, mac, linux).
 
 ### CLI (npm)
 

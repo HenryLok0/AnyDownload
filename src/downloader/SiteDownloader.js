@@ -210,6 +210,14 @@ class SiteDownloader extends EventEmitter {
         this.visited.add(url);
         this.crawler.markVisited(url);
 
+        if (this.onDownloadProgress) {
+            this.onDownloadProgress({
+                type: 'page-prepare',
+                url,
+                visitedCount: this.visited.size
+            });
+        }
+
         const allowed = await this.crawler.checkRobots(url);
         if (!allowed) {
             if (this.verbose) console.log(`Blocked by robots.txt: ${url}`);

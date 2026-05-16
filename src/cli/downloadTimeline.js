@@ -42,6 +42,9 @@ function estimateEtaMs(emaMsPerItem, completed, peakQueue) {
     return raw;
 }
 
+/**
+ * Single-line status for ora. Multi-line spinner.text breaks many Windows terminals (one-line erase).
+ */
 function buildSpinnerText({
     phaseLabel,
     detailUrl,
@@ -52,10 +55,10 @@ function buildSpinnerText({
 }) {
     const elapsed = formatDuration(elapsedMs);
     const eta = etaMs != null && etaMs > 0 ? formatDuration(etaMs) : '—';
-    const pageHint = visitedCount > 0 ? ` · pages visited ${visitedCount}` : '';
-    const line1 = `${phaseLabel}${pageHint}`;
-    const line2 = `Runtime ${elapsed} · ETA ~${eta} · ${percent}% · ${truncateUrl(detailUrl)}`;
-    return `${line1}\n${line2}`;
+    const pageHint = visitedCount > 0 ? ` · pages ${visitedCount}` : '';
+    const phase = phaseLabel || '';
+    const detail = truncateUrl(detailUrl || '', 52);
+    return `${phase}${pageHint} · ${elapsed} · ETA ~${eta} · ${percent}% · ${detail}`;
 }
 
 /**
@@ -85,6 +88,28 @@ function createDownloadTimeline(opts = {}) {
 
         const now = Date.now();
         const elapsedMs = now - startedAt;
+
+        if (payload.type === 'page-prepare') {
+            state.currentPhase = 'Preparing';
+            state.currentUrl = payload.url || '';
+            state.visitedCount = payload.visitedCount ?? state.visitedCount;
+            state.currentPeak = 0;
+            state.lastCompleted = 0;
+            state.currentPercent = 0;
+            const text = buildSpinnerText({
+                phaseLabel: state.currentPhase,
+                detailUrl: state.currentUrl,
+                elapsedMs,
+                percent: 0,
+                etaMs: null,
+                visitedCount: state.visitedCount
+            });
+            if (spinner && isTTY) spinner.text = text;
+            else if (!isTTY) {
+                process.stderr.write(`[AnyDownload] ${state.currentPhase}: ${truncateUrl(state.currentUrl, 120)}\n`);
+            }
+            return;
+        }
 
         if (payload.type === 'page-fetch-start') {
             state.currentPhase = 'Fetching page';

@@ -119,6 +119,20 @@ function buildOptions(body) {
     }
 
     base.onDownloadProgress = (p) => {
+        if (p.type === 'page-prepare') {
+            currentPeak = 0;
+            lastCompleted = 0;
+            lastDoneAt = Date.now();
+            emitSocketProgress({
+                file: p.url,
+                phase: 'page-prepare',
+                visitedCount: p.visitedCount,
+                percent: 0,
+                etaMs: null,
+                downloadedBytes: lastDownloadedBytes
+            });
+            return;
+        }
         if (p.type === 'page-fetch-start') {
             currentPeak = 0;
             lastCompleted = 0;

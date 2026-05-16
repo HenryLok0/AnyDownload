@@ -195,6 +195,8 @@ async function runPathDiscovery(url, opts) {
         delay: dlOpts.delay,
         verbose: dlOpts.verbose,
         pathDeep: opts.pathDeep === true,
+        pathSeedsFile: opts.pathSeeds || null,
+        pathProbeDepth: opts.pathProbeDepth,
         useRender: opts.pathNoRender !== true,
         renderProvider: dlOpts.browserType || 'playwright'
     });
@@ -336,6 +338,8 @@ function addDownloadOptions(cmd) {
         .option('--type <type>', 'Resource type: all|image|css|js|html|media|font', 'all')
         .option('-p, --path', 'Discover site paths (sitemap, crawl, probes) and save paths.txt')
         .option('--path-deep', 'Extended wordlist + Wayback Machine URLs (slower)')
+        .option('--path-seeds <file>', 'Extra probe paths (one per line, # comments); merged with other probes')
+        .option('--path-probe-depth <n>', '1 = /path probes only; 2 = also /known-prefix/word (capped)', '1')
         .option('--path-no-render', 'Skip Playwright capture during path discovery')
         .option('--legacy-flat-pages', 'Flat page filenames in site root (old layout)')
         .option('--no-progress', 'Disable live progress timeline (useful for CI/logs)')

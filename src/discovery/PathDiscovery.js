@@ -19,15 +19,33 @@ const COMMON_PATHS = [
 
 const JS_PATH_REGEX = /["'](\/[a-zA-Z0-9_\-./?#%&=+~]{1,200})["']/g;
 const HTML_PATH_COMMENT = /<!--\s*(\/[a-zA-Z0-9_\-./]+)\s*-->/g;
+/** `navigator.serviceWorker.register('...')` and similar */
+const SW_REGISTER_REGEX = /(?:serviceWorker|navigator\.serviceWorker)\.register\s*\(\s*["']([^"']+)["']/gi;
+const IMPORT_SCRIPTS_REGEX = /importScripts\s*\(\s*((?:["'][^"']+["']\s*,?\s*)+)\)/g;
+
+const DEFAULT_SW_PATHS = [
+    'sw.js',
+    'service-worker.js',
+    'serviceworker.js',
+    'firebase-messaging-sw.js'
+];
+
+/** Max extra requests for depth-2 prefix × word probes (rate-limited by this.delay). */
+const DEPTH2_MAX_REQUESTS = 500;
+const DEPTH2_MAX_PREFIXES = 25;
+const DEPTH2_MAX_WORDS = 40;
 
 class PathDiscovery {
     constructor(options = {}) {
         this.userAgent = options.userAgent || 'Mozilla/5.0 (compatible; AnyDownload/2.2)';
         this.timeout = options.timeout || 15000;
         this.maxDepth = options.maxDepth || 3;
-        this.delay = options.delay || 200;
+        this.delay = options.delay != null ? options.delay : 200;
         this.verbose = options.verbose || false;
         this.pathDeep = options.pathDeep === true;
+        const rawDepth = parseInt(options.pathProbeDepth, 10);
+        this.pathProbeDepth = Number.isFinite(rawDepth) && rawDepth >= 2 ? 2 : 1;
+        this.pathSeedsFile = options.pathSeedsFile || null;
         this.useRender = options.useRender !== false;
         this.renderProvider = options.renderProvider || 'playwright';
         this.crawler = new Crawler({
@@ -38,6 +56,7 @@ class PathDiscovery {
         });
         this.entries = new Map();
         this._jsUrls = new Set();
+        this._serviceWorkerHints = new Set();
     }
 
     _add(url, source, meta = {}) {
@@ -152,6 +171,12 @@ class PathDiscovery {
             const u = normalizeUrl(m[1], pageUrl);
             if (u && sameHostname(u, pageUrl)) this._add(u, 'html-meta');
         }
+
+        SW_REGISTER_REGEX.lastIndex = 0;
+        while ((m = SW_REGISTER_REGEX.exec(html)) !== null) {
+            const u = normalizeUrl(m[1], pageUrl);
+            if (u && sameHostname(u, pageUrl)) this._serviceWorkerHints.add(u);
+        }
     }
 
     async _fetchManifest(startUrl) {
@@ -192,6 +217,54 @@ class PathDiscovery {
             if (p.startsWith('//') || p.includes('${')) continue;
             const u = normalizeUrl(p, baseUrl);
             if (u && sameHostname(u, baseUrl)) this._add(u, 'js');
+        }
+    }
+
+    _collectImportScriptUrls(text, baseUrl) {
+        const urls = [];
+        if (!text || text.length > 500_000) return urls;
+        let block;
+        IMPORT_SCRIPTS_REGEX.lastIndex = 0;
+        while ((block = IMPORT_SCRIPTS_REGEX.exec(text)) !== null) {
+            const inner = block[1];
+            for (const um of inner.matchAll(/["']([^"']+)["']/g)) {
+                const q = um[1];
+                if (!q || q.includes('${')) continue;
+                const u = normalizeUrl(q, baseUrl);
+                if (u && sameHostname(u, baseUrl)) {
+                    if (!urls.includes(u)) urls.push(u);
+                    this._add(u, 'sw-import');
+                }
+            }
+        }
+        return urls;
+    }
+
+    async _fetchServiceWorkers(startUrl) {
+        const origin = getOrigin(startUrl);
+        if (!origin) return;
+
+        const candidates = new Set(this._serviceWorkerHints);
+        for (const rel of DEFAULT_SW_PATHS) {
+            const abs = normalizeUrl(`/${rel.replace(/^\//, '')}`, startUrl);
+            if (abs && sameHostname(abs, startUrl)) candidates.add(abs);
+        }
+
+        for (const swUrl of candidates) {
+            const text = await this._fetchText(swUrl);
+            if (!text || text.length < 8) continue;
+            this._extractJsPaths(text, startUrl);
+            const imports = this._collectImportScriptUrls(text, startUrl).slice(0, 5);
+            for (const impUrl of imports) {
+                try {
+                    const js = await this._fetchText(impUrl);
+                    if (js) this._extractJsPaths(js, startUrl);
+                } catch {
+                    // skip
+                }
+                if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+            }
+            if (this.delay) await new Promise(r => setTimeout(r, this.delay));
         }
     }
 
@@ -333,6 +406,82 @@ class PathDiscovery {
         await this._probePaths(startUrl, extra, 'probe-deep');
     }
 
+    async _probeUserSeeds(startUrl) {
+        if (!this.pathSeedsFile) return;
+        const abs = path.resolve(this.pathSeedsFile);
+        if (!(await fs.pathExists(abs))) {
+            if (this.verbose) console.warn(`path-seeds: file not found: ${abs}`);
+            return;
+        }
+        const raw = await fs.readFile(abs, 'utf8');
+        const segments = [...new Set(
+            raw.split(/\r?\n/)
+                .map(l => l.trim())
+                .filter(l => l.length && !l.startsWith('#'))
+        )];
+        if (!segments.length) return;
+        await this._probePaths(startUrl, segments, 'probe-seed');
+    }
+
+    _collectDepth2ProbePrefixes(startUrl) {
+        const prefixes = new Set();
+        let hostname;
+        try {
+            hostname = new URL(startUrl).hostname;
+        } catch {
+            return [];
+        }
+        for (const { url } of this.entries.values()) {
+            try {
+                const u = new URL(url);
+                if (u.hostname !== hostname) continue;
+                let pathname = u.pathname.replace(/\/+$/, '') || '/';
+                if (pathname === '/') continue;
+                const segs = pathname.split('/').filter(Boolean);
+                if (segs.length !== 1) continue;
+                const segment = segs[0];
+                if (segment.includes('.') || segment.startsWith('_')) continue;
+                if (segment.startsWith('.') && segment !== '.well-known') continue;
+                prefixes.add(segment);
+            } catch {
+                // skip malformed
+            }
+        }
+        return [...prefixes].sort().slice(0, DEPTH2_MAX_PREFIXES);
+    }
+
+    _depth2ProbeWords() {
+        const wl = this.pathDeep ? this._loadDeepWordlist() : COMMON_PATHS;
+        const picks = wl.filter(seg =>
+            typeof seg === 'string' &&
+            seg.length >= 2 &&
+            !seg.includes('/') &&
+            !seg.startsWith('#') &&
+            !seg.includes('..')
+        );
+        const uniq = [...new Set(picks)];
+        return uniq.slice(0, DEPTH2_MAX_WORDS);
+    }
+
+    async _probeDepth2Prefixes(startUrl) {
+        if (this.pathProbeDepth < 2) return;
+        const prefixes = this._collectDepth2ProbePrefixes(startUrl);
+        const words = this._depth2ProbeWords();
+        if (!prefixes.length || !words.length) return;
+
+        const segmentsSet = new Set();
+        let count = 0;
+        outer: for (const p of prefixes) {
+            for (const w of words) {
+                if (count >= DEPTH2_MAX_REQUESTS) break outer;
+                segmentsSet.add(`${p}/${w}`);
+                count++;
+            }
+        }
+        const segments = [...segmentsSet];
+        if (segments.length) await this._probePaths(startUrl, segments, 'probe-depth2');
+    }
+
     async _renderEnhance(startUrl) {
         if (!this.useRender) return;
         const hasBrowser = isPeerInstalled('playwright') || isPeerInstalled('puppeteer');
@@ -363,14 +512,19 @@ class PathDiscovery {
         startUrl = normalizeUrl(startUrl, startUrl);
         if (!startUrl) throw new Error('Invalid URL');
 
+        this._serviceWorkerHints.clear();
+
         await this._fetchRobots(startUrl);
         await this._fetchSitemap(startUrl);
         if (this.pathDeep) await this._fetchWayback(startUrl);
         await this._fetchManifest(startUrl);
         await this._bfsCrawl(startUrl);
+        await this._fetchServiceWorkers(startUrl);
         await this._fetchSourceMaps(startUrl);
         await this._probeCommonPaths(startUrl);
         await this._probeDeepPaths(startUrl);
+        await this._probeUserSeeds(startUrl);
+        await this._probeDepth2Prefixes(startUrl);
         await this._renderEnhance(startUrl);
 
         return this.getResults(startUrl);

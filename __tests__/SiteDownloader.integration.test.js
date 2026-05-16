@@ -36,7 +36,8 @@ function startFixtureServer() {
 describe('SiteDownloader integration', () => {
     let server;
     let baseUrl;
-    const outputDir = path.join(__dirname, '..', 'test-output');
+    /** Isolated subfolder so afterAll does not delete other suites' test-output/* dirs when Jest runs workers in parallel. */
+    const outputDir = path.join(__dirname, '..', 'test-output', 'sitedownloader-integration');
 
     beforeAll(async () => {
         const started = await startFixtureServer();

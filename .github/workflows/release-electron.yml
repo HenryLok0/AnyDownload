@@ -1,4 +1,4 @@
-# Build installers on Win/macOS/Linux + attach to a GitHub Release on each push to main.
+# Ship portable binaries (Windows .exe portable, macOS .dmg, Linux AppImage) on each push to main.
 # Release version is the next MINOR (MAJOR.(MINOR+1).0) from the latest Release tag or from package.json as baseline.
 
 name: Release Electron builds
@@ -83,7 +83,7 @@ jobs:
           node-version: '20'
           cache: npm
 
-      - name: Linux dependencies for AppImage/deb packaging
+      - name: Linux dependencies for AppImage (FUSE)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -104,7 +104,7 @@ jobs:
       - name: Package frontend + Electron (${{ matrix.artifact }})
         run: npx vite build && npx electron-builder ${{ matrix.eb_flag }} --publish never
 
-      - name: Stage installer binaries only (skip unpacked dirs)
+      - name: Stage shipping binaries only (skip unpacked dirs)
         shell: bash
         env:
           TARGET: ${{ matrix.eb_flag }}
@@ -119,7 +119,7 @@ jobs:
               find dist-electron -maxdepth 1 -type f \( -iname '*.dmg' \) -exec cp {} upload/ \;
               ;;
             --linux)
-              find dist-electron -maxdepth 1 -type f \( -iname '*.AppImage' -o -iname '*.deb' \) -exec cp {} upload/ \;
+              find dist-electron -maxdepth 1 -type f \( -iname '*.AppImage' \) -exec cp {} upload/ \;
               ;;
             *)
               echo "Unknown TARGET=${TARGET}"
@@ -127,7 +127,7 @@ jobs:
               ;;
           esac
           if [[ -z "$(ls -A upload)" ]]; then
-            echo "No installer files found under dist-electron"
+            echo "No shipping binaries found under dist-electron"
             ls -la dist-electron || true
             exit 1
           fi
@@ -148,7 +148,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
-      - name: Download installer artifacts
+      - name: Download desktop artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: dist-*

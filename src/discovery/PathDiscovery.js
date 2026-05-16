@@ -46,6 +46,8 @@ class PathDiscovery {
         const rawDepth = parseInt(options.pathProbeDepth, 10);
         this.pathProbeDepth = Number.isFinite(rawDepth) && rawDepth >= 2 ? 2 : 1;
         this.pathSeedsFile = options.pathSeedsFile || null;
+        /** Explicit `--path-txt`; if missing, `./path.txt` in cwd; else packaged wordlist. */
+        this.pathTxtOverride = options.pathTxtOverride || null;
         this.useRender = options.useRender !== false;
         this.renderProvider = options.renderProvider || 'playwright';
         this.crawler = new Crawler({
@@ -345,8 +347,19 @@ class PathDiscovery {
         }
     }
 
+    _resolveWordlistFile() {
+        if (this.pathTxtOverride) {
+            const abs = path.resolve(this.pathTxtOverride);
+            if (fs.existsSync(abs)) return abs;
+            if (this.verbose) console.warn(`path-txt: file not found: ${abs}, trying cwd path.txt then default`);
+        }
+        const cwdPathTxt = path.join(process.cwd(), 'path.txt');
+        if (fs.existsSync(cwdPathTxt)) return cwdPathTxt;
+        return path.join(__dirname, '..', '..', 'data', 'path-wordlist.txt');
+    }
+
     _loadDeepWordlist() {
-        const file = path.join(__dirname, '..', '..', 'data', 'path-wordlist.txt');
+        const file = this._resolveWordlistFile();
         try {
             const lines = fs.readFileSync(file, 'utf8').split('\n')
                 .map(l => l.trim())
@@ -355,6 +368,13 @@ class PathDiscovery {
         } catch {
             return COMMON_PATHS;
         }
+    }
+
+    /** Use expanded wordlist for depth-2 picks when --path-deep, --path-txt, or ./path.txt exists. */
+    _useExtendedWordlistForDepth2() {
+        if (this.pathDeep) return true;
+        if (this.pathTxtOverride) return true;
+        return fs.existsSync(path.join(process.cwd(), 'path.txt'));
     }
 
     async _probePaths(startUrl, segments, sourceTag) {
@@ -451,7 +471,9 @@ class PathDiscovery {
     }
 
     _depth2ProbeWords() {
-        const wl = this.pathDeep ? this._loadDeepWordlist() : COMMON_PATHS;
+        const wl = this._useExtendedWordlistForDepth2()
+            ? this._loadDeepWordlist()
+            : COMMON_PATHS;
         const picks = wl.filter(seg =>
             typeof seg === 'string' &&
             seg.length >= 2 &&

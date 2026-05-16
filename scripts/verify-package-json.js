@@ -24,4 +24,24 @@ if (!binContent.startsWith('#!')) {
     throw new Error(`${pkg.bin.anydownload} must start with a shebang (#!/usr/bin/env node)`);
 }
 
+const wordlistPath = path.join(__dirname, '..', 'data', 'path-wordlist.txt');
+if (!fs.existsSync(wordlistPath)) {
+    throw new Error('Missing data/path-wordlist.txt — run npm run generate-path-wordlist');
+}
+const wordlistLines = fs.readFileSync(wordlistPath, 'utf8')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'));
+const MIN_WORDLIST = 1800;
+if (wordlistLines.length < MIN_WORDLIST) {
+    throw new Error(`path-wordlist.txt has ${wordlistLines.length} lines; expected >= ${MIN_WORDLIST}`);
+}
+const requiredTokens = ['mypage', 'cv', 'qwe', 'page', 'my', 'admin', 'sitemap.xml'];
+for (const token of requiredTokens) {
+    if (!wordlistLines.includes(token)) {
+        throw new Error(`path-wordlist.txt missing expected probe segment: ${token}`);
+    }
+}
+
 console.log('package.json encoding, JSON format, and bin entry look valid.');
+console.log(`path-wordlist.txt: ${wordlistLines.length} probe segments OK.`);

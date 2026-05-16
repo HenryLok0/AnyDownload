@@ -6,6 +6,13 @@ const fs = require('fs-extra');
 const { exec } = require('child_process');
 const { SiteDownloader } = require('../downloader');
 const { applyPreset } = require('../cli/presets');
+const {
+    computePercent,
+    updateEmaMs,
+    estimateEtaMs,
+    formatDuration,
+    truncateUrl
+} = require('../cli/downloadTimeline');
 const { startPreview } = require('./PreviewServer');
 
 const previewServers = new Map();
@@ -41,7 +48,7 @@ function buildOptions(body) {
         // ignore invalid JSON
     }
 
-    return {
+    const base = {
         outputDir: body.output || 'downloaded_site',
         userAgent: body.userAgent,
         cookie: body.cookie,
@@ -68,19 +75,118 @@ function buildOptions(body) {
         loginForm,
         loginCredentials,
         verbose: body.verbose === true || body.verbose === 'true',
-        onResource: (url, idx, total, speed, eta) => {
-            io.emit('download-progress', {
-                current: idx,
-                total,
-                file: url,
-                speed: speed ? `${speed} KB/s` : '',
-                eta: eta ? `${eta}s` : ''
-            });
-        },
+        legacyFlatPages: body.legacyFlatPages === true || body.legacyFlatPages === 'true',
         onError: (msg) => {
             io.emit('download-error', { message: msg });
         }
     };
+
+    const siteStartedAt = Date.now();
+    let lastDoneAt = siteStartedAt;
+    let emaMsPerItem = null;
+    let currentPeak = 0;
+    let lastCompleted = 0;
+    let lastDownloadedBytes = 0;
+
+    function emitSocketProgress(payload) {
+        const now = Date.now();
+        const elapsedMs = now - siteStartedAt;
+        const pct = payload.percent != null
+            ? payload.percent
+            : computePercent(lastCompleted, currentPeak);
+        let speedKb = '';
+        if (payload.downloadedBytes != null && elapsedMs > 500) {
+            const kbPerSec = (payload.downloadedBytes / 1024) / (elapsedMs / 1000);
+            if (Number.isFinite(kbPerSec) && kbPerSec > 0) {
+                speedKb = `${kbPerSec.toFixed(1)} KB/s`;
+            }
+        }
+        io.emit('download-progress', {
+            current: lastCompleted,
+            total: Math.max(currentPeak, 1),
+            file: payload.file || '',
+            phase: payload.phase || '',
+            visitedCount: payload.visitedCount ?? 0,
+            percent: pct,
+            elapsedMs,
+            elapsedFormatted: formatDuration(elapsedMs),
+            etaMs: payload.etaMs != null ? payload.etaMs : null,
+            etaFormatted: payload.etaMs != null && payload.etaMs > 0 ? formatDuration(payload.etaMs) : '',
+            detailShort: truncateUrl(payload.file || '', 96),
+            speed: speedKb,
+            eta: payload.etaSec != null ? `${payload.etaSec}s` : ''
+        });
+    }
+
+    base.onDownloadProgress = (p) => {
+        if (p.type === 'page-fetch-start') {
+            currentPeak = 0;
+            lastCompleted = 0;
+            lastDoneAt = Date.now();
+            emitSocketProgress({
+                file: p.url,
+                phase: 'page-fetch',
+                visitedCount: p.visitedCount,
+                percent: 0,
+                etaMs: null,
+                downloadedBytes: lastDownloadedBytes
+            });
+            return;
+        }
+        if (p.type === 'page-html-saved') {
+            lastDoneAt = Date.now();
+            emitSocketProgress({
+                file: p.url,
+                phase: 'page-assets',
+                percent: 0,
+                etaMs: null,
+                downloadedBytes: lastDownloadedBytes
+            });
+            return;
+        }
+        if (p.type === 'asset-start') {
+            currentPeak = Math.max(currentPeak, p.peakQueue || 0, p.queueLength || 0);
+            emitSocketProgress({
+                file: p.url,
+                phase: 'asset',
+                percent: computePercent(lastCompleted, currentPeak),
+                downloadedBytes: lastDownloadedBytes
+            });
+            return;
+        }
+        if (p.type === 'asset-done') {
+            const now = Date.now();
+            emaMsPerItem = updateEmaMs(emaMsPerItem, now - lastDoneAt);
+            lastDoneAt = now;
+            currentPeak = Math.max(currentPeak, p.peakQueue || 0);
+            lastCompleted = p.completed || 0;
+            lastDownloadedBytes = p.downloadedBytes || lastDownloadedBytes;
+            const etaMs = estimateEtaMs(emaMsPerItem, p.completed, currentPeak);
+            emitSocketProgress({
+                file: p.url,
+                phase: 'asset',
+                percent: computePercent(p.completed, currentPeak),
+                etaMs,
+                etaSec: etaMs != null ? Math.ceil(etaMs / 1000) : null,
+                downloadedBytes: lastDownloadedBytes
+            });
+            return;
+        }
+        if (p.type === 'pipeline-complete') {
+            currentPeak = Math.max(currentPeak, p.peakQueue || 0);
+            lastCompleted = currentPeak;
+            lastDownloadedBytes = p.downloadedBytes || lastDownloadedBytes;
+            emitSocketProgress({
+                file: '',
+                phase: 'pipeline-complete',
+                percent: currentPeak > 0 ? 100 : 0,
+                etaMs: 0,
+                downloadedBytes: lastDownloadedBytes
+            });
+        }
+    };
+
+    return base;
 }
 
 app.post('/api/download', async (req, res) => {

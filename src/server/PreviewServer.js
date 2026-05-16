@@ -48,6 +48,31 @@ function resolveFile(rootDir, urlPath) {
     return candidate;
 }
 
+/** Last URL path segment; empty for `/`. */
+function lastPathSegmentDecoded(urlPath) {
+    const decoded = decodeURIComponent((urlPath || '').split('?')[0]);
+    const segs = decoded.replace(/^\/+/u, '').split('/').filter(Boolean);
+    return segs.pop() || '';
+}
+
+/**
+ * Plain paths like `/learn` → `<root>/learn/index.html` then `<root>/learn.html`.
+ */
+async function resolveExtensionlessHtml(rootDir, urlPath) {
+    const decoded = decodeURIComponent((urlPath || '').split('?')[0]).replace(/^\/+/u, '');
+    if (!decoded) return null;
+    const leaf = lastPathSegmentDecoded(urlPath);
+    if (leaf.includes('.')) return null;
+
+    const indexUnder = path.normalize(path.join(rootDir, decoded, 'index.html'));
+    const dotted = path.normalize(path.join(rootDir, `${decoded}.html`));
+    const root = path.normalize(rootDir);
+    const inside = (p) => p.startsWith(root) && p !== root;
+    if (inside(indexUnder) && await fs.pathExists(indexUnder)) return indexUnder;
+    if (inside(dotted) && await fs.pathExists(dotted)) return dotted;
+    return null;
+}
+
 class PreviewServer {
     constructor(rootDir, options = {}) {
         this.rootDir = path.resolve(rootDir);
@@ -72,6 +97,11 @@ class PreviewServer {
                 }
 
                 let filePath = resolveFile(this.rootDir, urlPath);
+
+                if (!filePath || !(await fs.pathExists(filePath))) {
+                    const extless = await resolveExtensionlessHtml(this.rootDir, urlPath);
+                    if (extless) filePath = extless;
+                }
 
                 if (!filePath || !(await fs.pathExists(filePath))) {
                     if (this.spaFallback) {
@@ -156,5 +186,6 @@ module.exports = {
     startPreview,
     openBrowser,
     findIndexFile,
-    resolveSiteRoot
+    resolveSiteRoot,
+    resolveExtensionlessHtml
 };

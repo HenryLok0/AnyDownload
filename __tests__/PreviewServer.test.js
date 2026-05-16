@@ -38,6 +38,27 @@ describe('PreviewServer', () => {
         expect(html).toContain('Home');
     });
 
+    test('/learn maps to learn/index.html before SPA fallback', async () => {
+        await fs.ensureDir(path.join(rootDir, 'learn'));
+        await fs.writeFile(
+            path.join(rootDir, 'learn', 'index.html'),
+            '<html><body>Learn</body></html>'
+        );
+
+        server = new PreviewServer(rootDir, { spaFallback: true });
+        const baseUrl = await server.start();
+
+        const htmlLearn = await fetch(`${baseUrl}learn`).then(r => r.text());
+        expect(htmlLearn).toContain('Learn');
+
+        const htmlSlash = await fetch(`${baseUrl}learn/`).then(r => r.text());
+        expect(htmlSlash).toContain('Learn');
+
+        /* No folder: still SPA */
+        const htmlUnknown = await fetch(baseUrl + 'no-such/route').then(r => r.text());
+        expect(htmlUnknown).toContain('Home');
+    });
+
     test('redirects /index.html to /', async () => {
         server = new PreviewServer(rootDir);
         const baseUrl = await server.start();

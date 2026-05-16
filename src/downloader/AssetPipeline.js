@@ -31,6 +31,9 @@ class AssetPipeline {
         this.filterRegex = options.filterRegex || null;
         this.verbose = options.verbose || false;
         this.onResource = options.onResource || (() => {});
+        this.onDownloadProgress = typeof options.onDownloadProgress === 'function'
+            ? options.onDownloadProgress
+            : null;
         this.onError = options.onError || (() => {});
 
         this.queue = [];
@@ -41,6 +44,15 @@ class AssetPipeline {
         this.failedResources = [];
         this.optionalFailures = [];
         this.cancelled = false;
+        /** Progress counters reset each `run()` */
+        this._completedAssets = 0;
+        this._peakQueueLength = 0;
+    }
+
+    _emitProgress(payload) {
+        if (this.onDownloadProgress) {
+            this.onDownloadProgress(payload);
+        }
     }
 
     _isOptionalResource(url, pageUrl) {
@@ -203,13 +215,14 @@ class AssetPipeline {
         return { contentType, fromCache: false };
     }
 
-    async _processCssFile(cssUrl, savePath, pageUrl) {
+    async _processCssFile(cssUrl, savePath, pageUrl, baseDir) {
         const text = await fs.readFile(savePath, 'utf8');
         const pathMapper = new PathMapper(pageUrl);
         const nested = extractUrls(text, cssUrl);
         nested.forEach(u => this.enqueue(u, pageUrl));
 
-        const rewritten = rewriteCss(text, cssUrl, pathMapper);
+        const mirrorContextPath = path.relative(baseDir, savePath).split(path.sep).join('/');
+        const rewritten = rewriteCss(text, cssUrl, pathMapper, { mirrorContextPath });
         await fs.writeFile(savePath, rewritten, 'utf8');
     }
 
@@ -228,7 +241,7 @@ class AssetPipeline {
     }
 
     async _downloadOne(item, index, total) {
-        const { url, pageUrl, body, contentType: presetType } = item;
+        const { url, pageUrl, body, contentType: presetType, baseDir } = item;
         const pathMapper = new PathMapper(pageUrl);
         const localPath = pathMapper.toLocalPath(url);
         const optional = this._isOptionalResource(url, pageUrl);
@@ -237,6 +250,18 @@ class AssetPipeline {
         for (let attempt = 0; attempt < this.retry; attempt++) {
             if (this.cancelled) return;
             try {
+                this._peakQueueLength = Math.max(this._peakQueueLength, this.queue.length);
+                if (attempt === 0) {
+                    this._emitProgress({
+                        type: 'asset-start',
+                        pageUrl,
+                        url,
+                        queueLength: this.queue.length,
+                        index: index + 1,
+                        peakQueue: this._peakQueueLength
+                    });
+                }
+
                 this.onResource(url, index + 1, total);
 
                 let localPathWithExt = pathMapper.ensureExtension(localPath, presetType || '');
@@ -265,16 +290,38 @@ class AssetPipeline {
                     url.endsWith('.css') ||
                     savePath.endsWith('.css');
                 if (isCss) {
-                    await this._processCssFile(url, savePath, pageUrl);
+                    await this._processCssFile(url, savePath, pageUrl, baseDir);
                 }
 
                 this.successCount++;
+                this._completedAssets++;
+                this._peakQueueLength = Math.max(this._peakQueueLength, this.queue.length);
+                this._emitProgress({
+                    type: 'asset-done',
+                    pageUrl,
+                    url,
+                    completed: this._completedAssets,
+                    peakQueue: this._peakQueueLength,
+                    success: true,
+                    downloadedBytes: this.downloadedBytes
+                });
                 if (this.delay) await new Promise(r => setTimeout(r, this.delay));
                 return;
             } catch (err) {
                 if (attempt >= this.retry - 1) {
                     if (savePath) await this._removeEmptyParentDir(savePath);
                     this._recordFailure(url, err.message, optional);
+                    this._completedAssets++;
+                    this._peakQueueLength = Math.max(this._peakQueueLength, this.queue.length);
+                    this._emitProgress({
+                        type: 'asset-done',
+                        pageUrl,
+                        url,
+                        completed: this._completedAssets,
+                        peakQueue: this._peakQueueLength,
+                        success: false,
+                        downloadedBytes: this.downloadedBytes
+                    });
                 } else {
                     await new Promise(r => setTimeout(r, this.retryDelay));
                 }
@@ -288,17 +335,29 @@ class AssetPipeline {
 
     async run(baseDir) {
         let processed = 0;
+        this._completedAssets = 0;
+        this._peakQueueLength = 0;
 
         while (processed < this.queue.length && !this.cancelled) {
+            this._peakQueueLength = Math.max(this._peakQueueLength, this.queue.length);
             const batchEnd = Math.min(processed + this.concurrency, this.queue.length);
             const batch = [];
+            const batchTotal = this.queue.length;
             for (let i = processed; i < batchEnd; i++) {
                 const item = { ...this.queue[i], baseDir };
-                batch.push(this._downloadOne(item, i, this.queue.length));
+                batch.push(this._downloadOne(item, i, batchTotal));
             }
             await Promise.all(batch);
             processed = batchEnd;
         }
+
+        this._peakQueueLength = Math.max(this._peakQueueLength, this.queue.length);
+        this._emitProgress({
+            type: 'pipeline-complete',
+            completed: this._completedAssets,
+            peakQueue: this._peakQueueLength,
+            downloadedBytes: this.downloadedBytes
+        });
     }
 
     async saveCapturedResponses(capture, pageUrl) {

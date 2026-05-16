@@ -33,8 +33,7 @@ From source: `git clone` → `cd AnyDownload` → `npm install`
 | Preview an existing download folder | `anydownload serve test` (auto-finds `test/example.com/`) |
 | Interactive wizard (URL, scope, engine — no browser pick) | `anydownload --wizard` |
 | Only CSS files | `anydownload example.com --type css` |
-| Discover hidden / unlinked paths | `anydownload example.com -p -o mysite` |
-| Deep path discovery (Wayback + wordlist) | `anydownload example.com -p --path-deep --delay 500` |
+| *(optional)* List URLs only (no download) | `anydownload example.com -p -o mysite` |
 
 ---
 
@@ -126,11 +125,6 @@ anydownload https://example.com --preset full -o mysite
 |--------|-------------|---------|
 | `-o, --output <dir>` | Output parent folder (files go in `<dir>/<hostname>/`) | `downloaded_site` |
 | `--mode <mode>` | `static` \| `render` \| `auto` | `auto` |
-| `-p, --path` | Discover URLs; save `paths.txt` only (uses Playwright by default) | off |
-| `--path-deep` | Add Wayback Machine + extended path wordlist | off |
-| `--path-seeds <file>` | Extra probe paths (one per line, `#` comments), merged with built-in probes | — |
-| `--path-probe-depth <n>` | `1` = `/segment` only; `2` = also `/discovered-prefix/word` (capped extra requests) | `1` |
-| `--path-no-render` | Skip Playwright during `-p` | off |
 | `--open` | Start HTTP preview + open browser | off |
 | `--serve` | Start HTTP preview after download | off |
 | `--serve-port <n>` | Preview port (download command) | `8765` |
@@ -153,24 +147,24 @@ anydownload https://example.com --preset full -o mysite
 
 Full list: `anydownload --help`
 
-### Path discovery (`-p`)
+### Path discovery (optional, `-p`)
+
+**Auxiliary only** — does not download the site. Writes **`paths.txt`** under `<output>/<hostname>/` by combining sitemap, crawl, robots hints, JS/service-worker strings, and optional HTTP probes.
 
 ```bash
 anydownload example.com -p -o mysite
 # → mysite/example.com/paths.txt
 ```
 
-Sources: sitemap, `robots.txt`, same-hostname crawl, path probes, **optional `--path-seeds` file**, **depth-2 prefix probes** when `--path-probe-depth 2`, JS hints, **service workers** (`sw.js` / `service-worker.js` and `register()` URLs) plus `importScripts`, web manifest, source maps, **Playwright network capture** (default). With `--path-deep`: [Wayback Machine](https://web.archive.org) historical URLs + extended path wordlist probes.
+| Flag | When to use |
+|------|-------------|
+| `--path-deep` | Bundled ~2000-path wordlist + Wayback (slow; use `--delay`) |
+| `--path-seeds <file>` | One guessed path per line (e.g. secret routes you know) |
+| `--path-probe-depth 2` | Also probe `/found-prefix/word` (capped) |
+| `--path-txt` / `./path.txt` | Replace bundled [`data/path-wordlist.txt`](data/path-wordlist.txt) |
+| `--path-no-render` | Faster scan without Playwright |
 
-```bash
-anydownload example.com -p --path-deep --delay 500 -o mysite
-anydownload example.com -p --path-no-render   # static discovery only, faster
-anydownload example.com -p --path-seeds ./extra-paths.txt --path-probe-depth 2 -o mysite
-```
-
-**Hidden / unlinked URLs:** If a path never appears in those signals (including Wayback and your seed file), AnyDownload has **no way to infer it**—there is no general enumeration of “guess-only” routes. Add likely paths to **`--path-seeds`**. **`--path-probe-depth 2`** only tries `/discovered-prefix/word` under prefixes already found, with strict caps to limit traffic.
-
-Does **not** download the full site. Cannot guarantee login-only or CAPTCHA-protected routes. Use only on sites you are allowed to scan.
+Example (deeper scan): `anydownload example.com -p --path-deep --delay 500 -o mysite`. Paths with no public signal still need **`--path-seeds`**. Full flags: `anydownload --help`.
 
 ---
 

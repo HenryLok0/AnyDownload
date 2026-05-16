@@ -196,6 +196,7 @@ async function runPathDiscovery(url, opts) {
         verbose: dlOpts.verbose,
         pathDeep: opts.pathDeep === true,
         pathSeedsFile: opts.pathSeeds || null,
+        pathTxtOverride: opts.pathTxt || null,
         pathProbeDepth: opts.pathProbeDepth,
         useRender: opts.pathNoRender !== true,
         renderProvider: dlOpts.browserType || 'playwright'
@@ -340,6 +341,7 @@ function addDownloadOptions(cmd) {
         .option('--path-deep', 'Extended wordlist + Wayback Machine URLs (slower)')
         .option('--path-seeds <file>', 'Extra probe paths (one per line, # comments); merged with other probes')
         .option('--path-probe-depth <n>', '1 = /path probes only; 2 = also /known-prefix/word (capped)', '1')
+        .option('--path-txt <file>', 'Path probe wordlist (else ./path.txt if present, else packaged data/path-wordlist.txt)')
         .option('--path-no-render', 'Skip Playwright capture during path discovery')
         .option('--legacy-flat-pages', 'Flat page filenames in site root (old layout)')
         .option('--no-progress', 'Disable live progress timeline (useful for CI/logs)')

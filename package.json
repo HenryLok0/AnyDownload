@@ -19,6 +19,7 @@
     "bin/",
     "src/",
     "data/",
+    "scripts/generate-path-wordlist.js",
     "scripts/install-playwright-browser.js",
     "views/",
     "public/",
@@ -37,6 +38,7 @@
   "scripts": {
     "start": "node web-gui.js",
     "test": "jest --config jest.config.js",
+    "generate-path-wordlist": "node scripts/generate-path-wordlist.js",
     "postinstall": "node scripts/install-playwright-browser.js",
     "verify:package": "node scripts/verify-package-json.js",
     "prepublishOnly": "npm run verify:package && npm test"

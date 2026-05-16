@@ -12,11 +12,19 @@ Download websites for **offline browsing** — HTML, CSS, JavaScript, images, fo
 
 ## Install
 
+### Desktop app (recommended for GUI users)
+
+Grab the installer for your OS from **[Releases](https://github.com/HenryLok0/AnyDownload/releases)** (.exe / .dmg / .AppImage or .deb, when published).
+
+### CLI (npm)
+
 ```bash
 npm install -g anydownload
 ```
 
-From source: `git clone` → `cd AnyDownload` → `npm install`
+### From source
+
+`git clone` → `cd AnyDownload` → `npm install`
 
 ---
 
@@ -215,6 +223,47 @@ downloaded_site/                          ← folder you pass with -o or wizard
 ```
 
 If you choose output `test`, the site lives at `test/example.com/`. A separate default `downloaded_site/` folder is only used when you omit `-o` entirely (not from wizard defaults leaking into CLI).
+
+---
+
+## Desktop App (Executable)
+
+AnyDownload can be compiled into a standalone desktop application (**Windows `.exe`**, **macOS `.dmg`**, **Linux `.AppImage`** and **`.deb`**) using Electron. The executable bundles the Web GUI and Chromium directly, meaning users do not need to install Node.js or Playwright!
+
+To build locally (match the OS you are running):
+
+```bash
+# Install dependencies
+npm install
+
+# Start in development mode
+npm run electron:start
+
+# Build for Windows (NSIS installer)
+npm run electron:build:win
+
+# Build for macOS (.dmg)
+npm run electron:build:mac
+
+# Build for Linux (.AppImage + .deb)
+npm run electron:build:linux
+
+# Same as running electron-builder for the CURRENT platform only (does not emit all three OSes locally)
+npm run electron:build:all
+```
+
+Built installers appear under **`dist-electron/`**.
+
+### GitHub Releases (all three platforms in one Release)
+
+Publishing a semver tag **`v*`** (example: `v2.4.0`) queues **GitHub Actions** to build installers on Windows, macOS, and Linux and attach them to a **single GitHub Release** for that tag. See [.github/workflows/release-electron.yml](.github/workflows/release-electron.yml).
+
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+**macOS code signing / notarization:** CI produces an unsigned `.dmg` by default. Wide distribution typically requires Apple Developer **`CSC_`*** env secrets and optional notarization; that is advanced setup and not required for artifacts to appear on the Release.
 
 ---
 

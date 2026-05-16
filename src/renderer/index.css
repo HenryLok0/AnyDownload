@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-bg-base: var(--bg-base);
+  --color-bg-panel: var(--bg-panel);
+  --color-bg-header: var(--bg-header);
+  --color-bg-header-alt: var(--bg-header-alt);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-active: var(--bg-active);
+  --color-bg-selected: var(--bg-selected);
+  
+  --color-border-main: var(--border-color);
+  --color-border-light: var(--border-light);
+  --color-border-lighter: var(--border-lighter);
+  
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-text-placeholder: var(--text-placeholder);
+}
+
+@layer base {
+  :root {
+    --bg-base: #f3f3f3;
+    --bg-panel: #ffffff;
+    --bg-header: #f0f0f0;
+    --bg-header-alt: #e5e5e5;
+    --bg-hover: #e0e0e0;
+    --bg-active: #d0d0d0;
+    --bg-selected: #e8f0fe;
+    
+    --border-color: #ccc;
+    --border-light: #ddd;
+    --border-lighter: #eee;
+    
+    --text-main: #333333;
+    --text-muted: #666666;
+    --text-placeholder: #999999;
+    
+    --scrollbar-bg: #f0f0f0;
+    --scrollbar-border: #e0e0e0;
+    --scrollbar-thumb: #cdcdcd;
+    --scrollbar-thumb-hover: #a6a6a6;
+    --scrollbar-thumb-active: #606060;
+  }
+
+  .dark {
+    --bg-base: #1e1e1e;
+    --bg-panel: #252526;
+    --bg-header: #333333;
+    --bg-header-alt: #2d2d2d;
+    --bg-hover: #444444;
+    --bg-active: #555555;
+    --bg-selected: #094771;
+    
+    --border-color: #444444;
+    --border-light: #333333;
+    --border-lighter: #2d2d2d;
+    
+    --text-main: #cccccc;
+    --text-muted: #999999;
+    --text-placeholder: #666666;
+
+    --scrollbar-bg: #1e1e1e;
+    --scrollbar-border: #2d2d2d;
+    --scrollbar-thumb: #424242;
+    --scrollbar-thumb-hover: #4f4f4f;
+    --scrollbar-thumb-active: #5b5b5b;
+  }
+}
+
+@layer utilities {
+  .font-segoe {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+}
+
+body {
+  margin: 0;
+  overflow: hidden; /* Prevent body scroll, layout handles it */
+  background-color: var(--bg-base);
+  color: var(--text-main);
+}
+
+/* Win32 style native dense scrollbar */
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-bg); 
+  border-left: 1px solid var(--scrollbar-border);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb); 
+  border: 1px solid var(--scrollbar-bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover); 
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-active); 
+}

@@ -43,6 +43,10 @@ async function ensureRenderBackend(provider = 'playwright') {
     const normalized = (provider || 'playwright').toLowerCase();
 
     if (normalized === 'playwright') {
+        if (process.versions && process.versions.electron) {
+            return { provider: 'playwright', ready: true };
+        }
+        
         const playwright = tryRequire('playwright');
         if (!playwright) throw missingPeerError('playwright');
         try {

@@ -38,7 +38,10 @@ class PlaywrightAdapter {
         if (!launcher) {
             throw new Error(`Unsupported Playwright browser: ${this.browserName}`);
         }
-        this.browser = await launcher.launch({ headless: this.headless });
+        
+        const launchOptions = { headless: this.headless };
+        
+        this.browser = await launcher.launch(launchOptions);
         const contextOptions = {
             userAgent: this.userAgent
         };

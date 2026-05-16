@@ -7,7 +7,8 @@
     "delete": "삭제",
     "settings": "설정",
     "lightMode": "라이트 모드",
-    "darkMode": "다크 모드"
+    "darkMode": "다크 모드",
+    "offlinePreview": "로컬 서버 미리보기"
   },
   "sidebar": {
     "targetSetup": "대상 설정",

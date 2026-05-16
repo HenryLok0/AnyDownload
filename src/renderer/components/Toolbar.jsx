@@ -1,8 +1,19 @@
 import React from 'react';
-import { Play, Square, Settings, FileBox, FolderOpen, Moon, Sun, Globe, Trash2 } from 'lucide-react';
+import { Play, Square, Settings, FileBox, FolderOpen, Moon, Sun, Globe, Trash2, MonitorPlay } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-export default function Toolbar({ isRunning, onStart, onStop, onExport, onDelete, hasSelection, isDark, onToggleDark }) {
+export default function Toolbar({
+  isRunning,
+  onStart,
+  onStop,
+  onExport,
+  onDelete,
+  hasSelection,
+  isDark,
+  onToggleDark,
+  mode,
+  onOfflinePreview
+}) {
   const { t, i18n } = useTranslation();
 
   const handleLanguageChange = (e) => {
@@ -23,6 +34,15 @@ export default function Toolbar({ isRunning, onStart, onStop, onExport, onDelete
         onClick={onStop}
         disabled={!isRunning}
       />
+
+      {mode === 'download' && (
+        <ToolbarButton 
+          icon={<MonitorPlay size={16} className="text-teal-600" />} 
+          label={t('toolbar.offlinePreview')} 
+          onClick={onOfflinePreview}
+          disabled={!window.electronAPI?.startOfflinePreview}
+        />
+      )}
       
       <div className="w-px h-6 bg-[var(--border-color)] mx-1" />
       

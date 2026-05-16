@@ -5,11 +5,39 @@ const archiver = require('archiver');
 const { SiteDownloader } = require('./src/downloader');
 const PathDiscovery = require('./src/discovery/PathDiscovery');
 const TaskManager = require('./src/core/TaskManager');
+const { startPreview } = require('./src/server/PreviewServer');
 
 const isDev = process.env.NODE_ENV === 'development';
 
+/** User may type "example.com"; PathDiscovery normalizes with URL() and needs a scheme. */
+function ensureHttpScheme(url) {
+    const s = typeof url === 'string' ? url.trim() : '';
+    if (!s) return s;
+    if (/^https?:\/\//i.test(s)) return s;
+    return `https://${s}`;
+}
+
+/** Same convention as downloader: relative paths resolve from process.cwd() */
+function resolveConfiguredOutput(folderPath) {
+    const raw = folderPath != null ? String(folderPath).trim() : '';
+    const rel = raw || 'downloaded_site';
+    return path.isAbsolute(rel) ? path.normalize(rel) : path.resolve(process.cwd(), rel);
+}
+
 let mainWindow;
 let taskManager;
+
+/** Live HTTP preview (`anydownload serve`); replaced or stopped on quit */
+let previewServerInstance = null;
+
+const PREVIEW_PORT = parseInt(process.env.ANYDOWNLOAD_PREVIEW_PORT || '8765', 10) || 8765;
+
+app.on('before-quit', () => {
+    if (!previewServerInstance) return;
+    const srv = previewServerInstance;
+    previewServerInstance = null;
+    srv.stop().catch(() => {});
+});
 
 async function createWindow() {
     Menu.setApplicationMenu(null); // Hide default menu
@@ -148,7 +176,45 @@ app.whenReady().then(() => {
         return result.filePaths[0];
     });
 
+    ipcMain.handle('start-offline-preview', async (_event, folderPath) => {
+        try {
+            const root = resolveConfiguredOutput(folderPath);
+            await fs.promises.access(root).catch(() => {
+                throw new Error(`Folder not found: ${root}`);
+            });
+
+            if (previewServerInstance) {
+                await previewServerInstance.stop();
+                previewServerInstance = null;
+            }
+
+            let result;
+            try {
+                result = await startPreview(root, { port: PREVIEW_PORT, open: false });
+            } catch (firstErr) {
+                if (firstErr && firstErr.code === 'EADDRINUSE') {
+                    result = await startPreview(root, { port: 0, open: false });
+                } else {
+                    throw firstErr;
+                }
+            }
+            previewServerInstance = result.server;
+            const previewUrl = result.url;
+            if (mainWindow) {
+                await shell.openExternal(previewUrl);
+            }
+            return { ok: true, url: previewUrl };
+        } catch (err) {
+            const msg = err && err.message ? err.message : String(err);
+            if (mainWindow) {
+                dialog.showErrorBox('Preview failed', msg);
+            }
+            return { ok: false, error: msg };
+        }
+    });
+
     ipcMain.on('start-task', async (event, config) => {
+        config = { ...config, url: ensureHttpScheme(config.url) };
         console.log('Main process received start-task:', config);
         
         const task = taskManager.addTask({
@@ -252,6 +318,15 @@ app.whenReady().then(() => {
             });
 
             try {
+                if (mainWindow) {
+                    mainWindow.webContents.send('task-progress', {
+                        status: 'downloading',
+                        url: config.url,
+                        size: '-',
+                        time: '-',
+                        phase: 'discovery-start'
+                    });
+                }
                 const results = await discovery.discover(config.url);
                 const updatedTask = taskManager.updateTask(task.id, { 
                     status: 'success',
@@ -261,14 +336,17 @@ app.whenReady().then(() => {
 
                 if (mainWindow) {
                     mainWindow.webContents.send('task-update', updatedTask);
-                    for (const entry of results.paths) {
-                        mainWindow.webContents.send('task-progress', {
-                            status: 'success',
-                            url: entry.url,
-                            size: `Sources: ${entry.sources.join(',')}`,
-                            time: entry.status ? `HTTP ${entry.status}` : '-'
-                        });
-                    }
+                    // One IPC line: thousands of paths would flood the renderer (DataGrid still only updates the status bar per event).
+                    mainWindow.webContents.send('task-progress', {
+                        status: 'success',
+                        url: `Path discovery: ${results.paths.length} URL(s) for ${config.url}`,
+                        size: `${results.paths.length} paths`,
+                        time: '-',
+                        phase: 'discovery-complete',
+                        total: results.paths.length,
+                        current: results.paths.length,
+                        percent: 100
+                    });
                     mainWindow.webContents.send('task-done', { success: true });
                 }
             } catch (err) {

@@ -7,7 +7,8 @@
     "delete": "刪除",
     "settings": "設定",
     "lightMode": "淺色模式",
-    "darkMode": "深色模式"
+    "darkMode": "深色模式",
+    "offlinePreview": "伺服器預覽"
   },
   "sidebar": {
     "targetSetup": "目標設定",

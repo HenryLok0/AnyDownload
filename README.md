@@ -14,7 +14,7 @@ Download websites for **offline browsing** — HTML, CSS, JavaScript, images, fo
 
 ### Desktop app (recommended for GUI users)
 
-Grab the installer for your OS from **[Releases](https://github.com/HenryLok0/AnyDownload/releases)** — new installers are uploaded automatically when **`main`** is updated (GitHub Actions).
+Grab the **desktop build** for your OS from **[Releases](https://github.com/HenryLok0/AnyDownload/releases)** — Windows portable `.exe`, macOS `.dmg`, and Linux `.AppImage` are uploaded automatically when **`main`** is updated (GitHub Actions). No wizard-style setup on Windows: run the `.exe` directly.
 
 ### CLI (npm)
 
@@ -228,7 +228,9 @@ If you choose output `test`, the site lives at `test/example.com/`. A separate d
 
 ## Desktop App (Executable)
 
-AnyDownload can be compiled into a standalone desktop application (**Windows `.exe`**, **macOS `.dmg`**, **Linux `.AppImage`** and **`.deb`**) using Electron. The executable bundles the Web GUI and Chromium directly, meaning users do not need to install Node.js or Playwright!
+AnyDownload can be compiled into a standalone desktop application (**Windows portable `.exe`**, **macOS `.dmg`**, **Linux `.AppImage`**) using Electron. The app bundles the Web GUI and Chromium directly, meaning users do not need Node.js or Playwright separately.
+
+On **Windows**, the release is a **single portable executable**: download and double-click — no setup wizard (`NSIS`).
 
 To build locally (match the OS you are running):
 
@@ -239,33 +241,33 @@ npm install
 # Start in development mode
 npm run electron:start
 
-# Build for Windows (NSIS installer)
+# Build for Windows (portable single .exe, no installer)
 npm run electron:build:win
 
-# Build for macOS (.dmg)
+# Build for macOS (.dmg — open disk image, drag/run the app or run from mounted volume)
 npm run electron:build:mac
 
-# Build for Linux (.AppImage + .deb)
+# Build for Linux (.AppImage — chmod +x then run)
 npm run electron:build:linux
 
-# Same as running electron-builder for the CURRENT platform only (does not emit all three OSes locally)
+# Same as electron-builder for the CURRENT platform only (does not emit all three OSes locally)
 npm run electron:build:all
 ```
 
-Built installers appear under **`dist-electron/`**.
+Built binaries appear under **`dist-electron/`**. Release assets use predictable names (**`AnyDownload-Windows-<version>.exe`**, **`AnyDownload-macOS-<version>-<arch>.dmg`**, **`AnyDownload-Linux-<version>-<arch>.AppImage`**).
 
 ### GitHub Releases (automatic)
 
-Each **push to `main`** runs [.github/workflows/release-electron.yml](.github/workflows/release-electron.yml) and creates a **new GitHub Release** with installers for **Windows, macOS, and Linux**. Release **version tagging** bumps the **MINOR semver** (`x.y.z` → `x.(y+1).0`; e.g. `2.0.0` → `2.1.0`) using the **[latest Release](https://github.com/HenryLok0/AnyDownload/releases)** tag as baseline, or `package.json` `version` if no release exists yet.
+Each **push to `main`** runs [.github/workflows/release-electron.yml](.github/workflows/release-electron.yml) and creates a **new GitHub Release** with **Windows portable `.exe`**, **macOS `.dmg`**, and **Linux `.AppImage`** attachments. Release **version tagging** bumps the **MINOR semver** (`x.y.z` → `x.(y+1).0`; e.g. `2.0.0` → `2.1.0`) using the **[latest Release](https://github.com/HenryLok0/AnyDownload/releases)** tag as baseline, or `package.json` `version` if no release exists yet.
 
 Each Release includes:
 
-- Windows / macOS / Linux installer artifacts produced in CI  
+- Windows portable `.exe` / macOS `.dmg` / Linux `.AppImage` produced in CI  
 - **`AnyDownload-<version>-source.zip`** (`git archive` of the triggering commit — tracked sources only)
 
-GitHub also shows **Source code (zip)** and **Source code (tar.gz)** for the Release tag automatically in the Releases UI — those are maintained by GitHub alongside the installers.
+GitHub also shows **Source code (zip)** and **Source code (tar.gz)** for the Release tag automatically in the Releases UI — those are maintained by GitHub alongside the desktop binaries.
 
-**macOS code signing / notarization:** CI produces an unsigned `.dmg` by default. Wide distribution typically requires Apple Developer **`CSC_`*** env secrets and optional notarization; that is advanced setup and not required for installers to attach to the Release.
+**macOS code signing / notarization:** CI produces an unsigned `.dmg` by default. Wide distribution typically requires Apple Developer **`CSC_`*** env secrets and optional notarization; that is advanced setup and not required for those builds to attach to the Release.
 
 ---
 

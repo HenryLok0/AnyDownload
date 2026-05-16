@@ -77,6 +77,11 @@ export default function App() {
     }
   };
 
+  const handleOfflinePreview = async () => {
+    if (!window.electronAPI?.startOfflinePreview) return;
+    await window.electronAPI.startOfflinePreview(config.output || 'downloaded_site');
+  };
+
   return (
     <div className="flex flex-col h-screen bg-[var(--bg-base)] text-[var(--text-main)] text-[13px] font-segoe overflow-hidden select-none cursor-default">
       {/* Top Toolbar */}
@@ -89,6 +94,8 @@ export default function App() {
         hasSelection={selectedTasks.length > 0}
         isDark={isDark}
         onToggleDark={() => setIsDark(!isDark)}
+        mode={config.mode}
+        onOfflinePreview={handleOfflinePreview}
       />
 
       {/* Main Workspace */}

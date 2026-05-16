@@ -128,6 +128,8 @@ anydownload https://example.com --preset full -o mysite
 | `--mode <mode>` | `static` \| `render` \| `auto` | `auto` |
 | `-p, --path` | Discover URLs; save `paths.txt` only (uses Playwright by default) | off |
 | `--path-deep` | Add Wayback Machine + extended path wordlist | off |
+| `--path-seeds <file>` | Extra probe paths (one per line, `#` comments), merged with built-in probes | — |
+| `--path-probe-depth <n>` | `1` = `/segment` only; `2` = also `/discovered-prefix/word` (capped extra requests) | `1` |
 | `--path-no-render` | Skip Playwright during `-p` | off |
 | `--open` | Start HTTP preview + open browser | off |
 | `--serve` | Start HTTP preview after download | off |
@@ -158,12 +160,15 @@ anydownload example.com -p -o mysite
 # → mysite/example.com/paths.txt
 ```
 
-Sources: sitemap, `robots.txt`, same-hostname crawl, path probes, JS hints, web manifest, source maps, **Playwright network capture** (default). With `--path-deep`: [Wayback Machine](https://web.archive.org) historical URLs + ~150 path wordlist probes.
+Sources: sitemap, `robots.txt`, same-hostname crawl, path probes, **optional `--path-seeds` file**, **depth-2 prefix probes** when `--path-probe-depth 2`, JS hints, **service workers** (`sw.js` / `service-worker.js` and `register()` URLs) plus `importScripts`, web manifest, source maps, **Playwright network capture** (default). With `--path-deep`: [Wayback Machine](https://web.archive.org) historical URLs + extended path wordlist probes.
 
 ```bash
 anydownload example.com -p --path-deep --delay 500 -o mysite
 anydownload example.com -p --path-no-render   # static discovery only, faster
+anydownload example.com -p --path-seeds ./extra-paths.txt --path-probe-depth 2 -o mysite
 ```
+
+**Hidden / unlinked URLs:** If a path never appears in those signals (including Wayback and your seed file), AnyDownload has **no way to infer it**—there is no general enumeration of “guess-only” routes. Add likely paths to **`--path-seeds`**. **`--path-probe-depth 2`** only tries `/discovered-prefix/word` under prefixes already found, with strict caps to limit traffic.
 
 Does **not** download the full site. Cannot guarantee login-only or CAPTCHA-protected routes. Use only on sites you are allowed to scan.
 

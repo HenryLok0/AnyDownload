@@ -193,6 +193,7 @@ async function runPathDiscovery(url, opts) {
         timeout: dlOpts.timeout,
         maxDepth: Math.max(parseInt(opts.maxDepth, 10) || 3, 2),
         delay: dlOpts.delay,
+        concurrency: dlOpts.concurrency,
         verbose: dlOpts.verbose,
         pathDeep: opts.pathDeep === true,
         pathSeedsFile: opts.pathSeeds || null,

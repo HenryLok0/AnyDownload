@@ -96,8 +96,9 @@ describe('PathDiscovery', () => {
     });
 
     test('path seeds file probes user segments with probe-seed source', async () => {
-        const seedFile = path.join(__dirname, '..', 'test-output', 'path-seed-file.txt');
-        await fs.ensureDir(path.dirname(seedFile));
+        const seedDir = path.join(__dirname, '..', 'test-output', 'path-discovery-seeds');
+        const seedFile = path.join(seedDir, 'seeds.txt');
+        await fs.ensureDir(seedDir);
         await fs.writeFile(seedFile, '# ignore\nalpha-secret-route\n');
 
         axios.get.mockImplementation((url) => {
@@ -131,7 +132,7 @@ describe('PathDiscovery', () => {
             pathSeedsFile: seedFile
         });
         const results = await discovery.discover('https://example.com/');
-        await fs.remove(path.dirname(seedFile)).catch(() => {});
+        await fs.remove(seedDir).catch(() => {});
 
         const seeded = results.paths.find(p => p.url.includes('alpha-secret-route'));
         expect(seeded).toBeTruthy();

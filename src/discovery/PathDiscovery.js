@@ -41,6 +41,7 @@ class PathDiscovery {
         this.timeout = options.timeout || 15000;
         this.maxDepth = options.maxDepth || 3;
         this.delay = options.delay != null ? options.delay : 200;
+        this.concurrency = options.concurrency || 5;
         this.verbose = options.verbose || false;
         this.pathDeep = options.pathDeep === true;
         const rawDepth = parseInt(options.pathProbeDepth, 10);
@@ -70,6 +71,16 @@ class PathDiscovery {
             return;
         }
         this.entries.set(normalized, { url: normalized, sources: [source], ...meta });
+    }
+
+    async _runConcurrent(items, fn) {
+        let processed = 0;
+        while (processed < items.length) {
+            const batchEnd = Math.min(processed + this.concurrency, items.length);
+            const batch = items.slice(processed, batchEnd);
+            await Promise.all(batch.map(fn));
+            processed = batchEnd;
+        }
     }
 
     async _fetchText(url) {
@@ -252,32 +263,32 @@ class PathDiscovery {
             if (abs && sameHostname(abs, startUrl)) candidates.add(abs);
         }
 
-        for (const swUrl of candidates) {
+        await this._runConcurrent([...candidates], async (swUrl) => {
             const text = await this._fetchText(swUrl);
-            if (!text || text.length < 8) continue;
+            if (!text || text.length < 8) return;
             this._extractJsPaths(text, startUrl);
             const imports = this._collectImportScriptUrls(text, startUrl).slice(0, 5);
-            for (const impUrl of imports) {
+            
+            await this._runConcurrent(imports, async (impUrl) => {
                 try {
                     const js = await this._fetchText(impUrl);
                     if (js) this._extractJsPaths(js, startUrl);
                 } catch {
                     // skip
                 }
-                if (this.delay) await new Promise(r => setTimeout(r, this.delay));
-            }
+            });
             if (this.delay) await new Promise(r => setTimeout(r, this.delay));
-        }
+        });
     }
 
     async _fetchSourceMaps(startUrl) {
         const jsList = [...this._jsUrls].slice(0, 20);
-        for (const jsUrl of jsList) {
+        await this._runConcurrent(jsList, async (jsUrl) => {
             const mapUrl = jsUrl.replace(/\.m?js(\?.*)?$/i, '.map$1');
-            if (mapUrl === jsUrl) continue;
+            if (mapUrl === jsUrl) return;
             try {
                 const text = await this._fetchText(mapUrl);
-                if (!text) continue;
+                if (!text) return;
                 const data = JSON.parse(text);
                 const sources = data.sources || [];
                 for (const src of sources) {
@@ -293,7 +304,7 @@ class PathDiscovery {
                 // no sourcemap
             }
             if (this.delay) await new Promise(r => setTimeout(r, this.delay));
-        }
+        });
     }
 
     async _bfsCrawl(startUrl) {
@@ -301,49 +312,52 @@ class PathDiscovery {
         const visited = new Set();
 
         while (queue.length > 0) {
-            const { url, depth } = queue.shift();
-            const key = normalizeUrl(url, startUrl);
-            if (!key || visited.has(key)) continue;
-            visited.add(key);
-            this._add(key, depth === 0 ? 'seed' : 'crawl');
+            const batchSize = Math.min(this.concurrency, queue.length);
+            const currentBatch = queue.splice(0, batchSize);
 
-            if (depth >= this.maxDepth) continue;
+            await Promise.all(currentBatch.map(async ({ url, depth }) => {
+                const key = normalizeUrl(url, startUrl);
+                if (!key || visited.has(key)) return;
+                visited.add(key);
+                this._add(key, depth === 0 ? 'seed' : 'crawl');
 
-            try {
-                const html = await this._fetchText(key);
-                if (!html) continue;
+                if (depth >= this.maxDepth) return;
 
-                this._parseHtmlExtras(html, startUrl);
-                const links = this.crawler.collectPageLinks(html, startUrl);
-                for (const link of links) {
-                    this._add(link, 'html');
-                    if (!visited.has(link)) queue.push({ url: link, depth: depth + 1 });
-                }
+                try {
+                    const html = await this._fetchText(key);
+                    if (!html) return;
 
-                if (/\.js(\?|$)/i.test(key)) {
-                    this._jsUrls.add(key);
-                    this._extractJsPaths(html, startUrl);
-                } else {
-                    const scriptUrls = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
-                        .map(m => normalizeUrl(m[1], key))
-                        .filter(Boolean)
-                        .slice(0, 15);
-                    for (const scriptUrl of scriptUrls) {
-                        if (!sameHostname(scriptUrl, startUrl)) continue;
-                        this._jsUrls.add(scriptUrl);
-                        try {
-                            const js = await this._fetchText(scriptUrl);
-                            if (js) this._extractJsPaths(js, startUrl);
-                        } catch {
-                            // skip
-                        }
-                        if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+                    this._parseHtmlExtras(html, startUrl);
+                    const links = this.crawler.collectPageLinks(html, startUrl);
+                    for (const link of links) {
+                        this._add(link, 'html');
+                        if (!visited.has(link)) queue.push({ url: link, depth: depth + 1 });
                     }
+
+                    if (/\.js(\?|$)/i.test(key)) {
+                        this._jsUrls.add(key);
+                        this._extractJsPaths(html, startUrl);
+                    } else {
+                        const scriptUrls = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
+                            .map(m => normalizeUrl(m[1], key))
+                            .filter(Boolean)
+                            .slice(0, 15);
+                        for (const scriptUrl of scriptUrls) {
+                            if (!sameHostname(scriptUrl, startUrl)) continue;
+                            this._jsUrls.add(scriptUrl);
+                            try {
+                                const js = await this._fetchText(scriptUrl);
+                                if (js) this._extractJsPaths(js, startUrl);
+                            } catch {
+                                // skip
+                            }
+                        }
+                    }
+                } catch {
+                    // skip
                 }
-            } catch {
-                // skip
-            }
-            if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+                if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+            }));
         }
     }
 
@@ -381,10 +395,10 @@ class PathDiscovery {
         const origin = getOrigin(startUrl);
         if (!origin) return;
 
-        for (const segment of segments) {
+        await this._runConcurrent(segments, async (segment) => {
             const target = segment ? `${origin}/${segment.replace(/^\//, '')}` : `${origin}/`;
             const u = normalizeUrl(target, startUrl);
-            if (!u || !sameHostname(u, startUrl)) continue;
+            if (!u || !sameHostname(u, startUrl)) return;
 
             try {
                 const res = await axios.head(u, {
@@ -412,7 +426,7 @@ class PathDiscovery {
                 }
             }
             if (this.delay) await new Promise(r => setTimeout(r, this.delay));
-        }
+        });
     }
 
     async _probeCommonPaths(startUrl) {

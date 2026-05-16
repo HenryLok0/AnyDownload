@@ -7,7 +7,8 @@
     "delete": "Delete",
     "settings": "Settings",
     "lightMode": "Light Mode",
-    "darkMode": "Dark Mode"
+    "darkMode": "Dark Mode",
+    "offlinePreview": "Serve preview"
   },
   "sidebar": {
     "targetSetup": "Target Setup",

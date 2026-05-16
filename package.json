@@ -125,6 +125,7 @@
       "src/discovery/**/*",
       "src/utils/**/*",
       "src/cli/**/*",
+      "src/server/**/*",
       "data/**/*",
       "electron-main.js",
       "preload.js",
@@ -134,16 +135,18 @@
       "main": "electron-main.js"
     },
     "win": {
-      "target": "nsis"
+      "target": "portable",
+      "artifactName": "AnyDownload-Windows-${version}.${ext}"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "artifactName": "AnyDownload-macOS-${version}-${arch}.${ext}"
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
+        "AppImage"
       ],
+      "artifactName": "AnyDownload-Linux-${version}-${arch}.${ext}",
       "category": "Network"
     }
   }

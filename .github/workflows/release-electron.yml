@@ -1,18 +1,18 @@
-# Build Windows, macOS, and Linux Electron artifacts and attach them to a GitHub Release
-# Trigger: push tag v* (e.g. v2.4.0). Runners cannot cross-compile all targets on one OS; CI splits per platform.
+# Build installers on Win/macOS/Linux + attach to a GitHub Release on each push to main.
+# Release version is the next MINOR (MAJOR.(MINOR+1).0) from the latest Release tag or from package.json as baseline.
 
 name: Release Electron builds
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
 permissions:
   contents: write
 
 concurrency:
-  group: electron-release-${{ github.ref }}
+  group: electron-release-${{ github.repository }}
   cancel-in-progress: false
 
 env:
@@ -20,7 +20,47 @@ env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
 jobs:
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.calc.outputs.release_version }}
+      tag_v: ${{ steps.calc.outputs.tag_v }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute next MINOR version
+        id: calc
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+
+          # Latest published release (REST /releases/latest ignores drafts/prereleases in many cases — see GitHub API docs)
+          LATEST_TAG=""
+          RESP=$(gh api "repos/${REPO}/releases/latest" 2>/dev/null || true)
+          if printf '%s' "$RESP" | jq -e .tag_name >/dev/null 2>&1; then
+            LATEST_TAG="$(printf '%s' "$RESP" | jq -r .tag_name)"
+          fi
+
+          if [[ -n "$LATEST_TAG" && "$LATEST_TAG" != "null" ]]; then
+            VERSION="${LATEST_TAG#v}"
+          else
+            VERSION="$(jq -r .version package.json)"
+          fi
+
+          # bash read splits on IFS=. — MINOR +1 and PATCH resets to 0 (e.g. 2.3.8 → 2.4.0)
+          old_IFS="$IFS"
+          IFS=.
+          read -r MAJOR MINOR PATCH <<<"${VERSION}"
+          IFS="$old_IFS"
+          NEXT="${MAJOR}.$((10#${MINOR} + 1)).0"
+
+          printf 'release_version=%s\n' "$NEXT" >> "$GITHUB_OUTPUT"
+          printf 'tag_v=v%s\n' "$NEXT" >> "$GITHUB_OUTPUT"
+
   electron-build:
+    needs: resolve-version
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -50,6 +90,16 @@ jobs:
           sudo apt-get install -y libfuse2
 
       - run: npm ci
+
+      - name: Align package.json version with release
+        shell: bash
+        run: |
+          node -e "
+            const fs=require('fs');
+            const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+            p.version='${{ needs.resolve-version.outputs.release_version }}';
+            fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');
+          "
 
       - name: Package frontend + Electron (${{ matrix.artifact }})
         run: npx vite build && npx electron-builder ${{ matrix.eb_flag }} --publish never
@@ -89,23 +139,35 @@ jobs:
           path: upload/
 
   release:
-    needs: electron-build
+    needs:
+      - resolve-version
+      - electron-build
     runs-on: ubuntu-latest
     steps:
-      - name: Merge platform artifacts into one folder for upload
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Download installer artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: dist-*
           merge-multiple: true
           path: release-assets
 
-      # Ensure something was produced before creating the Release
-      - name: List release assets
-        run: ls -la release-assets
+      - name: Add source archive (tracked files at this commit)
+        run: |
+          set -euo pipefail
+          VER="${{ needs.resolve-version.outputs.release_version }}"
+          OUT="release-assets/AnyDownload-${VER}-source.zip"
+          git archive --format=zip --output="$OUT" HEAD
+          ls -la release-assets
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: release-assets/**/*
+          tag_name: ${{ needs.resolve-version.outputs.tag_v }}
+          target_commitish: ${{ github.sha }}
+          files: release-assets/*
           fail_on_unmatched_files: true
           generate_release_notes: true
         env:

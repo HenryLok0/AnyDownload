@@ -14,7 +14,7 @@ Download websites for **offline browsing** — HTML, CSS, JavaScript, images, fo
 
 ### Desktop app (recommended for GUI users)
 
-Grab the installer for your OS from **[Releases](https://github.com/HenryLok0/AnyDownload/releases)** (windows, mac, linux).
+Grab the installer for your OS from **[Releases](https://github.com/HenryLok0/AnyDownload/releases)** — new installers are uploaded automatically when **`main`** is updated (GitHub Actions).
 
 ### CLI (npm)
 
@@ -254,16 +254,18 @@ npm run electron:build:all
 
 Built installers appear under **`dist-electron/`**.
 
-### GitHub Releases (all three platforms in one Release)
+### GitHub Releases (automatic)
 
-Publishing a semver tag **`v*`** (example: `v2.4.0`) queues **GitHub Actions** to build installers on Windows, macOS, and Linux and attach them to a **single GitHub Release** for that tag. See [.github/workflows/release-electron.yml](.github/workflows/release-electron.yml).
+Each **push to `main`** runs [.github/workflows/release-electron.yml](.github/workflows/release-electron.yml) and creates a **new GitHub Release** with installers for **Windows, macOS, and Linux**. Release **version tagging** bumps the **MINOR semver** (`x.y.z` → `x.(y+1).0`; e.g. `2.0.0` → `2.1.0`) using the **[latest Release](https://github.com/HenryLok0/AnyDownload/releases)** tag as baseline, or `package.json` `version` if no release exists yet.
 
-```bash
-git tag vX.Y.Z
-git push origin vX.Y.Z
-```
+Each Release includes:
 
-**macOS code signing / notarization:** CI produces an unsigned `.dmg` by default. Wide distribution typically requires Apple Developer **`CSC_`*** env secrets and optional notarization; that is advanced setup and not required for artifacts to appear on the Release.
+- Windows / macOS / Linux installer artifacts produced in CI  
+- **`AnyDownload-<version>-source.zip`** (`git archive` of the triggering commit — tracked sources only)
+
+GitHub also shows **Source code (zip)** and **Source code (tar.gz)** for the Release tag automatically in the Releases UI — those are maintained by GitHub alongside the installers.
+
+**macOS code signing / notarization:** CI produces an unsigned `.dmg` by default. Wide distribution typically requires Apple Developer **`CSC_`*** env secrets and optional notarization; that is advanced setup and not required for installers to attach to the Release.
 
 ---
 

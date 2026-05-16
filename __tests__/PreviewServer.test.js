@@ -59,6 +59,43 @@ describe('PreviewServer', () => {
         expect(htmlUnknown).toContain('Home');
     });
 
+    test('nested URL /React/_next/static/… serves site-root _next (Next-like bundles)', async () => {
+        await fs.ensureDir(path.join(rootDir, '_next', 'static'));
+        await fs.writeFile(
+            path.join(rootDir, '_next', 'static', 'site.css'),
+            'body{color:red}'
+        );
+        await fs.ensureDir(path.join(rootDir, 'React'));
+        await fs.writeFile(
+            path.join(rootDir, 'React', 'index.html'),
+            '<html><body>Nested</body></html>'
+        );
+
+        server = new PreviewServer(rootDir);
+        const baseUrl = await server.start();
+
+        const direct = await fetch(`${baseUrl}_next/static/site.css`).then(r => r.text());
+        expect(direct).toContain('red');
+
+        const nestedWrong = `${baseUrl}React/_next/static/site.css`;
+        const nested = await fetch(nestedWrong).then(r => r.text());
+        expect(nested).toContain('red');
+    });
+
+    test('nested …/assets/… serves site-root assets (Vite-style)', async () => {
+        await fs.ensureDir(path.join(rootDir, 'vitepage'));
+        await fs.writeFile(
+            path.join(rootDir, 'vitepage', 'index.html'),
+            '<html><body>V</body></html>'
+        );
+
+        server = new PreviewServer(rootDir);
+        const baseUrl = await server.start();
+
+        const nested = await fetch(`${baseUrl}vitepage/assets/app.js`).then(r => r.text());
+        expect(nested).toContain('ok');
+    });
+
     test('redirects /index.html to /', async () => {
         server = new PreviewServer(rootDir);
         const baseUrl = await server.start();

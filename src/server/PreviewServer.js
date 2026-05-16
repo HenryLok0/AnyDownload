@@ -73,6 +73,36 @@ async function resolveExtensionlessHtml(rootDir, urlPath) {
     return null;
 }
 
+/**
+ * Nested HTML pages sometimes resolve bundles relative to the page path, producing
+ * /learn/_next/... while files live at /_next/... Scan path segments for shared roots.
+ */
+async function resolveSharedBundlePath(rootDir, urlPath) {
+    const decoded = decodeURIComponent(urlPath.split('?')[0]).replace(/^\/+/u, '');
+    if (!decoded) return null;
+
+    const root = path.normalize(rootDir);
+    const parts = decoded.split('/').filter(p => p.length);
+
+    const tryFromSegment = async (marker) => {
+        const idx = parts.indexOf(marker);
+        if (idx < 0) return null;
+        const tail = parts.slice(idx).join('/');
+        const candidate = path.normalize(path.join(rootDir, tail));
+        if (!candidate.startsWith(root)) return null;
+        if (await fs.pathExists(candidate)) {
+            const st = await fs.stat(candidate);
+            if (st.isFile()) return candidate;
+        }
+        return null;
+    };
+
+    const nextPath = await tryFromSegment('_next');
+    if (nextPath) return nextPath;
+
+    return tryFromSegment('assets');
+}
+
 class PreviewServer {
     constructor(rootDir, options = {}) {
         this.rootDir = path.resolve(rootDir);
@@ -101,6 +131,11 @@ class PreviewServer {
                 if (!filePath || !(await fs.pathExists(filePath))) {
                     const extless = await resolveExtensionlessHtml(this.rootDir, urlPath);
                     if (extless) filePath = extless;
+                }
+
+                if (!filePath || !(await fs.pathExists(filePath))) {
+                    const aliased = await resolveSharedBundlePath(this.rootDir, urlPath);
+                    if (aliased) filePath = aliased;
                 }
 
                 if (!filePath || !(await fs.pathExists(filePath))) {
@@ -187,5 +222,6 @@ module.exports = {
     openBrowser,
     findIndexFile,
     resolveSiteRoot,
-    resolveExtensionlessHtml
+    resolveExtensionlessHtml,
+    resolveSharedBundlePath
 };

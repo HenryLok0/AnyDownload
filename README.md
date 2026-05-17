@@ -12,15 +12,15 @@ Download websites for **offline browsing** — HTML, CSS, JavaScript, images, fo
 
 ## Install
 
-### Desktop app (recommended for GUI users)
-
-Grab the **desktop build** for your OS from **[Releases](https://github.com/HenryLok0/AnyDownload/releases)** — Windows portable `.exe`, macOS `.dmg`, and Linux `.AppImage` are uploaded automatically when **`main`** is updated (GitHub Actions). No wizard-style setup on Windows: run the `.exe` directly.
-
-### CLI (npm)
+### 1. CLI (npm)
 
 ```bash
 npm install -g anydownload
 ```
+
+### 2. Desktop app (recommended for GUI users)
+
+Grab the **desktop build** for your OS from **[Releases](https://github.com/HenryLok0/AnyDownload/releases)** — Windows portable `.exe`, macOS `.dmg`, and Linux `.AppImage` are uploaded automatically when **`main`** is updated (GitHub Actions). No wizard-style setup on Windows: run the `.exe` directly.
 
 ### From source
 

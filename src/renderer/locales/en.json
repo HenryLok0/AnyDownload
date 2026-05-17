@@ -8,7 +8,14 @@
     "settings": "Settings",
     "lightMode": "Light Mode",
     "darkMode": "Dark Mode",
-    "offlinePreview": "Serve preview"
+    "offlinePreview": "Serve preview",
+    "startTooltip": "Start the selected mode with the configured target.",
+    "startDisabledEmptyUrl": "Enter a target URL first.",
+    "startDisabledInvalidUrl": "Fix the URL syntax (scheme is optional — https:// will be assumed).",
+    "stopTooltip": "Stops active website downloads or path-discovery runs.",
+    "keyboardStartHint": "Shortcut: Ctrl+Enter (Cmd+Enter on macOS) outside text fields.",
+    "keyboardStopHint": "Use Stop to cancel downloads or path discovery while a task is running.",
+    "languageSelect": "Interface language"
   },
   "sidebar": {
     "targetSetup": "Target Setup",
@@ -16,7 +23,18 @@
     "downloadWebsite": "Download Website",
     "pathDiscovery": "Path Discovery (-p)",
     "targetUrl": "Target URL",
+    "targetUrlHintEmpty": "A URL or hostname is required before starting.",
+    "targetUrlHintInvalid": "This does not parse as a valid URL. Include a hostname (https:// optional).",
+    "pathTxtBundledFallbackDir": "If you leave Custom Wordlist empty, path.txt lookups use bundled lists under {{path}}.",
     "outputFolder": "Output Folder",
+    "openOutputFolderButton": "Open",
+    "openOutputFolderTooltip": "Opens the resolved download folder in the file manager. Use Serve preview on the toolbar to run local HTTP preview (anydownload-style).",
+    "liveDownloadActivityTitle": "Live URLs",
+    "liveDownloadActivityIdle": "Shows recent resource URLs while a website download runs. Idle when no download task is active.",
+    "openOutputFolderFailedShort": "Could not open that folder.",
+    "discoveryLiveActivityTitle": "Discovery activity",
+    "discoveryLiveActivityIdle": "Shows recent progress lines while path discovery runs.",
+    "relativeOutputResolvedUnder": "Relative folders are created under: {{path}}",
     "preset": "Preset",
     "presetPage": "Page (Single page + assets)",
     "presetFull": "Full (Same-host links)",
@@ -58,11 +76,30 @@
     "target": "Target",
     "size": "Size",
     "statusTime": "Status/Time",
-    "noItems": "No items to display. Configure and start a task."
+    "noItems": "No items to display. Configure and start a task.",
+    "resourceFailuresSummary": "{{count}} referenced resource(s) failed or were skipped.",
+    "cancelledTooltip": "This run was cancelled or interrupted.",
+    "folderOpenDisabledWhileRunning": "Open folder after the task finishes so output layout is stable.",
+    "partialSuccessExplain": "Task finished but some referenced resources failed. Status is still Success with a skipped count.",
+    "filterLabel": "Filter",
+    "filterAll": "All statuses",
+    "filterRunning": "Running",
+    "filterSuccess": "Success",
+    "filterError": "Error",
+    "filterCancelled": "Cancelled",
+    "sortByTarget": "Sort by target URL",
+    "sortByTime": "Sort by timestamp"
   },
   "statusBar": {
     "engineRunning": "Engine Running",
     "ready": "Ready",
-    "files": "Files"
+    "files": "Files",
+    "runningTasksCount": "{{count}} running",
+    "multiDownloadProgressHint": "Avg. % across simultaneous downloads.",
+    "multiDownloadProgressHintDetail": "Shown when multiple website downloads run at once. Percent is averaged for the status strip.",
+    "averageAcrossDownloads": "Average percentage across simultaneous download tasks.",
+    "liveBytesDisclaimer": "Bytes reflect the latest progress event stream (often one active download).",
+    "appVersion": "v{{version}}",
+    "appVersionTitle": "Application version"
   }
 }

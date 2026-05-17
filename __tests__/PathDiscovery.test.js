@@ -213,4 +213,44 @@ describe('PathDiscovery', () => {
         expect(fromJs).toBeTruthy();
         expect(fromJs.sources.some(s => s === 'js')).toBe(true);
     });
+
+    test('discover honours abortSignal and stops pending axios', async () => {
+        let signalFromLastGet;
+        const hangOnSignalAbort = (_, cfg = {}) =>
+            new Promise((_resolve, reject) => {
+                const sig = cfg.signal;
+                if (!sig) {
+                    reject(new Error('expected AbortSignal'));
+                    return;
+                }
+                signalFromLastGet = sig;
+                const onAbort = () => {
+                    const e = new Error('Cancelled');
+                    e.code = 'ERR_CANCELED';
+                    e.name = 'CanceledError';
+                    reject(e);
+                };
+                if (sig.aborted) return onAbort();
+                sig.addEventListener('abort', onAbort);
+            });
+
+        axios.get.mockImplementation(hangOnSignalAbort);
+        axios.head.mockImplementation((_u, cfg = {}) =>
+            cfg.signal ? hangOnSignalAbort(null, cfg) : Promise.resolve({ status: 404 }));
+
+        const ac = new AbortController();
+        const discovery = new PathDiscovery({
+            maxDepth: 0,
+            delay: 0,
+            concurrency: 1,
+            useRender: false,
+            abortSignal: ac.signal
+        });
+        const p = discovery.discover('https://example.com/');
+        await Promise.resolve();
+        expect(signalFromLastGet).toBeTruthy();
+        ac.abort();
+
+        await expect(p).rejects.toMatchObject({ code: 'ERR_CANCELED' });
+    }, 8000);
 });

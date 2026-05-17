@@ -8,7 +8,14 @@
     "settings": "設定",
     "lightMode": "淺色模式",
     "darkMode": "深色模式",
-    "offlinePreview": "伺服器預覽"
+    "offlinePreview": "伺服器預覽",
+    "startTooltip": "以目前設定啟動所選模式。",
+    "startDisabledEmptyUrl": "請先輸入目標網址。",
+    "startDisabledInvalidUrl": "請修正網址格式（可省略協定，將自動加上 https://）。",
+    "stopTooltip": "停止進行中的網站下載或路徑探測。",
+    "keyboardStartHint": "捷徑：在文字欄位外按 Ctrl+Enter（macOS 為 Cmd+Enter）可開始。",
+    "keyboardStopHint": "工作執行中可用工具列「停止」取消網站下載或路徑探測。",
+    "languageSelect": "介面語言"
   },
   "sidebar": {
     "targetSetup": "目標設定",
@@ -16,7 +23,18 @@
     "downloadWebsite": "下載網站",
     "pathDiscovery": "路徑探測 (-p)",
     "targetUrl": "目標網址",
+    "targetUrlHintEmpty": "開始前需要網址或主機名稱。",
+    "targetUrlHintInvalid": "無法解析為有效網址，請確認含主機名稱（可省略 https://）。",
+    "pathTxtBundledFallbackDir": "若未指定自訂字典，將使用 {{path}} 下的內建 path.txt／字典載入規則。",
     "outputFolder": "輸出資料夾",
+    "openOutputFolderButton": "開啟",
+    "openOutputFolderTooltip": "在檔案總管開啟已解析的輸出路徑（下載會寫入此位置）。若要以 HTTP 伺服器預覽，請使用工具列「伺服器預覽」（等同 anydownload serve）。",
+    "liveDownloadActivityTitle": "即時抓取（URL）",
+    "liveDownloadActivityIdle": "有網站下載進行時會顯示最近抓取的資源網址；無下載任務時留空。",
+    "openOutputFolderFailedShort": "無法開啟該資料夾。",
+    "discoveryLiveActivityTitle": "路徑探測進度",
+    "discoveryLiveActivityIdle": "進行路徑探測時會顯示最近階段／訊息。",
+    "relativeOutputResolvedUnder": "相對路徑會建立在：{{path}}",
     "preset": "預設設定",
     "presetPage": "單頁 (單一頁面 + 資源)",
     "presetFull": "完整 (同網域連結)",
@@ -58,11 +76,30 @@
     "target": "目標",
     "size": "大小",
     "statusTime": "狀態/時間",
-    "noItems": "目前沒有項目，請設定並開始任務。"
+    "noItems": "目前沒有項目，請設定並開始任務。",
+    "resourceFailuresSummary": "有 {{count}} 項參照的資源下載失敗或已跳過。",
+    "cancelledTooltip": "此執行已取消或中斷。",
+    "folderOpenDisabledWhileRunning": "請在任務完成後再開啟資料夾，以避免開到不完整目錄。",
+    "partialSuccessExplain": "任務視為完成，但部分資源失敗；狀態仍可為成功並顯示跳過數量。",
+    "filterLabel": "篩選",
+    "filterAll": "全部狀態",
+    "filterRunning": "進行中",
+    "filterSuccess": "成功",
+    "filterError": "錯誤",
+    "filterCancelled": "已取消",
+    "sortByTarget": "依目標網址排序",
+    "sortByTime": "依時間排序"
   },
   "statusBar": {
     "engineRunning": "引擎運行中",
     "ready": "就緒",
-    "files": "檔案"
+    "files": "檔案",
+    "runningTasksCount": "{{count}} 進行中",
+    "multiDownloadProgressHint": "同時多部下載：顯示平均進度。",
+    "multiDownloadProgressHintDetail": "多個網站下載同時執行時，狀態列百分比為各部平均。",
+    "averageAcrossDownloads": "多部並行下載任務的平均完成百分比。",
+    "liveBytesDisclaimer": "位元組數來自最近一次進度事件（通常對應單一下載來源）。",
+    "appVersion": "v{{version}}",
+    "appVersionTitle": "應用程式版本"
   }
 }

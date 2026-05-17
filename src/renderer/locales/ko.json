@@ -8,7 +8,14 @@
     "settings": "설정",
     "lightMode": "라이트 모드",
     "darkMode": "다크 모드",
-    "offlinePreview": "로컬 서버 미리보기"
+    "offlinePreview": "로컬 서버 미리보기",
+    "startTooltip": "현재 설정으로 선택된 모드를 시작합니다.",
+    "startDisabledEmptyUrl": "대상 URL을 먼저 입력하세요.",
+    "startDisabledInvalidUrl": "URL 형식을 바로잡으세요(https:// 없으면 보완합니다).",
+    "stopTooltip": "진행 중인 웹사이트 다운로드 또는 경로 탐색을 중지합니다.",
+    "keyboardStartHint": "단축키: 입력란 바깥에서 Ctrl+Enter(macOS는 Cmd+Enter)로 시작.",
+    "keyboardStopHint": "작업 진행 중에는 도구 모음 「중지」로 다운로드나 경로 탐색을 취소할 수 있습니다.",
+    "languageSelect": "인터페이스 언어"
   },
   "sidebar": {
     "targetSetup": "대상 설정",
@@ -16,7 +23,18 @@
     "downloadWebsite": "웹사이트 다운로드",
     "pathDiscovery": "경로 탐색 (-p)",
     "targetUrl": "대상 URL",
+    "targetUrlHintEmpty": "시작하려면 URL 또는 호스트 이름이 필요합니다.",
+    "targetUrlHintInvalid": "유효한 URL로 해석되지 않습니다. 호스트 이름을 포함하세요(https:// 선택).",
+    "pathTxtBundledFallbackDir": "사용자 지정 워드리스트를 비두면 내장 path.txt 검색은 {{path}} 에서 처리됩니다.",
     "outputFolder": "출력 폴더",
+    "openOutputFolderButton": "열기",
+    "openOutputFolderTooltip": "다운로드가 저장되는 경로를 파일 관리자로 엽니다. HTTP 미리보기는 도구 모음의 서버 미리보기를 사용하세요.",
+    "liveDownloadActivityTitle": "실시간 URL",
+    "liveDownloadActivityIdle": "웹사이트 다운로드가 진행되는 동안 최근 리소스 URL을 표시합니다.",
+    "openOutputFolderFailedShort": "폴더를 열 수 없습니다.",
+    "discoveryLiveActivityTitle": "경로 탐색 진행",
+    "discoveryLiveActivityIdle": "경로 탐색 중 최근 단계 메시지를 표시합니다.",
+    "relativeOutputResolvedUnder": "상대 폴더는 다음 아래에 생성됩니다: {{path}}",
     "preset": "사전 설정",
     "presetPage": "페이지 (단일 페이지 + 리소스)",
     "presetFull": "전체 (동일 호스트 링크)",
@@ -58,11 +76,30 @@
     "target": "대상",
     "size": "크기",
     "statusTime": "상태/시간",
-    "noItems": "표시할 항목이 없습니다. 작업을 설정하고 시작하세요."
+    "noItems": "표시할 항목이 없습니다. 작업을 설정하고 시작하세요.",
+    "resourceFailuresSummary": "참조 리소스 {{count}}건이 실패했거나 건너뛰어졌습니다.",
+    "cancelledTooltip": "이 실행은 취소되거나 중단되었습니다.",
+    "folderOpenDisabledWhileRunning": "출력 디렉터리가 완성된 뒤 열려면 작업 완료 후 폴더를 여세요.",
+    "partialSuccessExplain": "일부 리소스가 실패해도 작업 자체는 완료된 것으로 볼 수 있으며 건너뜀 개수가 표시됩니다.",
+    "filterLabel": "필터",
+    "filterAll": "모든 상태",
+    "filterRunning": "진행 중",
+    "filterSuccess": "완료",
+    "filterError": "오류",
+    "filterCancelled": "취소됨",
+    "sortByTarget": "대상 URL로 정렬",
+    "sortByTime": "시간으로 정렬"
   },
   "statusBar": {
     "engineRunning": "엔진 실행 중",
     "ready": "준비 완료",
-    "files": "파일"
+    "files": "파일",
+    "runningTasksCount": "{{count}}개 진행 중",
+    "multiDownloadProgressHint": "동시 다운로드: 평균 % 표시.",
+    "multiDownloadProgressHintDetail": "여러 웹 다운로드가 동시에 실행될 때 상태 표시줄의 %는 작업 간 평균입니다.",
+    "averageAcrossDownloads": "동시 다운로드 작업 간 평균 완료율.",
+    "liveBytesDisclaimer": "바이트는 최근 진행 이벤트 기준(보통 하나의 원본)입니다.",
+    "appVersion": "v{{version}}",
+    "appVersionTitle": "앱 버전"
   }
 }

@@ -8,7 +8,14 @@
     "settings": "設定",
     "lightMode": "ライトモード",
     "darkMode": "ダークモード",
-    "offlinePreview": "ローカルでプレビュー"
+    "offlinePreview": "ローカルでプレビュー",
+    "startTooltip": "設定どおりに選択したモードを開始します。",
+    "startDisabledEmptyUrl": "先に対象 URL を入力してください。",
+    "startDisabledInvalidUrl": "URL 形式を修正してください（省略時は https:// を補います）。",
+    "stopTooltip": "実行中のWebサイト取得またはパス検出を停止します。",
+    "keyboardStartHint": "ショートカット: テキスト欄以外で Ctrl+Enter（macOS は Cmd+Enter）で開始。",
+    "keyboardStopHint": "タスク実行中はツールバーの「停止」でダウンロードやパス検出をキャンセルできます。",
+    "languageSelect": "表示言語"
   },
   "sidebar": {
     "targetSetup": "ターゲット設定",
@@ -16,7 +23,18 @@
     "downloadWebsite": "Webサイトをダウンロード",
     "pathDiscovery": "パス検出 (-p)",
     "targetUrl": "ターゲットURL",
+    "targetUrlHintEmpty": "開始前にURLまたはホスト名が必要です。",
+    "targetUrlHintInvalid": "有効なURLとして解釈できません。ホスト名を含めてください（https:// は省略可）。",
+    "pathTxtBundledFallbackDir": "カスタムワードリストが空なら、bundledの path.txt 探索は {{path}} を参照します。",
     "outputFolder": "出力フォルダ",
+    "openOutputFolderButton": "開く",
+    "openOutputFolderTooltip": "解決済みの出力フォルダをファイルマネージャーで開きます（ここへ保存）。ツールバーのローカルプレビューはHTTPサーバー用です。",
+    "liveDownloadActivityTitle": "取得中 URL",
+    "liveDownloadActivityIdle": "サイトダウンロード実行中のみ、直近のリソース URL を表示します。",
+    "openOutputFolderFailedShort": "フォルダを開けませんでした。",
+    "discoveryLiveActivityTitle": "パス検出の進行",
+    "discoveryLiveActivityIdle": "パス検出実行中に直近のメッセージを表示します。",
+    "relativeOutputResolvedUnder": "相対フォルダは次の下に作成されます: {{path}}",
     "preset": "プリセット",
     "presetPage": "ページ (単一ページ + アセット)",
     "presetFull": "フル (同一ホストのリンク)",
@@ -58,11 +76,30 @@
     "target": "ターゲット",
     "size": "サイズ",
     "statusTime": "ステータス/時間",
-    "noItems": "表示する項目がありません。タスクを設定して開始してください。"
+    "noItems": "表示する項目がありません。タスクを設定して開始してください。",
+    "resourceFailuresSummary": "参照リソース {{count}} 件が失敗またはスキップされました。",
+    "cancelledTooltip": "この実行はキャンセルまたは中断されました。",
+    "folderOpenDisabledWhileRunning": "出力が安定したら開く場合は、タスク完了後にフォルダを開いてください。",
+    "partialSuccessExplain": "一部リソースが失敗してもタスク自体は完了扱いの場合があります。スキップ数が表示されます。",
+    "filterLabel": "フィルター",
+    "filterAll": "すべて",
+    "filterRunning": "実行中",
+    "filterSuccess": "成功",
+    "filterError": "エラー",
+    "filterCancelled": "キャンセル",
+    "sortByTarget": "ターゲットURLで並べ替え",
+    "sortByTime": "時刻で並べ替え"
   },
   "statusBar": {
     "engineRunning": "エンジン実行中",
     "ready": "準備完了",
-    "files": "ファイル"
+    "files": "ファイル",
+    "runningTasksCount": "{{count}} 実行中",
+    "multiDownloadProgressHint": "同時複数ダウンロード: 平均％を表示。",
+    "multiDownloadProgressHintDetail": "サイトを同時ダウンロードしているときは、ステータスの％はタスク別の平均値です。",
+    "averageAcrossDownloads": "同時ダウンロード複数時の完了率の平均。",
+    "liveBytesDisclaimer": "バイト数は直近の進行イベント由来（通常は片方のソース）です。",
+    "appVersion": "v{{version}}",
+    "appVersionTitle": "アプリバージョン"
   }
 }

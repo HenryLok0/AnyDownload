@@ -47,8 +47,10 @@ class PathDiscovery {
         const rawDepth = parseInt(options.pathProbeDepth, 10);
         this.pathProbeDepth = Number.isFinite(rawDepth) && rawDepth >= 2 ? 2 : 1;
         this.pathSeedsFile = options.pathSeedsFile || null;
-        /** Explicit `--path-txt`; if missing, `./path.txt` in cwd; else packaged wordlist. */
+        /** Explicit `--path-txt`; if missing, `path.txt` under pathTxtSearchDir (default: cwd). */
         this.pathTxtOverride = options.pathTxtOverride || null;
+        /** Where to look for fallback `path.txt` (GUI uses Documents/AnyDownload). */
+        this.pathTxtSearchDir = options.pathTxtSearchDir != null ? options.pathTxtSearchDir : process.cwd();
         this.useRender = options.useRender !== false;
         this.renderProvider = options.renderProvider || 'playwright';
         this.crawler = new Crawler({
@@ -57,9 +59,47 @@ class PathDiscovery {
             useSitemap: true,
             userAgent: this.userAgent
         });
+        /** When set (e.g. GUI Stop), axios and loops honour cancellation */
+        this.abortSignal = options.abortSignal || null;
         this.entries = new Map();
         this._jsUrls = new Set();
         this._serviceWorkerHints = new Set();
+    }
+
+    _makeCancelledError() {
+        const e = new Error('Cancelled');
+        e.code = 'CANCELLED';
+        return e;
+    }
+
+    _throwIfAborted() {
+        if (this.abortSignal && this.abortSignal.aborted) throw this._makeCancelledError();
+    }
+
+    /**
+     * Re-throw AbortSignal / axios cancel errors so they are not swallowed as "optional skip".
+     */
+    _rethrowIfCancelled(err) {
+        if (!err) return;
+        const c = err.code;
+        const n = err.name;
+        if (c === 'CANCELLED' || c === 'ERR_CANCELED') throw err;
+        if (n === 'CanceledError' || n === 'AbortError') throw err;
+    }
+
+    _axiosSignal() {
+        return this.abortSignal ? { signal: this.abortSignal } : {};
+    }
+
+    /** Respect delayMs but bail out promptly when aborted */
+    async _sleepDelay() {
+        if (!this.delay) return;
+        const end = Date.now() + this.delay;
+        while (Date.now() < end) {
+            this._throwIfAborted();
+            const left = end - Date.now();
+            await new Promise((r) => setTimeout(r, Math.min(50, Math.max(1, left))));
+        }
     }
 
     _add(url, source, meta = {}) {
@@ -76,18 +116,26 @@ class PathDiscovery {
     async _runConcurrent(items, fn) {
         let processed = 0;
         while (processed < items.length) {
+            this._throwIfAborted();
             const batchEnd = Math.min(processed + this.concurrency, items.length);
             const batch = items.slice(processed, batchEnd);
-            await Promise.all(batch.map(fn));
+            await Promise.all(
+                batch.map((item) => {
+                    this._throwIfAborted();
+                    return fn(item);
+                })
+            );
             processed = batchEnd;
         }
     }
 
     async _fetchText(url) {
+        this._throwIfAborted();
         const res = await axios.get(url, {
             headers: { 'User-Agent': this.userAgent },
             timeout: this.timeout,
-            validateStatus: s => s < 500
+            validateStatus: s => s < 500,
+            ...this._axiosSignal()
         });
         if (res.status >= 400) return null;
         return String(res.data);
@@ -123,13 +171,14 @@ class PathDiscovery {
                     }
                 }
             }
-        } catch {
+        } catch (err) {
+            this._rethrowIfCancelled(err);
             // robots optional
         }
     }
 
     async _fetchSitemap(startUrl) {
-        const urls = await this.crawler.fetchSitemapUrls(startUrl);
+        const urls = await this.crawler.fetchSitemapUrls(startUrl, { signal: this.abortSignal });
         for (const u of urls) {
             if (sameHostname(u, startUrl)) this._add(u, 'sitemap');
         }
@@ -143,10 +192,12 @@ class PathDiscovery {
             const res = await axios.get(api, {
                 timeout: this.timeout * 2,
                 headers: { 'User-Agent': this.userAgent },
-                validateStatus: s => s < 500
+                validateStatus: s => s < 500,
+                ...this._axiosSignal()
             });
             if (!Array.isArray(res.data) || res.data.length < 2) return;
             for (let i = 1; i < res.data.length; i++) {
+                if (i % 50 === 0) this._throwIfAborted();
                 const row = res.data[i];
                 const original = Array.isArray(row) ? row[0] : row;
                 if (!original) continue;
@@ -154,6 +205,7 @@ class PathDiscovery {
                 if (u && sameHostname(u, startUrl)) this._add(u, 'wayback');
             }
         } catch (err) {
+            this._rethrowIfCancelled(err);
             if (this.verbose) console.log(`Wayback skipped: ${err.message}`);
         }
     }
@@ -215,7 +267,8 @@ class PathDiscovery {
                         if (u && sameHostname(u, startUrl)) this._add(u, 'manifest');
                     }
                 }
-            } catch {
+            } catch (err) {
+                this._rethrowIfCancelled(err);
                 // skip invalid manifest
             }
         }
@@ -273,11 +326,12 @@ class PathDiscovery {
                 try {
                     const js = await this._fetchText(impUrl);
                     if (js) this._extractJsPaths(js, startUrl);
-                } catch {
+                } catch (err) {
+                    this._rethrowIfCancelled(err);
                     // skip
                 }
             });
-            if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+            await this._sleepDelay();
         });
     }
 
@@ -300,10 +354,11 @@ class PathDiscovery {
                         if (rel && sameHostname(rel, startUrl)) this._add(rel, 'sourcemap');
                     }
                 }
-            } catch {
+            } catch (err) {
+                this._rethrowIfCancelled(err);
                 // no sourcemap
             }
-            if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+            await this._sleepDelay();
         });
     }
 
@@ -312,6 +367,7 @@ class PathDiscovery {
         const visited = new Set();
 
         while (queue.length > 0) {
+            this._throwIfAborted();
             const batchSize = Math.min(this.concurrency, queue.length);
             const currentBatch = queue.splice(0, batchSize);
 
@@ -330,6 +386,7 @@ class PathDiscovery {
                     this._parseHtmlExtras(html, startUrl);
                     const links = this.crawler.collectPageLinks(html, startUrl);
                     for (const link of links) {
+                        this._throwIfAborted();
                         this._add(link, 'html');
                         if (!visited.has(link)) queue.push({ url: link, depth: depth + 1 });
                     }
@@ -348,15 +405,17 @@ class PathDiscovery {
                             try {
                                 const js = await this._fetchText(scriptUrl);
                                 if (js) this._extractJsPaths(js, startUrl);
-                            } catch {
+                            } catch (err) {
+                                this._rethrowIfCancelled(err);
                                 // skip
                             }
                         }
                     }
-                } catch {
+                } catch (err) {
+                    this._rethrowIfCancelled(err);
                     // skip
                 }
-                if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+                await this._sleepDelay();
             }));
         }
     }
@@ -367,7 +426,7 @@ class PathDiscovery {
             if (fs.existsSync(abs)) return abs;
             if (this.verbose) console.warn(`path-txt: file not found: ${abs}, trying cwd path.txt then default`);
         }
-        const cwdPathTxt = path.join(process.cwd(), 'path.txt');
+        const cwdPathTxt = path.join(this.pathTxtSearchDir, 'path.txt');
         if (fs.existsSync(cwdPathTxt)) return cwdPathTxt;
         return path.join(__dirname, '..', '..', 'data', 'path-wordlist.txt');
     }
@@ -388,7 +447,7 @@ class PathDiscovery {
     _useExtendedWordlistForDepth2() {
         if (this.pathDeep) return true;
         if (this.pathTxtOverride) return true;
-        return fs.existsSync(path.join(process.cwd(), 'path.txt'));
+        return fs.existsSync(path.join(this.pathTxtSearchDir, 'path.txt'));
     }
 
     async _probePaths(startUrl, segments, sourceTag) {
@@ -405,27 +464,31 @@ class PathDiscovery {
                     headers: { 'User-Agent': this.userAgent },
                     timeout: this.timeout,
                     maxRedirects: 5,
-                    validateStatus: () => true
+                    validateStatus: () => true,
+                    ...this._axiosSignal()
                 });
                 if (res.status >= 200 && res.status < 400) {
                     this._add(u, sourceTag, { status: res.status });
                 }
-            } catch {
+            } catch (err) {
+                this._rethrowIfCancelled(err);
                 try {
                     const res = await axios.get(u, {
                         headers: { 'User-Agent': this.userAgent },
                         timeout: this.timeout,
                         maxRedirects: 5,
-                        validateStatus: s => s < 500
+                        validateStatus: s => s < 500,
+                        ...this._axiosSignal()
                     });
                     if (res.status >= 200 && res.status < 400) {
                         this._add(u, sourceTag, { status: res.status });
                     }
-                } catch {
+                } catch (err2) {
+                    this._rethrowIfCancelled(err2);
                     // not found
                 }
             }
-            if (this.delay) await new Promise(r => setTimeout(r, this.delay));
+            await this._sleepDelay();
         });
     }
 
@@ -522,17 +585,43 @@ class PathDiscovery {
         if (!this.useRender) return;
         const hasBrowser = isPeerInstalled('playwright') || isPeerInstalled('puppeteer');
         if (!hasBrowser) return;
+        let engine = null;
         try {
+            this._throwIfAborted();
             const AnyDownloadEngine = require('../engine/AnyDownloadEngine');
-            const engine = new AnyDownloadEngine({
+            engine = new AnyDownloadEngine({
                 mode: 'render',
                 renderProvider: this.renderProvider,
                 browserType: this.renderProvider,
                 userAgent: this.userAgent,
                 timeout: this.timeout
             });
-            const { capture } = await engine.fetchPage(startUrl);
-            await engine.close();
+            const rawFetchPromise = engine.fetchPage(startUrl);
+            let result;
+            if (this.abortSignal) {
+                const s = this.abortSignal;
+                const fetchPromise = rawFetchPromise.catch((fetchErr) => {
+                    if (s.aborted) return undefined;
+                    throw fetchErr;
+                });
+                let onAbort;
+                const abortPromise = new Promise((_, reject) => {
+                    onAbort = () => reject(this._makeCancelledError());
+                    if (s.aborted) {
+                        onAbort();
+                        return;
+                    }
+                    s.addEventListener('abort', onAbort);
+                });
+                try {
+                    result = await Promise.race([fetchPromise, abortPromise]);
+                } finally {
+                    if (typeof onAbort === 'function') s.removeEventListener('abort', onAbort);
+                }
+            } else {
+                result = await rawFetchPromise;
+            }
+            const { capture } = result;
             if (capture?.getAll) {
                 for (const entry of capture.getAll()) {
                     const u = entry.url;
@@ -540,7 +629,12 @@ class PathDiscovery {
                 }
             }
         } catch (err) {
+            this._rethrowIfCancelled(err);
             if (this.verbose) console.log(`Render path discovery skipped: ${err.message}`);
+        } finally {
+            if (engine) {
+                await engine.close().catch(() => {});
+            }
         }
     }
 
@@ -548,6 +642,7 @@ class PathDiscovery {
         startUrl = normalizeUrl(startUrl, startUrl);
         if (!startUrl) throw new Error('Invalid URL');
 
+        this._throwIfAborted();
         this._serviceWorkerHints.clear();
 
         await this._fetchRobots(startUrl);

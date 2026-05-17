@@ -126,6 +126,7 @@
       "src/utils/**/*",
       "src/cli/**/*",
       "src/server/**/*",
+      "src/main/**/*",
       "data/**/*",
       "electron-main.js",
       "preload.js",

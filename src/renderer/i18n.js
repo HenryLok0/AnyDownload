@@ -6,6 +6,8 @@ import zhTW from './locales/zh-TW.json';
 import ja from './locales/ja.json';
 import ko from './locales/ko.json';
 
+const STORAGE_KEY = 'anydownload-gui-settings-v1';
+
 const resources = {
   en: { translation: en },
   'zh-TW': { translation: zhTW },
@@ -13,15 +15,31 @@ const resources = {
   ko: { translation: ko }
 };
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: 'en', // default language
-    fallbackLng: 'en',
-    interpolation: {
-      escapeValue: false // react already safes from xss
-    }
-  });
+const SUPPORTED = new Set(Object.keys(resources));
 
+/** Read saved language from persisted GUI settings (renderer only). */
+function readInitialLng() {
+  if (typeof localStorage === 'undefined') return undefined;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return undefined;
+    const s = JSON.parse(raw);
+    const lng = s && typeof s.lng === 'string' ? s.lng.trim() : '';
+    if (lng && SUPPORTED.has(lng)) return lng;
+  } catch {
+    /* ignore */
+  }
+  return undefined;
+}
+
+i18n.use(initReactI18next).init({
+  resources,
+  lng: readInitialLng() || 'en',
+  fallbackLng: 'en',
+  interpolation: {
+    escapeValue: false // react already safes from xss
+  }
+});
+
+export { STORAGE_KEY };
 export default i18n;

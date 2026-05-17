@@ -61,7 +61,8 @@ class Crawler {
         }
     }
 
-    async fetchSitemapUrls(startUrl) {
+    async fetchSitemapUrls(startUrl, opts = {}) {
+        const { signal } = opts;
         if (!this.useSitemap) return [];
         const origin = getOrigin(startUrl);
         if (!origin) return [];
@@ -71,6 +72,11 @@ class Crawler {
             `${origin}/sitemap_index.xml`
         ];
         const found = new Set();
+        const axOpts = () => ({
+            headers: { 'User-Agent': this.userAgent || 'AnyDownload' },
+            timeout: 15000,
+            ...(signal ? { signal } : {})
+        });
 
         const parseXml = (xml) => {
             const locs = [...String(xml).matchAll(/<loc>\s*([^<]+)\s*<\/loc>/gi)];
@@ -79,27 +85,25 @@ class Crawler {
 
         for (const sitemapUrl of candidates) {
             try {
-                const res = await axios.get(sitemapUrl, {
-                    headers: { 'User-Agent': this.userAgent || 'AnyDownload' },
-                    timeout: 15000
-                });
+                const res = await axios.get(sitemapUrl, axOpts());
                 const urls = parseXml(res.data);
                 for (const u of urls) {
                     if (u.endsWith('.xml')) {
                         try {
-                            const sub = await axios.get(u, {
-                                headers: { 'User-Agent': this.userAgent || 'AnyDownload' },
-                                timeout: 15000
-                            });
+                            const sub = await axios.get(u, axOpts());
                             parseXml(sub.data).forEach(x => found.add(x));
-                        } catch {
+                        } catch (err) {
+                            if (err && (err.code === 'ERR_CANCELED' || err.code === 'CANCELLED' ||
+                                err.name === 'CanceledError' || err.name === 'AbortError')) throw err;
                             // skip sub-sitemap
                         }
                     } else if (sameHostname(u, startUrl)) {
                         found.add(u);
                     }
                 }
-            } catch {
+            } catch (err) {
+                if (err && (err.code === 'ERR_CANCELED' || err.code === 'CANCELLED' ||
+                    err.name === 'CanceledError' || err.name === 'AbortError')) throw err;
                 // try next candidate
             }
         }

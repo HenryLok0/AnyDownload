@@ -249,6 +249,11 @@ class SiteDownloader extends EventEmitter {
         await fs.ensureDir(baseDir);
 
         await this.downloadPage(url, 0, baseDir);
+        if (this.cancelled) {
+            const err = new Error('Cancelled by user');
+            err.code = 'CANCELLED';
+            throw err;
+        }
         await this._writeSitemap(baseDir);
 
         return {

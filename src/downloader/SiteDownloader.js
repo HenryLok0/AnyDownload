@@ -67,6 +67,8 @@ class SiteDownloader extends EventEmitter {
             proxy: options.proxy,
             type: options.type || 'all',
             filterRegex: options.filterRegex,
+            blockExternalAssets: options.blockExternalAssets === true,
+            blockAssetPatterns: options.blockAssetPatterns || options.blockAsset,
             verbose: this.verbose,
             onResource: this.onResource,
             onDownloadProgress: this.onDownloadProgress,

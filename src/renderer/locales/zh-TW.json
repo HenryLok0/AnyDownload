@@ -71,6 +71,9 @@
     "htmlOnly": "僅 HTML",
     "mediaOnly": "僅媒體",
     "fontsOnly": "僅字體"
+    "blockExternalAssets": "封鎖外部資產",
+    "blockAssetPatterns": "封鎖資產規則",
+    "blockAssetPatternsPlaceholder": "unpkg.com/*,cdn.jsdelivr.net/*,fonts.gstatic.com/*"
   },
   "dataGrid": {
     "target": "目標",

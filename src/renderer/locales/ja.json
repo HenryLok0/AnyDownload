@@ -70,7 +70,10 @@
     "jsOnly": "JSのみ",
     "htmlOnly": "HTMLのみ",
     "mediaOnly": "メディアのみ",
-    "fontsOnly": "フォントのみ"
+    "fontsOnly": "フォントのみ",
+    "blockExternalAssets": "外部アセットをブロック",
+    "blockAssetPatterns": "ブロック対象アセットパターン",
+    "blockAssetPatternsPlaceholder": "unpkg.com/*,cdn.jsdelivr.net/*,fonts.gstatic.com/*"
   },
   "dataGrid": {
     "target": "ターゲット",

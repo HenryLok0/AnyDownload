@@ -70,6 +70,8 @@ function buildOptions(body) {
         filterRegex: body.filter || body.filterRegex || null,
         proxy: body.proxy || null,
         type: body.type || 'all',
+        blockExternalAssets: body.blockExternalAssets === true || body.blockExternalAssets === 'true',
+        blockAssetPatterns: body.blockAssetPatterns || body.blockAsset || null,
         timeout: Number(body.timeout) || 30000,
         loginUrl: body.loginUrl || null,
         loginForm,

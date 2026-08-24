@@ -70,7 +70,10 @@
     "jsOnly": "JS Only",
     "htmlOnly": "HTML Only",
     "mediaOnly": "Media Only",
-    "fontsOnly": "Fonts Only"
+    "fontsOnly": "Fonts Only",
+    "blockExternalAssets": "Block External Assets",
+    "blockAssetPatterns": "Blocked Asset Patterns",
+    "blockAssetPatternsPlaceholder": "unpkg.com/*,cdn.jsdelivr.net/*,fonts.gstatic.com/*"
   },
   "dataGrid": {
     "target": "Target",

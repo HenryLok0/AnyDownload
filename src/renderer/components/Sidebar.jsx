@@ -231,6 +231,23 @@ export default function Sidebar({
             <option value="font">{t('sidebar.fontsOnly')}</option>
           </SelectField>
         )}
+        {config.mode === 'download' && (
+          <>
+            <CheckboxField
+              label={t('sidebar.blockExternalAssets')}
+              disabled={isRunning}
+              checked={config.blockExternalAssets}
+              onChange={(v) => update('blockExternalAssets', v)}
+            />
+            <InputField
+              label={t('sidebar.blockAssetPatterns')}
+              disabled={isRunning}
+              value={config.blockAssetPatterns}
+              onChange={(v) => update('blockAssetPatterns', v)}
+              placeholder={t('sidebar.blockAssetPatternsPlaceholder')}
+            />
+          </>
+        )}
       </Section>
     </div>
   );

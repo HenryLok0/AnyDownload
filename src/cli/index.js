@@ -58,6 +58,25 @@ function normalizeInputUrl(url) {
     return url;
 }
 
+function normalizePatternList(input) {
+    if (!input) return [];
+    if (Array.isArray(input)) {
+        return input
+            .flatMap(v => normalizePatternList(v))
+            .map(v => v.trim())
+            .filter(Boolean);
+    }
+    if (typeof input !== 'string') return [];
+    return input
+        .split(/[\n,]/)
+        .map(v => v.trim())
+        .filter(Boolean);
+}
+
+function collectOption(value, previous = []) {
+    return [...previous, value];
+}
+
 function buildDownloaderOptions(opts) {
     const preset = applyPreset({}, opts.preset || 'page');
     const merged = { ...preset };
@@ -89,6 +108,15 @@ function buildDownloaderOptions(opts) {
         filterRegex: merged.filter || null,
         proxy: merged.proxy || null,
         type: merged.type || 'all',
+        blockExternalAssets: merged.blockExternalAssets === true ||
+            merged.blockExternalAssets === 'true' ||
+            config.blockExternalAssets === true,
+        blockAssetPatterns: normalizePatternList(
+            merged.blockAsset ||
+            merged.blockAssetPatterns ||
+            config.blockAsset ||
+            config.blockAssetPatterns
+        ),
         timeout: parseInt(merged.timeout, 10) || 30000,
         maxFileSize: merged.maxFileSize ? parseInt(merged.maxFileSize, 10) * 1024 * 1024 : 0,
         onResource: merged.onResource,
@@ -338,6 +366,8 @@ function addDownloadOptions(cmd) {
         .option('--delay <ms>', 'Delay between downloads', '500')
         .option('--filter <regex>', 'Filter URLs by regex')
         .option('--type <type>', 'Resource type: all|image|css|js|html|media|font', 'all')
+        .option('--block-external-assets', 'Skip cross-origin assets (CDN/fonts/etc.)')
+        .option('--block-asset <pattern>', 'Skip assets matching wildcard/regex pattern (repeatable)', collectOption, [])
         .option('-p, --path', 'Discover site paths (sitemap, crawl, probes) and save paths.txt')
         .option('--path-deep', 'Extended wordlist + Wayback Machine URLs (slower)')
         .option('--path-seeds <file>', 'Extra probe paths (one per line, # comments); merged with other probes')
@@ -425,6 +455,8 @@ program
     .option('-o, --output <dir>', 'Output folder', 'downloaded_site')
     .option('--proxy <url>', 'Proxy server URL')
     .option('--type <type>', 'Resource type: all|image|css|js|html|media|font', 'all')
+    .option('--block-external-assets', 'Skip cross-origin assets (CDN/fonts/etc.)')
+    .option('--block-asset <pattern>', 'Skip assets matching wildcard/regex pattern (repeatable)', collectOption, [])
     .option('--retry <n>', 'Retry count', '3')
     .option('--timeout <ms>', 'Request timeout', '30000')
     .action(async (url, opts) => {

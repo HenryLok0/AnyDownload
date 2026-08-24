@@ -29,7 +29,9 @@ const DEFAULT_CONFIG = {
   concurrency: 5,
   delay: 500,
   timeout: 30000,
-  type: 'all'
+  type: 'all',
+  blockExternalAssets: false,
+  blockAssetPatterns: ''
 };
 
 function readStoredGui() {

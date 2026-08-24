@@ -433,6 +433,8 @@ app.whenReady().then(() => {
                 delay: config.delay || 500,
                 timeout: config.timeout,
                 type: config.type,
+                blockExternalAssets: config.blockExternalAssets === true,
+                blockAssetPatterns: config.blockAssetPatterns,
                 onDownloadProgress: (p) => {
                     const total = Math.max(p.peakQueue || 0, p.queueLength || 0, 1);
                     const current = p.completed || 0;

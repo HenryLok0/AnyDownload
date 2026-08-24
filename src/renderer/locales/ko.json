@@ -70,7 +70,10 @@
     "jsOnly": "JS만",
     "htmlOnly": "HTML만",
     "mediaOnly": "미디어만",
-    "fontsOnly": "폰트만"
+    "fontsOnly": "폰트만",
+    "blockExternalAssets": "외부 에셋 차단",
+    "blockAssetPatterns": "차단할 에셋 패턴",
+    "blockAssetPatternsPlaceholder": "unpkg.com/*,cdn.jsdelivr.net/*,fonts.gstatic.com/*"
   },
   "dataGrid": {
     "target": "대상",

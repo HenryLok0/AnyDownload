@@ -36,6 +36,8 @@ Grab the **desktop build** for your OS from **[Releases](https://github.com/Henr
 | Download a simple static site (fast, no browser) | `anydownload example.com --mode static` |
 | Download a React / Vite / SPA site | `anydownload example.com --mode render` |
 | Download and open preview when done (SPA) | `anydownload example.com --mode render --open` |
+| Skip external CDN/fonts assets | `anydownload example.com --block-external-assets` |
+| Block specific asset hosts/patterns | `anydownload example.com --block-asset "unpkg.com/*" --block-asset "cdn.jsdelivr.net/*"` |
 | Download full site (depth 2) | `anydownload example.com --preset full` |
 | Mirror many pages (depth 5) | `anydownload example.com --preset mirror` |
 | Preview an existing download folder | `anydownload serve test` (auto-finds `test/example.com/`) |
@@ -142,6 +144,8 @@ anydownload https://example.com --preset full -o mysite
 | `-r, --recursive` | Follow same-**hostname** links | preset |
 | `-m, --max-depth <n>` | Crawl / path-discovery depth | `1` |
 | `--type <type>` | Filter assets: `all` \| `image` \| `css` \| `js` \| `html` \| `media` \| `font` | `all` |
+| `--block-external-assets` | Skip cross-origin assets (CDN/fonts/etc.) | off |
+| `--block-asset <pattern>` | Block URL patterns (repeatable, supports `*` and `/regex/flags`) | — |
 | `--sitemap` | Use sitemap when crawling + write `sitemap.xml.gz` | off |
 | `--delay <ms>` | Delay between requests (path probe / download) | `500` |
 | `--concurrency <n>` | Parallel asset downloads | `5` |
@@ -154,6 +158,25 @@ anydownload https://example.com --preset full -o mysite
 **`serve` subcommand:** `-p, --port <n>` — preview server port (default `8765`)
 
 Full list: `anydownload --help`
+
+### Block external/CDN assets
+
+Use `--block-external-assets` to keep only same-host assets, or set explicit patterns via `--block-asset`.
+
+```bash
+anydownload example.com \
+  --block-external-assets \
+  --block-asset "unpkg.com/*" \
+  --block-asset "cdn.jsdelivr.net/*" \
+  --block-asset "fonts.gstatic.com/*" \
+  --block-asset "fonts.googleapis.com/*"
+```
+
+Pattern notes:
+
+- `host/*` matches `host/path...` regardless of `http`/`https`.
+- Repeat `--block-asset` multiple times.
+- Regex is supported with `/.../flags`, e.g. `--block-asset '/fonts\\.(gstatic|googleapis)\\.com\\//i'`.
 
 ### Path discovery (optional, `-p`)
 

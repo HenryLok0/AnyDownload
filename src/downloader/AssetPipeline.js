@@ -14,6 +14,26 @@ const streamPipeline = promisify(pipeline);
 
 const OPTIONAL_RESOURCE = /(?:favicon|banner)\.(ico|png|svg|gif|jpe?g|webp)$/i;
 
+function escapeRegex(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function wildcardToRegex(pattern) {
+    return pattern.split('*').map(escapeRegex).join('.*');
+}
+
+function parsePatternList(input) {
+    if (!input) return [];
+    if (Array.isArray(input)) {
+        return input.flatMap(v => parsePatternList(v));
+    }
+    if (typeof input !== 'string') return [];
+    return input
+        .split(/[\n,]/)
+        .map(s => s.trim())
+        .filter(Boolean);
+}
+
 class AssetPipeline {
     constructor(options = {}) {
         this.concurrency = options.concurrency || 5;
@@ -29,6 +49,8 @@ class AssetPipeline {
         this.proxy = options.proxy;
         this.type = options.type || 'all';
         this.filterRegex = options.filterRegex || null;
+        this.blockExternalAssets = options.blockExternalAssets === true;
+        this.blockAssetPatterns = parsePatternList(options.blockAssetPatterns || options.blockAsset || options.blockAssets);
         this.verbose = options.verbose || false;
         this.onResource = options.onResource || (() => {});
         this.onDownloadProgress = typeof options.onDownloadProgress === 'function'
@@ -47,6 +69,9 @@ class AssetPipeline {
         /** Progress counters reset each `run()` */
         this._completedAssets = 0;
         this._peakQueueLength = 0;
+        this._compiledBlockRules = this.blockAssetPatterns
+            .map(pattern => this._compileBlockRule(pattern))
+            .filter(Boolean);
     }
 
     _emitProgress(payload) {
@@ -133,8 +158,81 @@ class AssetPipeline {
         return rule ? rule.test(ext) : true;
     }
 
+    _compileBlockRule(pattern) {
+        const raw = String(pattern || '').trim();
+        if (!raw) return null;
+
+        const regexMatch = raw.match(/^\/(.+)\/([a-z]*)$/i);
+        if (regexMatch) {
+            try {
+                const [, source, flags] = regexMatch;
+                const re = new RegExp(source, flags);
+                return (candidate) => re.test(candidate.fullUrl);
+            } catch {
+                // ignore invalid regex and continue with wildcard mode
+            }
+        }
+
+        const hasProtocol = raw.includes('://');
+        const hasSlash = raw.includes('/');
+        const wildcard = wildcardToRegex(raw);
+
+        if (hasProtocol) {
+            const re = new RegExp(`^${wildcard}$`, 'i');
+            return (candidate) => re.test(candidate.fullUrl);
+        }
+
+        if (!hasSlash && !raw.includes('*')) {
+            const hostRe = new RegExp(`^${escapeRegex(raw)}$`, 'i');
+            return (candidate) => hostRe.test(candidate.host);
+        }
+
+        const hostPathRe = new RegExp(`^${wildcard}$`, 'i');
+        return (candidate) => hostPathRe.test(candidate.hostPath);
+    }
+
+    _buildCandidateUrl(url) {
+        const parsed = new URL(url);
+        const host = parsed.host;
+        const hostPath = `${parsed.host}${parsed.pathname}${parsed.search}`;
+        const fullUrl = parsed.toString();
+        return { host, hostPath, fullUrl };
+    }
+
+    _isBlockedByOrigin(url, pageUrl) {
+        if (!this.blockExternalAssets || !pageUrl) return false;
+        try {
+            const pageHost = new URL(pageUrl).host;
+            const resourceHost = new URL(url).host;
+            return pageHost !== resourceHost;
+        } catch {
+            return false;
+        }
+    }
+
+    _isBlockedByPattern(url) {
+        if (!this._compiledBlockRules.length) return false;
+        let candidate;
+        try {
+            candidate = this._buildCandidateUrl(url);
+        } catch {
+            return false;
+        }
+        return this._compiledBlockRules.some(rule => rule(candidate));
+    }
+
+    _isBlocked(url, pageUrl) {
+        return this._isBlockedByOrigin(url, pageUrl) || this._isBlockedByPattern(url);
+    }
+
     enqueue(url, pageUrl, meta = {}) {
         if (!url) return;
+        if (this._isBlocked(url, pageUrl)) {
+            if (this.verbose) {
+                this.onError(`Skipped by block rule: ${url}`);
+            }
+            return;
+        }
         if (this.filterRegex && !this.filterRegex.test(url)) return;
         if (!this._passesTypeFilter(url)) return;
 

@@ -26,6 +26,9 @@ describe('PathMapper', () => {
             'reference/react/hooks/index.html'
         );
         expect(m.getMirrorRelPagePath('https://react.dev/terms.html')).toBe('terms.html');
+        expect(m.getPreviewPath('https://react.dev/')).toBe('/');
+        expect(m.getPreviewPath('https://react.dev/learn')).toBe('/learn/');
+        expect(m.getPreviewPath('https://react.dev/terms.html')).toBe('/terms.html');
     });
 
     test('relativeBetweenMirrorFiles prefixes ./ when needed', () => {

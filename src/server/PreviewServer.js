@@ -4,6 +4,28 @@ const fs = require('fs-extra');
 const mime = require('mime-types');
 const { exec } = require('child_process');
 
+const ENTRY_FILE = 'anydownload.json';
+
+async function readEntryPath(rootDir) {
+    try {
+        const data = await fs.readJson(path.join(rootDir, ENTRY_FILE));
+        const entry = data && data.entryPath;
+        if (typeof entry !== 'string' || !entry.startsWith('/') || entry === '/') return null;
+        if (entry.includes('..') || entry.includes('\\')) return null;
+
+        const rel = entry.replace(/^\/+/, '');
+        const candidate = rel.endsWith('/')
+            ? path.join(rootDir, rel, 'index.html')
+            : path.join(rootDir, rel);
+        if (!isPathUnderRoot(rootDir, candidate)) return null;
+        if (!(await fs.pathExists(candidate))) return null;
+        if (rel.endsWith('/') || path.extname(rel)) return entry.startsWith('/') ? entry : `/${entry}`;
+        return `/${rel}/`;
+    } catch {
+        return null;
+    }
+}
+
 function findIndexFile(rootDir) {
     const index = path.join(rootDir, 'index.html');
     if (fs.existsSync(index)) return index;
@@ -151,6 +173,8 @@ class PreviewServer {
         this.rootDir = path.resolve(rootDir);
         this.port = options.port || 0;
         this.spaFallback = options.spaFallback !== false;
+        this.entryPathOption = options.entryPath;
+        this.entryPath = null;
         this.server = null;
     }
 
@@ -159,9 +183,19 @@ class PreviewServer {
             throw new Error(`Folder not found: ${this.rootDir}`);
         }
 
+        this.entryPath = this.entryPathOption !== undefined
+            ? this.entryPathOption
+            : await readEntryPath(this.rootDir);
+
         this.server = http.createServer(async (req, res) => {
             try {
                 const urlPath = (req.url || '/').split('?')[0];
+
+                if ((urlPath === '/' || urlPath === '/index.html') && this.entryPath && this.entryPath !== '/') {
+                    res.writeHead(302, { Location: this.entryPath });
+                    res.end();
+                    return;
+                }
 
                 if (urlPath === '/index.html') {
                     res.writeHead(302, { Location: '/' });
@@ -228,7 +262,8 @@ class PreviewServer {
     }
 
     getUrl() {
-        return `http://127.0.0.1:${this.port}/`;
+        const entry = this.entryPath && this.entryPath !== '/' ? this.entryPath : '/';
+        return `http://127.0.0.1:${this.port}${entry}`;
     }
 
     stop() {

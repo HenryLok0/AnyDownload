@@ -94,6 +94,14 @@ class PathMapper {
         return `${segments.join('/')}/index.html`;
     }
 
+    /** Preview URL path for this page. Root stays `/`. */
+    getPreviewPath(urlStr) {
+        const rel = this.getMirrorRelPagePath(urlStr);
+        if (!rel || rel === 'index.html') return '/';
+        if (rel.endsWith('/index.html')) return `/${rel.slice(0, -'index.html'.length)}`;
+        return `/${rel}`;
+    }
+
     /**
      * HTML page path → sibling asset/target file POSIX path (`href`).
      */

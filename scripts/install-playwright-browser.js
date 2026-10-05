@@ -3,7 +3,7 @@
  * Postinstall: download Playwright Chromium for render mode.
  * Skip in CI or when PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1.
  */
-const { execSync } = require('child_process');
+const { installPlaywrightChromium } = require('../src/engine/BrowserInstaller');
 
 if (process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === '1' || process.env.CI) {
     console.log('[AnyDownload] Skipping Playwright browser download (CI or SKIP set).');
@@ -19,12 +19,9 @@ try {
 
 console.log('[AnyDownload] Installing Playwright Chromium (~150MB, one-time)...');
 try {
-    execSync('npx playwright install chromium', {
-        stdio: 'inherit',
-        env: process.env
-    });
+    installPlaywrightChromium();
 } catch (err) {
-    console.warn('[AnyDownload] Playwright browser install failed. Run: npx playwright install chromium');
+    console.warn('[AnyDownload] Playwright browser install failed. Reinstall with: npm install -g anydownload');
     console.warn(err.message || err);
     process.exit(0);
 }

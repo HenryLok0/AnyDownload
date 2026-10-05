@@ -246,9 +246,14 @@ class SiteDownloader extends EventEmitter {
             throw new Error('Invalid URL');
         }
 
-        const hostDir = new PathMapper(url).getHostDir(url);
+        const pageMapper = new PathMapper(url);
+        const hostDir = pageMapper.getHostDir(url);
         const baseDir = path.join(this.outputDir, hostDir);
         await fs.ensureDir(baseDir);
+        await fs.writeJson(path.join(baseDir, 'anydownload.json'), {
+            sourceUrl: url,
+            entryPath: pageMapper.getPreviewPath(url)
+        }, { spaces: 2 });
 
         await this.downloadPage(url, 0, baseDir);
         if (this.cancelled) {

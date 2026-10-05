@@ -1,9 +1,10 @@
 const fs = require('fs');
-const { execSync } = require('child_process');
+const path = require('path');
+const { execFileSync } = require('child_process');
 
 const INSTALL_HINT = {
     puppeteer: 'npm install puppeteer',
-    playwright: 'npx playwright install chromium'
+    playwright: 'npm install -g anydownload'
 };
 
 function tryRequire(moduleName) {
@@ -23,7 +24,7 @@ function isPeerInstalled(provider) {
 function missingPeerError(provider) {
     if (provider === 'playwright') {
         return new Error(
-            'Playwright is not available. Reinstall anydownload or run: npx playwright install chromium'
+            'Playwright is not available. Reinstall with: npm install -g anydownload'
         );
     }
     return new Error(
@@ -32,6 +33,24 @@ function missingPeerError(provider) {
         `  Optional: ${INSTALL_HINT.puppeteer}\n` +
         `(You selected: ${provider}. Run: ${INSTALL_HINT[provider] || INSTALL_HINT.puppeteer})`
     );
+}
+
+/**
+ * Install Chromium with the Playwright package shipped inside anydownload.
+ * `npx playwright install` from the user's folder downloads a different Playwright.
+ */
+function installPlaywrightChromium() {
+    let cli;
+    try {
+        cli = require.resolve('playwright/cli.js');
+    } catch {
+        throw new Error('Playwright is not installed. Reinstall with: npm install -g anydownload');
+    }
+    execFileSync(process.execPath, [cli, 'install', 'chromium'], {
+        stdio: 'inherit',
+        env: process.env,
+        cwd: path.dirname(cli)
+    });
 }
 
 function isMissingBrowserError(err) {
@@ -56,15 +75,12 @@ async function ensureRenderBackend(provider = 'playwright') {
             if (isMissingBrowserError(err)) {
                 console.log('[AnyDownload] Downloading Playwright Chromium...');
                 try {
-                    execSync('npx playwright install chromium', {
-                        stdio: 'inherit',
-                        env: process.env
-                    });
+                    installPlaywrightChromium();
                     const browser = await playwright.chromium.launch({ headless: true });
                     await browser.close();
                 } catch (installErr) {
                     throw new Error(
-                        'Playwright browsers are missing. Run: npx playwright install chromium\n' +
+                        'Playwright browsers are missing. Reinstall with: npm install -g anydownload\n' +
                         (installErr.message || installErr)
                     );
                 }
@@ -92,6 +108,7 @@ async function ensureRenderBackend(provider = 'playwright') {
 
 module.exports = {
     ensureRenderBackend,
+    installPlaywrightChromium,
     isMissingBrowserError,
     isPeerInstalled,
     missingPeerError,

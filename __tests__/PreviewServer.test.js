@@ -144,6 +144,30 @@ describe('PreviewServer', () => {
         expect(resolved).toBe(child);
     });
 
+    test('root redirects to the downloaded page recorded in anydownload.json', async () => {
+        await fs.ensureDir(path.join(rootDir, 'weather'));
+        await fs.writeFile(
+            path.join(rootDir, 'weather', 'index.html'),
+            '<html><body>Weather</body></html>'
+        );
+        await fs.writeJson(path.join(rootDir, 'anydownload.json'), {
+            sourceUrl: 'https://example.com/weather',
+            entryPath: '/weather/'
+        });
+
+        server = new PreviewServer(rootDir);
+        const opened = await server.start();
+        const origin = `http://127.0.0.1:${server.port}/`;
+
+        expect(opened).toBe(`${origin}weather/`);
+        const root = await fetch(origin, { redirect: 'manual' });
+        expect(root.status).toBe(302);
+        expect(root.headers.get('location')).toBe('/weather/');
+
+        const page = await fetch(`${origin}weather/`).then(r => r.text());
+        expect(page).toContain('Weather');
+    });
+
     test('startPreview resolves parent folder to site root', async () => {
         const parent = path.join(rootDir, 'serve-parent');
         const child = path.join(parent, 'example.com');

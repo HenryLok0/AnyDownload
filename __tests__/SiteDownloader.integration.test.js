@@ -65,6 +65,8 @@ describe('SiteDownloader integration', () => {
         const hostDir = new URL(baseUrl).host.replace(/[:\/\\]/g, '_');
         const siteDir = path.join(outputDir, hostDir);
 
+        const meta = await fs.readJson(path.join(siteDir, 'anydownload.json'));
+        expect(meta.entryPath).toBe('/');
         expect(await fs.pathExists(path.join(siteDir, 'css', 'main.css'))).toBe(true);
         expect(await fs.pathExists(path.join(siteDir, 'img', 'logo.png'))).toBe(true);
     }, 30000);

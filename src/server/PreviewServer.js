@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const mime = require('mime-types');
 const { exec } = require('child_process');
+const { loadReplayIndex, matchReplayUrl } = require('../downloader/replayStore');
 
 const ENTRY_FILE = 'anydownload.json';
 
@@ -29,18 +30,78 @@ function escapeHtml(value) {
         .replace(/"/g, '&quot;');
 }
 
+const COPY_LIMITS = 'This copy does not include login, paywalls, CAPTCHA, encrypted video, or data that changes after download.';
+
 function copyrightBanner(sourceUrl) {
-    const source = sourceUrl ? ` Source / 來源: ${escapeHtml(sourceUrl)}` : '';
-    return `<div id="anydownload-notice" style="display:block;box-sizing:border-box;margin:0;padding:8px 12px;background:#111;color:#fff;font:13px/1.4 sans-serif;">Personal offline copy. Do not republish. 只供個人離線查看，請勿轉載。${source}</div>`;
+    const source = sourceUrl ? ` Source: ${escapeHtml(sourceUrl)}.` : '';
+    return `<div id="anydownload-notice" style="display:block;box-sizing:border-box;margin:0;padding:8px 12px;background:#111;color:#fff;font:13px/1.4 sans-serif;">Personal offline copy for your own viewing. Do not republish.${source} ${COPY_LIMITS}</div>`;
 }
 
-function injectPreviewNotice(html, sourceUrl) {
-    if (!html || html.includes('id="anydownload-notice"')) return html;
-    const banner = copyrightBanner(sourceUrl);
-    if (/<body[^>]*>/i.test(html)) {
-        return html.replace(/<body[^>]*>/i, (open) => open + banner);
+function replayBootstrap(urls, sourceUrl) {
+    const list = JSON.stringify(urls || []).replace(/</g, '\\u003c');
+    const source = JSON.stringify(sourceUrl || '').replace(/</g, '\\u003c');
+    return `<script id="anydownload-replay">(function(){
+var saved=${list};
+var sourceUrl=${source};
+var matchReplayUrl=${matchReplayUrl.toString()};
+function abs(input){try{var raw=typeof input==="string"?input:(input&&input.url)||"";return new URL(raw,location.href).href.split("#")[0];}catch(e){return "";}}
+function note(url){var box=document.getElementById("anydownload-notice");if(!box){document.addEventListener("DOMContentLoaded",function(){note(url);});return;}if(box.getAttribute("data-missing")==="1")return;box.setAttribute("data-missing","1");box.appendChild(document.createTextNode(" No saved response for "+url+"."));}
+function replay(url){return "/__anydownload/replay?u="+encodeURIComponent(url);}
+function cross(url){try{return !!url&&new URL(url).origin!==location.origin;}catch(e){return false;}}
+function savedFor(input){return matchReplayUrl(abs(input),saved,sourceUrl,location.origin);}
+var orig=window.fetch;
+if(orig){window.fetch=function(input,init){var hit=savedFor(input);if(hit)return orig.call(this,replay(hit),{method:"GET",credentials:"same-origin"});var url=abs(input);if(cross(url)){note(url);return Promise.resolve(new Response('{"error":"This offline copy has no saved response."}',{status:404,headers:{"content-type":"application/json"}}));}return orig.apply(this,arguments);};}
+var open=XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open=function(method,url){var hit=savedFor(url);if(hit)return open.call(this,"GET",replay(hit),arguments[2]!==false);var absUrl=abs(url);if(cross(absUrl)){note(absUrl);return open.call(this,"GET","/__anydownload/missing",arguments[2]!==false);}return open.apply(this,arguments);};
+})();</script>`;
+}
+
+function injectPreviewNotice(html, sourceUrl, replayUrls) {
+    if (!html) return html;
+    const shim = html.includes('id="anydownload-replay"') ? '' : replayBootstrap(replayUrls, sourceUrl);
+    let out = html;
+    if (shim) {
+        if (/<head[^>]*>/i.test(out)) {
+            out = out.replace(/<head[^>]*>/i, (open) => open + shim);
+        } else {
+            out = shim + out;
+        }
     }
-    return banner + html;
+    if (out.includes('id="anydownload-notice"')) return out;
+    const banner = copyrightBanner(sourceUrl);
+    if (/<body[^>]*>/i.test(out)) {
+        return out.replace(/<body[^>]*>/i, (open) => open + banner);
+    }
+    return banner + out;
+}
+
+function isInsideRoot(rootDir, filePath) {
+    const rel = path.relative(path.resolve(rootDir), path.resolve(filePath));
+    return Boolean(rel) && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+async function sendReplay(rootDir, replayMap, reqUrl, res) {
+    const target = reqUrl.searchParams.get('u') || '';
+    const hit = replayMap.get(target);
+    if (!hit) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end('{"error":"This offline copy has no saved response."}');
+        return;
+    }
+    const filePath = path.resolve(rootDir, hit.file);
+    if (!isInsideRoot(rootDir, filePath) || !(await fs.pathExists(filePath))) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end('{"error":"This offline copy has no saved response."}');
+        return;
+    }
+    const type = (hit.contentType || mime.lookup(filePath) || 'application/octet-stream').split(';')[0];
+    const data = await fs.readFile(filePath);
+    res.writeHead(200, {
+        'Content-Type': type,
+        'Content-Security-Policy': PREVIEW_CSP,
+        'Cache-Control': 'no-store'
+    });
+    res.end(data);
 }
 
 async function readPreviewMeta(rootDir) {
@@ -252,6 +313,7 @@ class PreviewServer {
         this.sourceUrlOption = options.sourceUrl;
         this.entryPath = null;
         this.sourceUrl = '';
+        this.replayMap = new Map();
         this.server = null;
     }
 
@@ -268,11 +330,22 @@ class PreviewServer {
             this.entryPath = meta.entryPath;
             this.sourceUrl = meta.sourceUrl;
         }
+        this.replayMap = await loadReplayIndex(this.rootDir);
 
         this.server = http.createServer(async (req, res) => {
             try {
-                const urlPath = (req.url || '/').split('?')[0];
+                const reqUrl = new URL(req.url || '/', 'http://127.0.0.1');
+                const urlPath = reqUrl.pathname;
 
+                if (urlPath === '/__anydownload/replay') {
+                    await sendReplay(this.rootDir, this.replayMap, reqUrl, res);
+                    return;
+                }
+                if (urlPath === '/__anydownload/missing') {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end('{"error":"This offline copy has no saved response."}');
+                    return;
+                }
                 if ((urlPath === '/' || urlPath === '/index.html') && this.entryPath && this.entryPath !== '/') {
                     res.writeHead(302, { Location: this.entryPath });
                     res.end();
@@ -331,7 +404,11 @@ class PreviewServer {
                 let body = data;
                 if (isHtml) {
                     headers['Content-Security-Policy'] = PREVIEW_CSP;
-                    body = Buffer.from(injectPreviewNotice(data.toString('utf8'), this.sourceUrl), 'utf8');
+                    body = Buffer.from(injectPreviewNotice(
+                        data.toString('utf8'),
+                        this.sourceUrl,
+                        Array.from(this.replayMap.keys())
+                    ), 'utf8');
                 }
                 res.writeHead(200, headers);
                 res.end(body);

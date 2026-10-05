@@ -9,6 +9,7 @@ const mime = require('mime-types');
 const { hashUrl } = require('../utils/url');
 const { extractUrls, rewriteCss } = require('./parsers/CssParser');
 const PathMapper = require('./storage/PathMapper');
+const { ReplayIndex } = require('./replayStore');
 
 const streamPipeline = promisify(pipeline);
 
@@ -108,6 +109,7 @@ class AssetPipeline {
 
         this.queue = [];
         this.seen = new Set();
+        this.replay = new ReplayIndex();
         this.successCount = 0;
         this.failCount = 0;
         this.downloadedBytes = 0;
@@ -447,6 +449,8 @@ class AssetPipeline {
                     collectScriptDataUrls(source, url).forEach((jsonUrl) => this.enqueue(jsonUrl, pageUrl));
                 }
 
+                await this.replay.add(baseDir, url, savePath, contentType).catch(() => {});
+
                 this.successCount++;
                 this._completedAssets++;
                 this._peakQueueLength = Math.max(this._peakQueueLength, this.queue.length);
@@ -512,6 +516,7 @@ class AssetPipeline {
             peakQueue: this._peakQueueLength,
             downloadedBytes: this.downloadedBytes
         });
+        await this.replay.write(baseDir);
     }
 
     async saveCapturedResponses(capture, pageUrl) {

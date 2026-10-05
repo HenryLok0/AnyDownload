@@ -209,10 +209,8 @@ function assetFileName(absUrl, contentType, index) {
 }
 
 function offlineNotice(sourceUrl) {
-    const source = sourceUrl
-        ? ` Source / 來源: ${escapeHtml(sourceUrl)}`
-        : '';
-    return `<p id="anydownload-notice">Personal offline copy. Do not republish. 只供個人離線查看，請勿轉載。${source}</p>`;
+    const source = sourceUrl ? ` Source: ${escapeHtml(sourceUrl)}.` : '';
+    return `<p id="anydownload-notice">Personal offline copy for your own viewing. Do not republish.${source} This copy does not include login, paywalls, CAPTCHA, encrypted video, or data that changes after download.</p>`;
 }
 
 function buildOfflineDocument({ fragmentHtml, bodyStyle, bodyClass, title, sourceUrl }) {

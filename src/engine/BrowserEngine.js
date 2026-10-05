@@ -1,6 +1,7 @@
 const PuppeteerAdapter = require('./adapters/PuppeteerAdapter');
 const PlaywrightAdapter = require('./adapters/PlaywrightAdapter');
 const AuthHandler = require('./AuthHandler');
+const { revealLazyContent } = require('./revealLazyContent');
 
 class BrowserEngine {
     constructor(adapter, options = {}) {
@@ -45,6 +46,8 @@ class BrowserEngine {
                 timeout: options.timeout,
                 extraWait: options.extraWait ?? this.extraWait
             });
+
+            await revealLazyContent(page).catch(() => {});
 
             const html = await this.adapter.getContent(page);
             const cookies = await this.adapter.getCookies(page);

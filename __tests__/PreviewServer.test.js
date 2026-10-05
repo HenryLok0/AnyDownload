@@ -198,4 +198,40 @@ describe('PreviewServer', () => {
         const found = await findHostFolders('example.com', rootDir);
         expect(found).toEqual([nested]);
     });
+
+    test('replays a saved response and states what the copy does not include', async () => {
+        await fs.writeJson(path.join(rootDir, 'anydownload.json'), {
+            sourceUrl: 'https://example.com/weather',
+            entryPath: '/'
+        });
+        await fs.writeJson(path.join(rootDir, 'anydownload-replay.json'), {
+            responses: [{
+                url: 'https://api.example.com/v1/forecast?lat=1',
+                file: 'anydownload-replay/forecast.json',
+                contentType: 'application/json'
+            }]
+        });
+        await fs.ensureDir(path.join(rootDir, 'anydownload-replay'));
+        await fs.writeFile(
+            path.join(rootDir, 'anydownload-replay', 'forecast.json'),
+            '{"temp":20}'
+        );
+
+        server = new PreviewServer(rootDir);
+        const baseUrl = await server.start();
+        const page = await fetch(baseUrl).then(r => r.text());
+        expect(page).toContain('https://example.com/weather');
+        expect(page).toContain('This copy does not include login, paywalls, CAPTCHA, encrypted video');
+        expect(page).toContain('https://api.example.com/v1/forecast?lat=1');
+        expect(page).toContain('No saved response for');
+
+        const replayUrl = `${baseUrl}__anydownload/replay?u=${encodeURIComponent('https://api.example.com/v1/forecast?lat=1')}`;
+        const replay = await fetch(replayUrl);
+        expect(replay.status).toBe(200);
+        expect(replay.headers.get('content-type')).toMatch(/application\/json/);
+        expect(await replay.text()).toBe('{"temp":20}');
+
+        const missing = await fetch(`${baseUrl}__anydownload/replay?u=${encodeURIComponent('https://api.example.com/missing')}`);
+        expect(missing.status).toBe(404);
+    });
 });

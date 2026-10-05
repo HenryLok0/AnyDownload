@@ -12,9 +12,9 @@
     "startTooltip": "Start the selected mode with the configured target.",
     "startDisabledEmptyUrl": "Enter a target URL first.",
     "startDisabledInvalidUrl": "Fix the URL syntax (scheme is optional — https:// will be assumed).",
-    "stopTooltip": "Stops active website downloads or path-discovery runs.",
+    "stopTooltip": "Stops an active download, path discovery, or region pick.",
     "keyboardStartHint": "Shortcut: Ctrl+Enter (Cmd+Enter on macOS) outside text fields.",
-    "keyboardStopHint": "Use Stop to cancel downloads or path discovery while a task is running.",
+    "keyboardStopHint": "Use Stop to cancel a download, path discovery, or region pick.",
     "languageSelect": "Interface language"
   },
   "sidebar": {
@@ -22,6 +22,10 @@
     "actionMode": "Action Mode",
     "downloadWebsite": "Download Website",
     "pathDiscovery": "Path Discovery (-p)",
+    "pickRegion": "Pick region",
+    "pickHelp": "Opens a browser on this computer. Click a block, use Parent or Child to move up or down the page structure, then Export. HTML, CSS, images, and fonts stay local. Open index.html in the result folder; states.html shows hover, focus, and desktop, tablet, and mobile.",
+    "captureStates": "Also capture hover and focus",
+    "captureViewports": "Also capture tablet and mobile widths",
     "targetUrl": "Target URL",
     "targetUrlHintEmpty": "A URL or hostname is required before starting.",
     "targetUrlHintInvalid": "This does not parse as a valid URL. Include a hostname (https:// optional).",

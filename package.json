@@ -123,6 +123,7 @@
       "src/engine/**/*",
       "src/downloader/**/*",
       "src/discovery/**/*",
+      "src/capture/**/*",
       "src/utils/**/*",
       "src/cli/**/*",
       "src/server/**/*",

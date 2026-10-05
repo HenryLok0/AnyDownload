@@ -31,7 +31,9 @@ const DEFAULT_CONFIG = {
   timeout: 30000,
   type: 'all',
   blockExternalAssets: false,
-  blockAssetPatterns: ''
+  blockAssetPatterns: '',
+  captureStates: true,
+  captureViewports: true
 };
 
 function readStoredGui() {
@@ -295,9 +297,12 @@ export default function App() {
     setDiscoveryActivityLines([]);
     setProgress({ total: 0, success: 0, bytes: 0, percent: null });
     if (window.electronAPI) {
-      window.electronAPI.startTask(config);
+      window.electronAPI.startTask({
+        ...config,
+        locale: i18nInstance.language
+      });
     }
-  }, [config]);
+  }, [config, i18nInstance.language]);
 
   const handleStartRef = useRef(handleStart);
   handleStartRef.current = handleStart;

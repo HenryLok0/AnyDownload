@@ -12,9 +12,9 @@
     "startTooltip": "현재 설정으로 선택된 모드를 시작합니다.",
     "startDisabledEmptyUrl": "대상 URL을 먼저 입력하세요.",
     "startDisabledInvalidUrl": "URL 형식을 바로잡으세요(https:// 없으면 보완합니다).",
-    "stopTooltip": "진행 중인 웹사이트 다운로드 또는 경로 탐색을 중지합니다.",
+    "stopTooltip": "진행 중인 다운로드, 경로 탐색 또는 영역 선택을 중지합니다.",
     "keyboardStartHint": "단축키: 입력란 바깥에서 Ctrl+Enter(macOS는 Cmd+Enter)로 시작.",
-    "keyboardStopHint": "작업 진행 중에는 도구 모음 「중지」로 다운로드나 경로 탐색을 취소할 수 있습니다.",
+    "keyboardStopHint": "작업 진행 중에는 도구 모음 「중지」로 다운로드, 경로 탐색, 영역 선택을 취소할 수 있습니다.",
     "languageSelect": "인터페이스 언어"
   },
   "sidebar": {
@@ -22,6 +22,10 @@
     "actionMode": "실행 모드",
     "downloadWebsite": "웹사이트 다운로드",
     "pathDiscovery": "경로 탐색 (-p)",
+    "pickRegion": "영역 선택",
+    "pickHelp": "이 컴퓨터에서 브라우저를 엽니다. 블록을 클릭한 뒤 상위·하위로 범위를 조정하고 내보냅니다. HTML, CSS, 이미지, 글꼴은 밖으로 전송되지 않습니다. 결과 폴더의 index.html을 여세요. states.html은 hover, focus와 데스크톱·태블릿·휴대폰 너비입니다.",
+    "captureStates": "hover와 focus도 저장",
+    "captureViewports": "태블릿·휴대폰 너비도 저장",
     "targetUrl": "대상 URL",
     "targetUrlHintEmpty": "시작하려면 URL 또는 호스트 이름이 필요합니다.",
     "targetUrlHintInvalid": "유효한 URL로 해석되지 않습니다. 호스트 이름을 포함하세요(https:// 선택).",

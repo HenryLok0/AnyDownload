@@ -13,6 +13,7 @@ const { applyPreset } = require('./presets');
 const { createDownloadTimeline } = require('./downloadTimeline');
 const { startPreview, resolveSiteRoot } = require('../server/PreviewServer');
 const PathDiscovery = require('../discovery/PathDiscovery');
+const { FragmentSession } = require('../capture');
 
 const inquirer = inquirerImport.prompt ? inquirerImport : inquirerImport.default;
 
@@ -466,6 +467,57 @@ program
             preset: 'page',
             output: opts.output
         });
+    });
+
+async function runPick(url, opts) {
+    url = normalizeInputUrl(url);
+    if (!url) {
+        console.error(MSG.provideUrl);
+        process.exit(1);
+    }
+    if (opts.headless && !opts.selector) {
+        console.error('Pick needs a visible browser, or pass --selector with --headless.');
+        process.exit(1);
+    }
+
+    const session = new FragmentSession({
+        outputDir: opts.output || 'picked_site',
+        headless: opts.headless === true,
+        selector: opts.selector || null,
+        extraWait: parseInt(opts.wait, 10) || 0,
+        timeout: parseInt(opts.timeout, 10) || 60000,
+        captureStates: opts.states !== false,
+        captureViewports: opts.viewports !== false
+    });
+
+    try {
+        console.log('Opening a local browser. Click a block, then Export. Nothing is uploaded.');
+        const result = await session.run(url);
+        console.log(`Saved fragment to ${result.outputDir}`);
+        console.log('Open index.html for the copied block, or states.html for hover, focus, and widths.');
+    } catch (error) {
+        if (error && error.code === 'CANCELLED') {
+            console.error('Pick cancelled.');
+            process.exit(1);
+        }
+        console.error('Pick failed: ' + (error.message || error));
+        process.exit(1);
+    }
+}
+
+program
+    .command('pick')
+    .description('Pick a region in a local browser and save an offline fragment')
+    .argument('<url>', 'Page to open')
+    .option('-o, --output <dir>', 'Output folder', 'picked_site')
+    .option('--selector <css>', 'Export this element and skip the on-page picker')
+    .option('--wait <ms>', 'Extra wait after load', '2000')
+    .option('--timeout <ms>', 'Navigation timeout', '60000')
+    .option('--headless', 'Hidden window; requires --selector')
+    .option('--no-states', 'Skip hover and focus screenshots')
+    .option('--no-viewports', 'Skip tablet and mobile widths')
+    .action(async (url, opts) => {
+        await runPick(url, opts);
     });
 
 program.parse(process.argv);

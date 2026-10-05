@@ -12,9 +12,9 @@
     "startTooltip": "設定どおりに選択したモードを開始します。",
     "startDisabledEmptyUrl": "先に対象 URL を入力してください。",
     "startDisabledInvalidUrl": "URL 形式を修正してください（省略時は https:// を補います）。",
-    "stopTooltip": "実行中のWebサイト取得またはパス検出を停止します。",
+    "stopTooltip": "実行中のダウンロード、パス検出、または領域選択を停止します。",
     "keyboardStartHint": "ショートカット: テキスト欄以外で Ctrl+Enter（macOS は Cmd+Enter）で開始。",
-    "keyboardStopHint": "タスク実行中はツールバーの「停止」でダウンロードやパス検出をキャンセルできます。",
+    "keyboardStopHint": "タスク実行中はツールバーの「停止」でダウンロード、パス検出、領域選択をキャンセルできます。",
     "languageSelect": "表示言語"
   },
   "sidebar": {
@@ -22,6 +22,10 @@
     "actionMode": "アクションモード",
     "downloadWebsite": "Webサイトをダウンロード",
     "pathDiscovery": "パス検出 (-p)",
+    "pickRegion": "領域を選択",
+    "pickHelp": "このパソコンでブラウザを開きます。ブロックをクリックし、親へ・子へで範囲を調整してから書き出します。HTML、CSS、画像、フォントは外に送りません。結果フォルダの index.html を開いてください。states.html は hover、focus、デスクトップ、タブレット、スマホ幅です。",
+    "captureStates": "hover と focus も保存",
+    "captureViewports": "タブレットとスマホの幅も保存",
     "targetUrl": "ターゲットURL",
     "targetUrlHintEmpty": "開始前にURLまたはホスト名が必要です。",
     "targetUrlHintInvalid": "有効なURLとして解釈できません。ホスト名を含めてください（https:// は省略可）。",

@@ -7,6 +7,7 @@ const PathDiscovery = require('./src/discovery/PathDiscovery');
 const PathMapper = require('./src/downloader/storage/PathMapper');
 const TaskManager = require('./src/core/TaskManager');
 const { startPreview } = require('./src/server/PreviewServer');
+const { FragmentSession } = require('./src/capture');
 const { setMainLocale, mainT } = require('./src/main/mainLocales');
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -84,6 +85,8 @@ let taskManager;
 const activeDownloadsByTaskId = new Map();
 /** taskId → AbortController for path-discovery (Stop cancels axios + crawl loops) */
 const activeDiscoveryAbortByTaskId = new Map();
+/** taskId → visible local pick session */
+const activePickByTaskId = new Map();
 
 function isCancelledOrAbortLike(err, abortSignalMaybe) {
     if (abortSignalMaybe && abortSignalMaybe.aborted) return true;
@@ -346,7 +349,12 @@ app.whenReady().then(() => {
             const ctl = activeDiscoveryAbortByTaskId.get(tid);
             if (ctl) ctl.abort();
         });
-        return { cancelledTaskIds, cancelledDiscoveryTaskIds };
+        const cancelledPickTaskIds = [...activePickByTaskId.keys()];
+        cancelledPickTaskIds.forEach((tid) => {
+            const session = activePickByTaskId.get(tid);
+            if (session) session.cancel();
+        });
+        return { cancelledTaskIds, cancelledDiscoveryTaskIds, cancelledPickTaskIds };
     });
 
     ipcMain.handle('start-offline-preview', async (_event, folderPath) => {
@@ -607,6 +615,67 @@ app.whenReady().then(() => {
                 }
             } finally {
                 activeDiscoveryAbortByTaskId.delete(task.id);
+            }
+        } else if (config.mode === 'pick') {
+            const session = new FragmentSession({
+                outputDir: downloadOutAbs,
+                headless: false,
+                extraWait: parseInt(config.wait, 10) || 2000,
+                timeout: config.timeout || 60000,
+                locale: config.locale,
+                captureStates: config.captureStates !== false,
+                captureViewports: config.captureViewports !== false,
+                onStatus: (text) => {
+                    if (!mainWindow) return;
+                    mainWindow.webContents.send('task-progress', {
+                        status: 'downloading',
+                        url: text,
+                        size: '-',
+                        time: '-',
+                        phase: 'pick'
+                    });
+                }
+            });
+            activePickByTaskId.set(task.id, session);
+            try {
+                const result = await session.run(config.url);
+                const updatedTask = taskManager.updateTask(task.id, {
+                    status: 'success',
+                    percent: 100,
+                    outputDir: result.outputDir,
+                    size: `${result.assetCount} assets`,
+                    lastError: null,
+                    resourceFailCount: 0
+                });
+                if (mainWindow) {
+                    if (updatedTask) mainWindow.webContents.send('task-update', updatedTask);
+                    mainWindow.webContents.send('task-done', { success: true, taskId: task.id });
+                }
+            } catch (err) {
+                const cancelled = isCancelledOrAbortLike(err);
+                const errMsg = err && err.message ? err.message : String(err);
+                taskManager.updateTask(task.id, {
+                    status: cancelled ? 'cancelled' : 'error',
+                    lastError: cancelled ? null : errMsg
+                });
+                const finalTask = taskManager.getTasks().find((x) => x.id === task.id);
+                if (mainWindow) {
+                    if (finalTask) mainWindow.webContents.send('task-update', finalTask);
+                    mainWindow.webContents.send('task-progress', {
+                        status: cancelled ? 'cancelled' : 'error',
+                        url: errMsg,
+                        size: '-',
+                        time: '-'
+                    });
+                    mainWindow.webContents.send('task-done', {
+                        success: false,
+                        taskId: task.id,
+                        cancelled,
+                        error: cancelled ? undefined : errMsg
+                    });
+                }
+            } finally {
+                activePickByTaskId.delete(task.id);
             }
         } else {
             const detail = `Unsupported mode: ${String(config.mode)}`;

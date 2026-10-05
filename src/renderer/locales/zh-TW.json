@@ -12,9 +12,9 @@
     "startTooltip": "以目前設定啟動所選模式。",
     "startDisabledEmptyUrl": "請先輸入目標網址。",
     "startDisabledInvalidUrl": "請修正網址格式（可省略協定，將自動加上 https://）。",
-    "stopTooltip": "停止進行中的網站下載或路徑探測。",
+    "stopTooltip": "停止進行中的網站下載、路徑探測或區塊框選。",
     "keyboardStartHint": "捷徑：在文字欄位外按 Ctrl+Enter（macOS 為 Cmd+Enter）可開始。",
-    "keyboardStopHint": "工作執行中可用工具列「停止」取消網站下載或路徑探測。",
+    "keyboardStopHint": "工作執行中可用工具列「停止」取消下載、路徑探測或區塊框選。",
     "languageSelect": "介面語言"
   },
   "sidebar": {
@@ -22,6 +22,10 @@
     "actionMode": "執行模式",
     "downloadWebsite": "下載網站",
     "pathDiscovery": "路徑探測 (-p)",
+    "pickRegion": "框選區塊",
+    "pickHelp": "會在這台電腦開啟瀏覽器。點選區塊後，可用上一層、下一層沿頁面結構調整範圍，再按匯出。HTML、樣式、圖片與字型都留在本機，不會上傳。完成後開啟結果資料夾的 index.html；states.html 是 hover、focus 與桌面、平板、手機寬度。",
+    "captureStates": "一併擷取 hover 與 focus",
+    "captureViewports": "一併擷取平板與手機寬度",
     "targetUrl": "目標網址",
     "targetUrlHintEmpty": "開始前需要網址或主機名稱。",
     "targetUrlHintInvalid": "無法解析為有效網址，請確認含主機名稱（可省略 https://）。",
@@ -70,7 +74,7 @@
     "jsOnly": "僅 JS",
     "htmlOnly": "僅 HTML",
     "mediaOnly": "僅媒體",
-    "fontsOnly": "僅字體"
+    "fontsOnly": "僅字體",
     "blockExternalAssets": "封鎖外部資產",
     "blockAssetPatterns": "封鎖資產規則",
     "blockAssetPatternsPlaceholder": "unpkg.com/*,cdn.jsdelivr.net/*,fonts.gstatic.com/*"

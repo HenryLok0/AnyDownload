@@ -22,6 +22,17 @@ describe('CLI', () => {
         expect(result.stdout).toMatch(/--mode/);
     });
 
+    test('pick command is registered', () => {
+        const result = spawnSync(process.execPath, [CLI, 'pick', '--help'], {
+            encoding: 'utf8',
+            timeout: 10000
+        });
+        expect(result.status).toBe(0);
+        expect(result.stdout).toMatch(/Pick a region/i);
+        expect(result.stdout).toMatch(/--selector/);
+        expect(result.stdout).toMatch(/--no-states/);
+    });
+
     test('serve command is registered', () => {
         const result = spawnSync(process.execPath, [CLI, 'serve', '--help'], {
             encoding: 'utf8',

@@ -43,6 +43,7 @@ export default function Sidebar({
         <SelectField label={t('sidebar.actionMode')} disabled={isRunning} value={config.mode} onChange={(v) => update('mode', v)}>
           <option value="download">{t('sidebar.downloadWebsite')}</option>
           <option value="discovery">{t('sidebar.pathDiscovery')}</option>
+          <option value="pick">{t('sidebar.pickRegion')}</option>
         </SelectField>
         
         <InputField label={t('sidebar.targetUrl')} disabled={isRunning} value={config.url} onChange={(v) => update('url', v)} placeholder="https://example.com" />
@@ -58,7 +59,7 @@ export default function Sidebar({
           </p>
         )}
 
-        {config.mode === 'download' && (
+        {(config.mode === 'download' || config.mode === 'pick') && (
           <>
             <InputField
               label={t('sidebar.outputFolder')}
@@ -102,6 +103,11 @@ export default function Sidebar({
                 {t('sidebar.relativeOutputResolvedUnder', { path: guiHints.documentOutputRoot })}
               </p>
             )}
+          </>
+        )}
+
+        {config.mode === 'download' && (
+          <>
             <div className="rounded-sm border border-[var(--border-color)] bg-[var(--bg-panel)] p-1.5">
               <div className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">
                 {t('sidebar.liveDownloadActivityTitle')}
@@ -125,6 +131,27 @@ export default function Sidebar({
               <option value="full">{t('sidebar.presetFull')}</option>
               <option value="mirror">{t('sidebar.presetMirror')}</option>
             </SelectField>
+          </>
+        )}
+
+        {config.mode === 'pick' && (
+          <>
+            <p className="text-[10px] text-[var(--text-muted)] leading-snug px-0.5 font-sans">
+              {t('sidebar.pickHelp')}
+            </p>
+            <InputField label={t('sidebar.wait')} type="number" disabled={isRunning} value={config.wait} onChange={(v) => update('wait', Number(v))} />
+            <CheckboxField
+              label={t('sidebar.captureStates')}
+              disabled={isRunning}
+              checked={config.captureStates !== false}
+              onChange={(v) => update('captureStates', v)}
+            />
+            <CheckboxField
+              label={t('sidebar.captureViewports')}
+              disabled={isRunning}
+              checked={config.captureViewports !== false}
+              onChange={(v) => update('captureViewports', v)}
+            />
           </>
         )}
       </Section>
@@ -212,6 +239,7 @@ export default function Sidebar({
         </Section>
       )}
 
+      {config.mode !== 'pick' && (
       <Section title={t('sidebar.limitsFilters')}>
         <div className="flex gap-2">
           <InputField label={t('sidebar.concurrency')} type="number" disabled={isRunning} value={config.concurrency} onChange={(v) => update('concurrency', Number(v))} />
@@ -249,6 +277,7 @@ export default function Sidebar({
           </>
         )}
       </Section>
+      )}
     </div>
   );
 }

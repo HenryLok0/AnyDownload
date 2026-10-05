@@ -42,6 +42,7 @@ Grab the **desktop build** for your OS from **[Releases](https://github.com/Henr
 | Mirror many pages (depth 5) | `anydownload example.com --preset mirror` |
 | Preview an existing download folder | `anydownload serve test` (auto-finds `test/example.com/`) |
 | Interactive wizard (URL, scope, engine — no browser pick) | `anydownload --wizard` |
+| Pick one block and save it offline (local browser) | `anydownload pick example.com` |
 | Only CSS files | `anydownload example.com --type css` |
 | *(optional)* List URLs only (no download) | `anydownload example.com -p -o mysite` |
 
@@ -89,6 +90,27 @@ Preview runs at **http://127.0.0.1:8765/** (default) and always opens the site r
 - Use **`--legacy-flat-pages`** if you rely on older behavior with every HTML file in the hostname root (`_underscore.html`). Default is hierarchical.
 
 ---
+
+## Pick a region (`anydownload pick`)
+
+Opens the page in a **local** browser. Click a block, use **Parent** / **Child** (or ↑ / ↓) to walk the page structure, then **Export**. The tool copies that node's HTML, the page CSS (including `:hover`, `:focus`, and `@media`), and the images and fonts those styles use. Nothing is uploaded.
+
+```bash
+anydownload pick https://example.com -o picked_site
+```
+
+Results land in `picked_site/<hostname>/pick-<time>/`:
+
+- `index.html` — the copied block, open this file directly
+- `fragment.css` — the original CSS with asset URLs pointed at `assets/`
+- `states.html` — screenshots of the same block at desktop, tablet, and mobile, including hover and focus
+
+```bash
+anydownload pick https://example.com --selector "#hero" --headless
+anydownload pick https://example.com --no-states --no-viewports
+```
+
+Log in inside the opened browser before you export if the page requires an account. The session stays on this computer.
 
 ## Engine modes (`--mode`)
 

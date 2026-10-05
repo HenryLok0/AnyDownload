@@ -1,6 +1,21 @@
 const AssetPipeline = require('../src/downloader/AssetPipeline');
+const { collectScriptDataUrls } = AssetPipeline;
 
 describe('AssetPipeline', () => {
+    test('collects same-origin JSON paths written in a script', () => {
+        const js = `
+            const dir = new URL("../files/", scriptUrl);
+            function loadFile(name) { return new URL(name, dir).href; }
+            fetch(loadFile("records.json"));
+            fetch("/extra/config.json");
+        `;
+        const urls = collectScriptDataUrls(js, 'https://example.com/assets/app.js');
+        expect(urls).toEqual(expect.arrayContaining([
+            'https://example.com/files/records.json',
+            'https://example.com/extra/config.json'
+        ]));
+    });
+
     test('_headers includes Referer and Origin from page URL', () => {
         const pipeline = new AssetPipeline({ userAgent: 'TestAgent/1.0' });
         const pageUrl = 'https://example.com/';

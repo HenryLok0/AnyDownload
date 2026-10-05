@@ -34,6 +34,54 @@ function parsePatternList(input) {
         .filter(Boolean);
 }
 
+/**
+ * Same-origin JSON paths written in a script.
+ * A filename is also joined to any directory built with new URL("…/", …) in that file.
+ */
+function collectScriptDataUrls(jsText, scriptUrl) {
+    const out = [];
+    if (!jsText || !scriptUrl) return out;
+    let script;
+    try {
+        script = new URL(scriptUrl);
+    } catch {
+        return out;
+    }
+
+    const add = (raw, base) => {
+        try {
+            const abs = new URL(raw, base);
+            if (abs.protocol !== 'http:' && abs.protocol !== 'https:') return;
+            if (abs.hostname !== script.hostname) return;
+            if (!abs.pathname.toLowerCase().endsWith('.json')) return;
+            out.push(abs.href);
+        } catch {
+            /* Skip an unparseable token. */
+        }
+    };
+
+    const explicit = /["']((?:https?:\/\/[^"'\\\s]+|(?:\.\/|\.\.\/|\/)[^"'\\\s]+)\.json)["']/gi;
+    let match;
+    while ((match = explicit.exec(jsText))) add(match[1], scriptUrl);
+
+    const bases = [];
+    const dirRe = /new URL\(\s*["']([^"']+\/)["']/g;
+    while ((match = dirRe.exec(jsText))) {
+        try {
+            bases.push(new URL(match[1], scriptUrl));
+        } catch {
+            /* Skip an unparseable directory. */
+        }
+    }
+    const names = /["']([^"'/\\]+\.json)["']/gi;
+    const seenNames = new Set();
+    while ((match = names.exec(jsText))) seenNames.add(match[1]);
+    for (const base of bases) {
+        for (const name of seenNames) add(name, base);
+    }
+    return [...new Set(out)].slice(0, 40);
+}
+
 class AssetPipeline {
     constructor(options = {}) {
         this.concurrency = options.concurrency || 5;
@@ -391,6 +439,14 @@ class AssetPipeline {
                     await this._processCssFile(url, savePath, pageUrl, baseDir);
                 }
 
+                const isJs = (contentType || '').includes('javascript') ||
+                    url.endsWith('.js') ||
+                    savePath.endsWith('.js');
+                if (isJs) {
+                    const source = await fs.readFile(savePath, 'utf8');
+                    collectScriptDataUrls(source, url).forEach((jsonUrl) => this.enqueue(jsonUrl, pageUrl));
+                }
+
                 this.successCount++;
                 this._completedAssets++;
                 this._peakQueueLength = Math.max(this._peakQueueLength, this.queue.length);
@@ -470,3 +526,4 @@ class AssetPipeline {
 }
 
 module.exports = AssetPipeline;
+module.exports.collectScriptDataUrls = collectScriptDataUrls;

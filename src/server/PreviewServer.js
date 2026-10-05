@@ -268,7 +268,8 @@ class PreviewServer {
                 if (!filePath || !(await fs.pathExists(filePath))) {
                     if (this.spaFallback) {
                         const indexFile = findIndexFile(this.rootDir);
-                        if (indexFile && !urlPath.includes('.')) {
+                        const isApi = urlPath === '/api' || urlPath.startsWith('/api/');
+                        if (indexFile && !urlPath.includes('.') && !isApi) {
                             filePath = indexFile;
                         }
                     }

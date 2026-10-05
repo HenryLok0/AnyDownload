@@ -57,6 +57,9 @@ describe('PreviewServer', () => {
         /* No folder: still SPA */
         const htmlUnknown = await fetch(baseUrl + 'no-such/route').then(r => r.text());
         expect(htmlUnknown).toContain('Home');
+
+        const api = await fetch(baseUrl + 'api/lookup');
+        expect(api.status).toBe(404);
     });
 
     test('nested URL /React/_next/static/… serves site-root _next (Next-like bundles)', async () => {

@@ -5,7 +5,8 @@ const {
     collectHtmlAssetUrls,
     isVisualAsset,
     rewriteCssUrls,
-    rewriteHtmlAssets
+    rewriteHtmlAssets,
+    stripActiveContent
 } = require('../src/capture/fragmentBundle');
 const { buildShotPlan } = require('../src/capture/FragmentSession');
 const { pickerLabels } = require('../src/capture/pickerSource');
@@ -46,15 +47,29 @@ describe('fragment bundle', () => {
 
     test('builds a document that points at the copied stylesheet', () => {
         const html = buildOfflineDocument({
-            fragmentHtml: '<section id="hero">Hello</section>',
+            fragmentHtml: '<section id="hero" onclick="steal()">Hello</section><iframe src="https://evil.example"></iframe><p>© Ada</p>',
             bodyStyle: 'background-color:rgb(0,0,0)',
             bodyClass: 'dark',
-            title: 'section#hero'
+            title: 'section#hero',
+            sourceUrl: 'https://example.com/hero'
         });
         expect(html).toContain('href="fragment.css"');
         expect(html).toContain('<section id="hero">Hello</section>');
         expect(html).toContain('class="dark"');
         expect(html).not.toContain('<script');
+        expect(html).toContain('id="anydownload-notice"');
+        expect(html).toContain('https://example.com/hero');
+        expect(html).toContain('© Ada');
+        expect(html).not.toMatch(/onclick|javascript:|<iframe/i);
+    });
+
+    test('strips event handlers, javascript urls, and frames', () => {
+        const out = stripActiveContent(
+            '<div onclick="alert(1)"><a href="javascript:alert(1)">x</a><iframe src="https://evil.example"></iframe><p>© Ada</p></div>'
+        );
+        expect(out).not.toMatch(/onclick|javascript:|<iframe/i);
+        expect(out).toContain('© Ada');
+        expect(out).toContain('>x<');
     });
 
     test('names visual assets and ignores other responses', () => {

@@ -39,6 +39,13 @@ function missingPeerError(provider) {
  * Install Chromium with the Playwright package shipped inside anydownload.
  * `npx playwright install` from the user's folder downloads a different Playwright.
  */
+function nodeBinary() {
+    if (process.versions && process.versions.electron) {
+        return process.env.npm_node_execpath || 'node';
+    }
+    return process.execPath;
+}
+
 function installPlaywrightChromium() {
     let cli;
     try {
@@ -46,7 +53,7 @@ function installPlaywrightChromium() {
     } catch {
         throw new Error('Playwright is not installed. Reinstall with: npm install -g anydownload');
     }
-    execFileSync(process.execPath, [cli, 'install', 'chromium'], {
+    execFileSync(nodeBinary(), [cli, 'install', 'chromium'], {
         stdio: 'inherit',
         env: process.env,
         cwd: path.dirname(cli)

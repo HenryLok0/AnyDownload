@@ -148,7 +148,7 @@ describe('PreviewServer', () => {
         await fs.ensureDir(path.join(rootDir, 'weather'));
         await fs.writeFile(
             path.join(rootDir, 'weather', 'index.html'),
-            '<html><body>Weather</body></html>'
+            '<html><body><p>Weather</p><p>© Author</p></body></html>'
         );
         await fs.writeJson(path.join(rootDir, 'anydownload.json'), {
             sourceUrl: 'https://example.com/weather',
@@ -164,8 +164,14 @@ describe('PreviewServer', () => {
         expect(root.status).toBe(302);
         expect(root.headers.get('location')).toBe('/weather/');
 
-        const page = await fetch(`${origin}weather/`).then(r => r.text());
+        const res = await fetch(`${origin}weather/`);
+        const page = await res.text();
+        expect(res.headers.get('content-security-policy')).toMatch(/connect-src 'self'/);
+        expect(res.headers.get('content-security-policy')).toMatch(/frame-src 'none'/);
         expect(page).toContain('Weather');
+        expect(page).toContain('© Author');
+        expect(page).toContain('id="anydownload-notice"');
+        expect(page).toContain('https://example.com/weather');
     });
 
     test('startPreview resolves parent folder to site root', async () => {

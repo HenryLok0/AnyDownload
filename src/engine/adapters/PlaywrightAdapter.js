@@ -89,11 +89,18 @@ class PlaywrightAdapter {
     }
 
     async goto(page, url, options = {}) {
-        const waitUntil = options.waitUntil || 'networkidle';
+        const requested = options.waitUntil || 'networkidle';
+        const timeout = options.timeout || this.timeout;
+        // Sites with polling or sockets never go idle. Load the document, then
+        // treat networkidle as a short best-effort wait.
+        const settleForIdle = requested === 'networkidle';
         await page.goto(url, {
-            waitUntil,
-            timeout: options.timeout || this.timeout
+            waitUntil: settleForIdle ? 'domcontentloaded' : requested,
+            timeout
         });
+        if (settleForIdle) {
+            await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+        }
         if (options.extraWait) {
             await page.waitForTimeout(options.extraWait);
         }

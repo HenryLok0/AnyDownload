@@ -150,9 +150,29 @@ function rewriteSrcset(value, map) {
     }).join(', ');
 }
 
-function rewriteHtmlAssets(html, map) {
+/** Drop executable markup. Leave visible author and copyright text in place. */
+function stripActiveContent(html) {
     if (!html) return '';
     const $ = cheerio.load(html);
+    $('script,noscript,iframe,frame,object,embed').remove();
+    $('*').each((_, el) => {
+        const node = $(el);
+        Object.keys(el.attribs || {}).forEach((name) => {
+            if (/^on/i.test(name)) node.removeAttr(name);
+        });
+        ['href', 'src', 'xlink:href', 'action', 'formaction', 'poster'].forEach((attr) => {
+            const value = node.attr(attr);
+            if (value && /^\s*javascript:/i.test(value)) node.removeAttr(attr);
+        });
+    });
+    const body = $('body');
+    if (body.length) return body.html() || '';
+    return $.root().html() || '';
+}
+
+function rewriteHtmlAssets(html, map) {
+    if (!html) return '';
+    const $ = cheerio.load(stripActiveContent(html));
     $('img[src], source[src], img[data-src], video[poster], image, use, [srcset], [style]').each((_, el) => {
         const node = $(el);
         ['src', 'data-src', 'poster', 'href', 'xlink:href'].forEach((attr) => {
@@ -188,7 +208,14 @@ function assetFileName(absUrl, contentType, index) {
     return `${index}-${hash}${ext}`;
 }
 
-function buildOfflineDocument({ fragmentHtml, bodyStyle, bodyClass, title }) {
+function offlineNotice(sourceUrl) {
+    const source = sourceUrl
+        ? ` Source / 來源: ${escapeHtml(sourceUrl)}`
+        : '';
+    return `<p id="anydownload-notice">Personal offline copy. Do not republish. 只供個人離線查看，請勿轉載。${source}</p>`;
+}
+
+function buildOfflineDocument({ fragmentHtml, bodyStyle, bodyClass, title, sourceUrl }) {
     const classAttr = bodyClass ? ` class="${escapeAttr(bodyClass)}"` : '';
     const styleAttr = bodyStyle ? ` style="${escapeAttr(bodyStyle)}"` : '';
     return `<!DOCTYPE html>
@@ -201,7 +228,8 @@ function buildOfflineDocument({ fragmentHtml, bodyStyle, bodyClass, title }) {
 </head>
 <body${classAttr}${styleAttr}>
 <!-- Local capture. Markup and CSS were copied from the page, not regenerated. -->
-${fragmentHtml || ''}
+${offlineNotice(sourceUrl)}
+${stripActiveContent(fragmentHtml)}
 </body>
 </html>
 `;
@@ -260,5 +288,6 @@ module.exports = {
     isStylesheet,
     isVisualAsset,
     rewriteCssUrls,
-    rewriteHtmlAssets
+    rewriteHtmlAssets,
+    stripActiveContent
 };

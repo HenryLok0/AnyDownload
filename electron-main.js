@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell, clipboard } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
@@ -7,6 +7,7 @@ const PathDiscovery = require('./src/discovery/PathDiscovery');
 const PathMapper = require('./src/downloader/storage/PathMapper');
 const TaskManager = require('./src/core/TaskManager');
 const { startPreview } = require('./src/server/PreviewServer');
+const { installPlaywrightChromium } = require('./src/engine/BrowserInstaller');
 const { FragmentSession } = require('./src/capture');
 const { setMainLocale, mainT } = require('./src/main/mainLocales');
 
@@ -126,16 +127,26 @@ async function warnIfPlaywrightBrowserMissing(parentWin) {
         /* chromium pack / path missing */
     }
     if (!parentWin) return;
-    const installCmd = 'npx playwright install chromium';
     const { response } = await dialog.showMessageBox(parentWin, {
         type: 'warning',
         title: mainT('playwrightBrowserMissingTitle'),
         message: mainT('playwrightBrowserMissingMessage'),
-        detail: mainT('playwrightBrowserMissingDetail', { cmd: installCmd }),
-        buttons: [mainT('playwrightBtnOk'), mainT('playwrightBtnCopy')]
+        detail: mainT('playwrightBrowserMissingDetail'),
+        buttons: [mainT('playwrightBtnOk'), mainT('playwrightBtnInstall')]
     });
-    if (response === 1) {
-        clipboard.writeText(installCmd);
+    if (response !== 1) return;
+    try {
+        installPlaywrightChromium();
+        await dialog.showMessageBox(parentWin, {
+            type: 'info',
+            title: mainT('playwrightBrowserMissingTitle'),
+            message: mainT('playwrightInstallDone')
+        });
+    } catch (err) {
+        dialog.showErrorBox(
+            mainT('playwrightBrowserMissingTitle'),
+            err && err.message ? err.message : String(err)
+        );
     }
 }
 

@@ -109,12 +109,20 @@ function extractFragmentInPage() {
         if (node.id === 'anydownload-picker-host') return null;
         const tag = node.tagName.toLowerCase();
         if (tag === 'script' || tag === 'noscript') return null;
+        if (tag === 'iframe' || tag === 'frame' || tag === 'object' || tag === 'embed') return null;
         if (tag === 'link') {
             const rel = (node.getAttribute('rel') || '').toLowerCase();
             if (/\bstylesheet\b|\bpreload\b|\bmodulepreload\b|\bprefetch\b/.test(rel)) return null;
         }
         const clone = node.cloneNode(false);
         absolutizeElementUrls(clone);
+        Array.prototype.slice.call(clone.attributes).forEach((attr) => {
+            if (/^on/i.test(attr.name)) clone.removeAttribute(attr.name);
+        });
+        ['href', 'src', 'xlink:href', 'action', 'formaction', 'poster'].forEach((attr) => {
+            const value = clone.getAttribute(attr);
+            if (value && /^\s*javascript:/i.test(value)) clone.removeAttribute(attr);
+        });
         if (node.shadowRoot) {
             node.shadowRoot.childNodes.forEach((child) => {
                 const next = cloneNodeSafe(child);

@@ -6,6 +6,7 @@ downloaded_site/
 mysite/
 test-output/
 output/
+picked_site/
 
 # Environment and secrets
 .env

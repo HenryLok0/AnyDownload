@@ -330,7 +330,8 @@ class FragmentSession {
             fragmentHtml,
             bodyStyle: extracted.bodyStyle,
             bodyClass: extracted.bodyClass,
-            title: extracted.label
+            title: extracted.label,
+            sourceUrl: pageUrl
         });
         await fs.ensureDir(dir);
         await fs.writeFile(path.join(dir, 'index.html'), html, 'utf8');

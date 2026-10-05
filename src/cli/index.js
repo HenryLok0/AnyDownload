@@ -29,6 +29,8 @@ const MSG = {
     size: 'Total size',
     time: 'Elapsed',
     homepage: 'Homepage:',
+    openPage: 'Open:',
+    copyright: 'Personal offline copy. Do not republish. robots.txt is respected unless you pass --ignore-robots. Source:',
     preview: 'Preview (HTTP):',
     previewHint: 'Tip: For SPAs, use --open or "anydownload serve <folder>". Do not double-click index.html (file:// breaks ES modules).',
     serving: 'Serving offline site at',
@@ -294,6 +296,17 @@ async function runDownload(url, opts) {
             ? indexInOutput
             : path.join(result.outputDir, (await fs.readdir(result.outputDir)).find(f => f.endsWith('.html')) || 'index.html');
         console.log(`${MSG.homepage} ${homepage}`);
+        const metaPath = path.join(result.outputDir, 'anydownload.json');
+        let entryPath = '/';
+        if (await fs.pathExists(metaPath)) {
+            const meta = await fs.readJson(metaPath);
+            if (meta && typeof meta.entryPath === 'string' && meta.entryPath.startsWith('/')) {
+                entryPath = meta.entryPath;
+            }
+        }
+        const previewPort = parseInt(opts.servePort, 10) || 8765;
+        console.log(`${MSG.openPage} http://127.0.0.1:${previewPort}${entryPath}`);
+        console.log(`${MSG.copyright} ${url}`);
         console.log(MSG.previewHint);
 
         const preset = opts.preset || 'page';
@@ -390,8 +403,14 @@ async function runServe(folder, opts) {
         process.exit(1);
     }
     const port = parseInt(opts.port, 10) || 8765;
-    const { url } = await startPreview(rootDir, { port, open: opts.open !== false });
+    const siteRoot = await resolveSiteRoot(rootDir);
+    const { url } = await startPreview(siteRoot, { port, open: opts.open !== false });
     console.log(`${MSG.serving} ${url}`);
+    const metaPath = path.join(siteRoot, 'anydownload.json');
+    if (await fs.pathExists(metaPath)) {
+        const meta = await fs.readJson(metaPath);
+        if (meta && meta.sourceUrl) console.log(`${MSG.copyright} ${meta.sourceUrl}`);
+    }
     console.log(MSG.previewHint);
     await new Promise(() => {});
 }

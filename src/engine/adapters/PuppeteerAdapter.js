@@ -108,11 +108,15 @@ class PuppeteerAdapter {
     }
 
     async goto(page, url, options = {}) {
-        const waitUntil = options.waitUntil === 'networkidle' ? 'networkidle2' : (options.waitUntil || 'networkidle2');
+        const requested = options.waitUntil || 'networkidle';
+        const settleForIdle = requested === 'networkidle' || requested === 'networkidle2';
         await page.goto(url, {
-            waitUntil,
+            waitUntil: settleForIdle ? 'domcontentloaded' : requested,
             timeout: options.timeout || this.timeout
         });
+        if (settleForIdle && typeof page.waitForNetworkIdle === 'function') {
+            await page.waitForNetworkIdle({ idleTime: 500, timeout: 8000 }).catch(() => {});
+        }
         if (options.extraWait) {
             await new Promise(r => setTimeout(r, options.extraWait));
         }

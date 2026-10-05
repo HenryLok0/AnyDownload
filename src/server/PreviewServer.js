@@ -6,23 +6,66 @@ const { exec } = require('child_process');
 
 const ENTRY_FILE = 'anydownload.json';
 
-async function readEntryPath(rootDir) {
+const PREVIEW_CSP = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "media-src 'self' blob:",
+    "worker-src 'self'",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'"
+].join('; ');
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function copyrightBanner(sourceUrl) {
+    const source = sourceUrl ? ` Source / 來源: ${escapeHtml(sourceUrl)}` : '';
+    return `<div id="anydownload-notice" style="display:block;box-sizing:border-box;margin:0;padding:8px 12px;background:#111;color:#fff;font:13px/1.4 sans-serif;">Personal offline copy. Do not republish. 只供個人離線查看，請勿轉載。${source}</div>`;
+}
+
+function injectPreviewNotice(html, sourceUrl) {
+    if (!html || html.includes('id="anydownload-notice"')) return html;
+    const banner = copyrightBanner(sourceUrl);
+    if (/<body[^>]*>/i.test(html)) {
+        return html.replace(/<body[^>]*>/i, (open) => open + banner);
+    }
+    return banner + html;
+}
+
+async function readPreviewMeta(rootDir) {
+    const empty = { entryPath: null, sourceUrl: '' };
     try {
         const data = await fs.readJson(path.join(rootDir, ENTRY_FILE));
+        const sourceUrl = data && typeof data.sourceUrl === 'string' ? data.sourceUrl : '';
         const entry = data && data.entryPath;
-        if (typeof entry !== 'string' || !entry.startsWith('/') || entry === '/') return null;
-        if (entry.includes('..') || entry.includes('\\')) return null;
+        if (typeof entry !== 'string' || !entry.startsWith('/') || entry === '/') {
+            return { entryPath: null, sourceUrl };
+        }
+        if (entry.includes('..') || entry.includes('\\')) return { entryPath: null, sourceUrl };
 
         const rel = entry.replace(/^\/+/, '');
         const candidate = rel.endsWith('/')
             ? path.join(rootDir, rel, 'index.html')
             : path.join(rootDir, rel);
-        if (!isPathUnderRoot(rootDir, candidate)) return null;
-        if (!(await fs.pathExists(candidate))) return null;
-        if (rel.endsWith('/') || path.extname(rel)) return entry.startsWith('/') ? entry : `/${entry}`;
-        return `/${rel}/`;
+        if (!isPathUnderRoot(rootDir, candidate)) return { entryPath: null, sourceUrl };
+        if (!(await fs.pathExists(candidate))) return { entryPath: null, sourceUrl };
+        const entryPath = rel.endsWith('/') || path.extname(rel)
+            ? (entry.startsWith('/') ? entry : `/${entry}`)
+            : `/${rel}/`;
+        return { entryPath, sourceUrl };
     } catch {
-        return null;
+        return empty;
     }
 }
 
@@ -174,7 +217,9 @@ class PreviewServer {
         this.port = options.port || 0;
         this.spaFallback = options.spaFallback !== false;
         this.entryPathOption = options.entryPath;
+        this.sourceUrlOption = options.sourceUrl;
         this.entryPath = null;
+        this.sourceUrl = '';
         this.server = null;
     }
 
@@ -183,9 +228,14 @@ class PreviewServer {
             throw new Error(`Folder not found: ${this.rootDir}`);
         }
 
-        this.entryPath = this.entryPathOption !== undefined
-            ? this.entryPathOption
-            : await readEntryPath(this.rootDir);
+        if (this.entryPathOption !== undefined) {
+            this.entryPath = this.entryPathOption;
+            this.sourceUrl = this.sourceUrlOption || '';
+        } else {
+            const meta = await readPreviewMeta(this.rootDir);
+            this.entryPath = meta.entryPath;
+            this.sourceUrl = meta.sourceUrl;
+        }
 
         this.server = http.createServer(async (req, res) => {
             try {
@@ -243,8 +293,15 @@ class PreviewServer {
 
                 const contentType = mime.lookup(filePath) || 'application/octet-stream';
                 const data = await fs.readFile(filePath);
-                res.writeHead(200, { 'Content-Type': contentType });
-                res.end(data);
+                const isHtml = String(contentType).startsWith('text/html');
+                const headers = { 'Content-Type': contentType };
+                let body = data;
+                if (isHtml) {
+                    headers['Content-Security-Policy'] = PREVIEW_CSP;
+                    body = Buffer.from(injectPreviewNotice(data.toString('utf8'), this.sourceUrl), 'utf8');
+                }
+                res.writeHead(200, headers);
+                res.end(body);
             } catch (err) {
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end(err.message || 'Server error');

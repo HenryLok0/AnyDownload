@@ -68,7 +68,7 @@ anydownload serve test
 anydownload serve test/example.com
 ```
 
-Preview runs at **http://127.0.0.1:8765/** (default) and always opens the site root `/`. Press **Ctrl+C** to stop the server.
+Preview runs at **http://127.0.0.1:8765/** by default and opens the page you downloaded (for example `/weather/`, not only `/`). Press **Ctrl+C** to stop the server. The download summary prints the exact `anydownload serve "..."` command.
 
 > **Note:** `--mode render` finishes with **Open offline preview? (Y/n)**. Choosing **Yes** runs `anydownload serve "<folder>"` and opens your browser.
 

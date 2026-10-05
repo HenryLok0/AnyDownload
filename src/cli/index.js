@@ -11,7 +11,7 @@ const { version } = require('../../package.json');
 const { SiteDownloader } = require('../downloader');
 const { applyPreset } = require('./presets');
 const { createDownloadTimeline } = require('./downloadTimeline');
-const { startPreview, resolveSiteRoot } = require('../server/PreviewServer');
+const { startPreview, resolveSiteRoot, findHostFolders } = require('../server/PreviewServer');
 const PathDiscovery = require('../discovery/PathDiscovery');
 const { FragmentSession } = require('../capture');
 
@@ -32,7 +32,7 @@ const MSG = {
     openPage: 'Open:',
     copyright: 'Personal offline copy. Do not republish. robots.txt is respected unless you pass --ignore-robots. Source:',
     preview: 'Preview (HTTP):',
-    previewHint: 'Tip: For SPAs, use --open or "anydownload serve <folder>". Do not double-click index.html (file:// breaks ES modules).',
+    previewHint: 'Tip: Run the serve command printed above. Do not double-click index.html (file:// breaks ES modules).',
     serving: 'Serving offline site at',
     openPrompt: 'Open offline preview in browser now? (Required for React/Vite — do not double-click index.html)',
     previewLater: 'To preview later, run:',
@@ -307,6 +307,8 @@ async function runDownload(url, opts) {
         const previewPort = parseInt(opts.servePort, 10) || 8765;
         console.log(`${MSG.openPage} http://127.0.0.1:${previewPort}${entryPath}`);
         console.log(`${MSG.copyright} ${url}`);
+        console.log(`\n${MSG.previewLater}`);
+        console.log(`  ${buildServeCommand(result.outputDir, opts)}`);
         console.log(MSG.previewHint);
 
         const preset = opts.preset || 'page';
@@ -397,10 +399,20 @@ function addDownloadOptions(cmd) {
 }
 
 async function runServe(folder, opts) {
-    const rootDir = path.resolve(folder);
+    let rootDir = path.resolve(folder);
     if (!(await fs.pathExists(rootDir))) {
+        const matches = await findHostFolders(path.basename(rootDir), process.cwd());
         console.error('Folder not found: ' + rootDir);
-        process.exit(1);
+        if (matches.length === 1) {
+            rootDir = matches[0];
+            console.log('Using ' + rootDir);
+        } else {
+            if (matches.length > 1) {
+                console.error('Try one of:');
+                matches.forEach((dir) => console.error(`  anydownload serve "${dir}"`));
+            }
+            process.exit(1);
+        }
     }
     const port = parseInt(opts.port, 10) || 8765;
     const siteRoot = await resolveSiteRoot(rootDir);

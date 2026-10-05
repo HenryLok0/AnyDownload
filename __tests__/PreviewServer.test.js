@@ -1,7 +1,7 @@
 const http = require('http');
 const path = require('path');
 const fs = require('fs-extra');
-const { PreviewServer, resolveSiteRoot, startPreview } = require('../src/server/PreviewServer');
+const { PreviewServer, resolveSiteRoot, startPreview, findHostFolders } = require('../src/server/PreviewServer');
 
 describe('PreviewServer', () => {
     const rootDir = path.join(__dirname, '..', 'test-output', 'preview-server');
@@ -188,5 +188,14 @@ describe('PreviewServer', () => {
         const html = await fetch(url).then(r => r.text());
         expect(html).toContain('Served');
         expect(url).toMatch(/\/$/);
+    });
+
+    test('findHostFolders locates a nested host folder', async () => {
+        const nested = path.join(rootDir, 'downloaded_site', 'example.com');
+        await fs.ensureDir(nested);
+        await fs.writeFile(path.join(nested, 'index.html'), '<html></html>');
+
+        const found = await findHostFolders('example.com', rootDir);
+        expect(found).toEqual([nested]);
     });
 });

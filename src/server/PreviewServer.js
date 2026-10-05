@@ -102,6 +102,38 @@ async function resolveSiteRoot(dir) {
     );
 }
 
+const SKIP_HOST_SEARCH = new Set(['node_modules', '.git', 'dist', 'dist-electron']);
+
+/** Look under startDir for `<host>/index.html`, a few levels deep. */
+async function findHostFolders(hostName, startDir, maxDepth = 3) {
+    const want = String(hostName || '').toLowerCase();
+    if (!want) return [];
+    const root = path.resolve(startDir);
+    const found = [];
+
+    async function scan(dir, depth) {
+        if (depth > maxDepth || found.length >= 5) return;
+        let entries;
+        try {
+            entries = await fs.readdir(dir, { withFileTypes: true });
+        } catch {
+            return;
+        }
+        for (const ent of entries) {
+            if (!ent.isDirectory() || SKIP_HOST_SEARCH.has(ent.name)) continue;
+            const child = path.join(dir, ent.name);
+            if (ent.name.toLowerCase() === want && await fs.pathExists(path.join(child, 'index.html'))) {
+                found.push(child);
+                if (found.length >= 5) return;
+            }
+            if (depth < maxDepth) await scan(child, depth + 1);
+        }
+    }
+
+    await scan(root, 0);
+    return found;
+}
+
 /** Resolved path stays under root (covers Windows drive-letter case drift). */
 function isPathUnderRoot(rootDir, candidateAbs) {
     const root = path.resolve(rootDir);
@@ -359,5 +391,6 @@ module.exports = {
     findIndexFile,
     resolveSiteRoot,
     resolveExtensionlessHtml,
-    resolveSharedBundlePath
+    resolveSharedBundlePath,
+    findHostFolders
 };

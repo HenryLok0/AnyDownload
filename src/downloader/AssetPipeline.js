@@ -2,7 +2,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
 const undici = require('undici');
-const { ProxyAgent } = undici;
+const { ProxyAgent, Agent, interceptors } = undici;
 const { pipeline } = require('stream');
 const { promisify } = require('util');
 const mime = require('mime-types');
@@ -180,18 +180,33 @@ class AssetPipeline {
         return headers;
     }
 
+    _dispatcher() {
+        if (this.proxy) {
+            if (!this._proxyDispatcher) {
+                const agent = new ProxyAgent(this.proxy);
+                this._proxyDispatcher = this.followRedirects
+                    ? agent.compose(interceptors.redirect({ maxRedirections: this.maxRedirects }))
+                    : agent;
+            }
+            return this._proxyDispatcher;
+        }
+        if (!this._directDispatcher) {
+            const agent = new Agent();
+            this._directDispatcher = this.followRedirects
+                ? agent.compose(interceptors.redirect({ maxRedirections: this.maxRedirects }))
+                : agent;
+        }
+        return this._directDispatcher;
+    }
+
     _requestOptions(pageUrl, resourceUrl) {
-        const opts = {
+        return {
             method: 'GET',
             headers: this._headers(pageUrl, resourceUrl),
-            maxRedirections: this.followRedirects ? this.maxRedirects : 0,
+            dispatcher: this._dispatcher(),
             headersTimeout: this.timeout,
             bodyTimeout: this.timeout
         };
-        if (this.proxy) {
-            opts.dispatcher = new ProxyAgent(this.proxy);
-        }
-        return opts;
     }
 
     _passesTypeFilter(url) {

@@ -22,15 +22,22 @@ describe('CssParser', () => {
         const css = 'body { background: url(../img/bg.png); }';
         const mapper = new PathMapper('https://example.com/page.html');
         const out = rewriteCss(css, base, mapper);
-        expect(out).toContain('url("img/bg.png")');
+        expect(out).toContain('url("/img/bg.png")');
     });
 
-    test('rewrites urls relative to nested css mirror path when context given', () => {
+    test('rewrites urls from the preview root, not the css file folder', () => {
         const css = 'body { background: url(../../img/bg.png); }';
         const mapper = new PathMapper('https://example.com/foo/bar/b.css');
         const out = rewriteCss(css, 'https://example.com/foo/bar/b.css', mapper, {
             mirrorContextPath: 'foo/bar/b.css'
         });
-        expect(out).toContain('url("../../img/bg.png")');
+        expect(out).toContain('url("/img/bg.png")');
+    });
+
+    test('rewrites CDN urls onto /external', () => {
+        const css = 'h1 { background: url(https://cdn.example.net/img/hero.png); }';
+        const mapper = new PathMapper('https://example.com/docs');
+        const out = rewriteCss(css, 'https://cdn.example.net/lib/app.css', mapper);
+        expect(out).toContain('url("/external/cdn.example.net/img/hero.png")');
     });
 });

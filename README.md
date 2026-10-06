@@ -77,7 +77,7 @@ Preview runs at **http://127.0.0.1:8765/** by default and opens the page you dow
 ## Mirrored HTML layout (framework docs)
 
 - Pages are mirrored to a folder tree aligned with URLs: `/` becomes `index.html`, `/learn` becomes `learn/index.html`, `/reference/react` becomes `reference/react/index.html`.
-- Scripts, stylesheets, and other same-origin URLs are rewritten **relative to the saved HTML file** so shared roots like `_next/static/...` still resolve offline at any depth.
+- Scripts, stylesheets, images, and fonts are rewritten to preview-root paths (`/assets/...`, `/_next/...`, `/external/host/...`) so the same file resolves from any saved page when you use `anydownload serve`.
 
 ### Preview (`anydownload serve`)
 

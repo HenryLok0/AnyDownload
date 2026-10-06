@@ -234,4 +234,40 @@ describe('PreviewServer', () => {
         const missing = await fetch(`${baseUrl}__anydownload/replay?u=${encodeURIComponent('https://api.example.com/missing')}`);
         expect(missing.status).toBe(404);
     });
+
+    test('serves saved files from the preview root at any page depth', async () => {
+        await fs.writeJson(path.join(rootDir, 'anydownload.json'), {
+            sourceUrl: 'https://example.com/docs',
+            entryPath: '/'
+        });
+        await fs.ensureDir(path.join(rootDir, 'hk'));
+        await fs.writeFile(
+            path.join(rootDir, 'hk', 'index.html'),
+            '<html><head><link rel="stylesheet" href="external/cdn.example/app.css"></head><body>Page</body></html>'
+        );
+        await fs.ensureDir(path.join(rootDir, 'external', 'cdn.example'));
+        await fs.writeFile(
+            path.join(rootDir, 'external', 'cdn.example', 'app.css'),
+            'h1{background:url("external/cdn.example/hero.png")}'
+        );
+        await fs.writeFile(
+            path.join(rootDir, 'external', 'cdn.example', 'app.js'),
+            'var s="https://cdn.example.net/lib/app.js";'
+        );
+
+        server = new PreviewServer(rootDir);
+        const baseUrl = await server.start();
+        const page = await fetch(`${baseUrl}hk/`).then(r => r.text());
+        expect(page).toContain('href="/external/cdn.example/app.css"');
+
+        const css = await fetch(`${baseUrl}external/cdn.example/app.css`).then(r => r.text());
+        expect(css).toContain('url("/external/cdn.example/hero.png")');
+
+        const js = await fetch(`${baseUrl}external/cdn.example/app.js`).then(r => r.text());
+        expect(js).toContain('"/external/cdn.example.net/lib/app.js"');
+
+        const nested = await fetch(`${baseUrl}docs/guide/external/cdn.example/app.css`);
+        expect(nested.status).toBe(200);
+        expect(await nested.text()).toContain('hero.png');
+    });
 });

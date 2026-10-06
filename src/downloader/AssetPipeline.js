@@ -10,6 +10,7 @@ const { hashUrl } = require('../utils/url');
 const { extractUrls, rewriteCss } = require('./parsers/CssParser');
 const PathMapper = require('./storage/PathMapper');
 const { ReplayIndex } = require('./replayStore');
+const { rewriteRuntimeUrls } = require('./rewrite/mirrorHref');
 
 const streamPipeline = promisify(pipeline);
 
@@ -447,6 +448,14 @@ class AssetPipeline {
                 if (isJs) {
                     const source = await fs.readFile(savePath, 'utf8');
                     collectScriptDataUrls(source, url).forEach((jsonUrl) => this.enqueue(jsonUrl, pageUrl));
+                    let siteHost = '';
+                    try {
+                        siteHost = new URL(pageUrl).host;
+                    } catch {
+                        siteHost = '';
+                    }
+                    const rewritten = rewriteRuntimeUrls(source, siteHost);
+                    if (rewritten !== source) await fs.writeFile(savePath, rewritten);
                 }
 
                 await this.replay.add(baseDir, url, savePath, contentType).catch(() => {});

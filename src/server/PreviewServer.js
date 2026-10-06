@@ -4,6 +4,7 @@ const fs = require('fs-extra');
 const mime = require('mime-types');
 const { exec } = require('child_process');
 const { loadReplayIndex, matchReplayUrl } = require('../downloader/replayStore');
+const { rewriteRuntimeUrls } = require('../downloader/rewrite/mirrorHref');
 
 const ENTRY_FILE = 'anydownload.json';
 
@@ -54,6 +55,12 @@ if(orig){window.fetch=function(input,init){var hit=savedFor(input);if(hit)return
 var open=XMLHttpRequest.prototype.open;
 XMLHttpRequest.prototype.open=function(method,url){var hit=savedFor(url);if(hit)return open.call(this,"GET",replay(hit),arguments[2]!==false);var absUrl=abs(url);if(cross(absUrl)){note(absUrl);return open.call(this,"GET","/__anydownload/missing",arguments[2]!==false);}return open.apply(this,arguments);};
 })();</script>`;
+}
+
+function rootExternalRefs(text) {
+    return String(text)
+        .replace(/((?:href|src)=["'])external\//g, '$1/external/')
+        .replace(/url\(\s*(['"]?)external\//g, 'url($1/external/');
 }
 
 function injectPreviewNotice(html, sourceUrl, replayUrls) {
@@ -277,6 +284,9 @@ async function resolveSharedBundlePath(rootDir, urlPath) {
     const staticPath = await tryFromSegment('static');
     if (staticPath) return staticPath;
 
+    const externalPath = await tryFromSegment('external');
+    if (externalPath) return externalPath;
+
     /**
      * Public files referenced without a leading slash (e.g. `./next.svg` on `/blog/`
      * → `/blog/next.svg`). If that path misses on disk but the same suffix exists at
@@ -404,11 +414,21 @@ class PreviewServer {
                 let body = data;
                 if (isHtml) {
                     headers['Content-Security-Policy'] = PREVIEW_CSP;
-                    body = Buffer.from(injectPreviewNotice(
+                    body = Buffer.from(rootExternalRefs(injectPreviewNotice(
                         data.toString('utf8'),
                         this.sourceUrl,
                         Array.from(this.replayMap.keys())
-                    ), 'utf8');
+                    )), 'utf8');
+                } else if (String(contentType).includes('css')) {
+                    body = Buffer.from(rootExternalRefs(data.toString('utf8')), 'utf8');
+                } else if (String(contentType).includes('javascript')) {
+                    let siteHost = '';
+                    try {
+                        siteHost = new URL(this.sourceUrl).host;
+                    } catch {
+                        siteHost = '';
+                    }
+                    body = Buffer.from(rewriteRuntimeUrls(data.toString('utf8'), siteHost), 'utf8');
                 }
                 res.writeHead(200, headers);
                 res.end(body);

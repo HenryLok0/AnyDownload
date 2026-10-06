@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
 const { normalizeUrl } = require('../../utils/url');
 const { rewriteCss } = require('../parsers/CssParser');
+const { toMirrorHref, rewriteRuntimeUrls } = require('./mirrorHref');
 
 class UrlRewriter {
     constructor(pageUrl, pathMapper, mirrorPageRelPath) {
@@ -13,16 +14,7 @@ class UrlRewriter {
     _rewriteAsset(raw) {
         const abs = normalizeUrl(raw, this.pageUrl);
         if (!abs) return null;
-        let u;
-        try {
-            u = new URL(abs);
-        } catch {
-            return null;
-        }
-        if (u.hostname !== this.pathMapper.baseUrl.hostname) {
-            return this.pathMapper.toLocalPath(abs);
-        }
-        return this.pathMapper.relativeAssetHref(this.mirrorPageRelPath, abs);
+        return toMirrorHref(this.pathMapper.toLocalPath(abs));
     }
 
     _rewriteAnchorNav(absUrlStr) {
@@ -128,15 +120,7 @@ class UrlRewriter {
             const newStyle = style.replace(/url\(\s*['"]?([^'")]+)['"]?\s*\)/gi, (full, raw) => {
                 const abs = normalizeUrl(raw, this.pageUrl);
                 if (!abs) return full;
-                let rel;
-                try {
-                    const u = new URL(abs);
-                    rel = u.hostname !== this.pathMapper.baseUrl.hostname
-                        ? this.pathMapper.toLocalPath(abs)
-                        : this.pathMapper.relativeAssetHref(this.mirrorPageRelPath, abs);
-                } catch {
-                    return full;
-                }
+                const rel = this._rewriteAsset(abs);
                 return rel ? `url("${rel}")` : full;
             });
             $(el).attr('style', newStyle);
@@ -147,6 +131,14 @@ class UrlRewriter {
             $(el).html(rewriteCss(css, this.pageUrl, this.pathMapper, {
                 mirrorContextPath: this.mirrorPageRelPath
             }));
+        });
+
+        const siteHost = this.pathMapper.baseUrl.host;
+        $('script').each((_, el) => {
+            if ($(el).attr('src')) return;
+            const code = $(el).html();
+            if (!code || !/https?:/i.test(code)) return;
+            $(el).html(rewriteRuntimeUrls(code, siteHost));
         });
 
         $('a[href]').each((_, el) => {

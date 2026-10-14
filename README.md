@@ -6,7 +6,9 @@
 [![MIT License](https://img.shields.io/github/license/HenryLok0/AnyDownload?style=flat-square)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/HenryLok0/AnyDownload?style=flat-square)](https://github.com/HenryLok0/AnyDownload/stargazers)
 
-Download websites for **offline browsing** — HTML, CSS, JavaScript, images, fonts, and common SPA bundles (React, Vite, Vue).
+Saves a public page you can already open, for personal offline viewing: the HTML, CSS, images, fonts, and same-site files captured during that download.
+
+This copy does not include login, paywalls, CAPTCHA, encrypted video, or content that appears only after the download.
 
 ---
 
@@ -38,8 +40,8 @@ Grab the **desktop build** for your OS from **[Releases](https://github.com/Henr
 | Download and open preview when done (SPA) | `anydownload example.com --mode render --open` |
 | Skip external CDN/fonts assets | `anydownload example.com --block-external-assets` |
 | Block specific asset hosts/patterns | `anydownload example.com --block-asset "unpkg.com/*" --block-asset "cdn.jsdelivr.net/*"` |
-| Download full site (depth 2) | `anydownload example.com --preset full` |
-| Mirror many pages (depth 5) | `anydownload example.com --preset mirror` |
+| Follow same-site links, depth 2 | `anydownload example.com --preset full` |
+| Crawl same-site links, depth 5 | `anydownload example.com --preset mirror` |
 | Preview an existing download folder | `anydownload serve test` (auto-finds `test/example.com/`) |
 | Interactive wizard (URL, scope, engine — no browser pick) | `anydownload --wizard` |
 | Pick one block and save it offline (local browser) | `anydownload pick example.com` |

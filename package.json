@@ -1,7 +1,7 @@
 {
   "name": "anydownload",
   "version": "2.4.6",
-  "description": "A powerful website downloader with GUI support",
+  "description": "Save a public page you can already open, for personal offline viewing",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HenryLok0/AnyDownload.git"

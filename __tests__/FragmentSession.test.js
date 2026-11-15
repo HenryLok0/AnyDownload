@@ -74,6 +74,13 @@ function startFixture() {
 const ready = chromiumReady();
 const describeCapture = ready ? describe : describe.skip;
 
+test.each([
+    ['zh-CN', '上一层', '导出'],
+    ['zh-TW', '上一層', '匯出']
+])('uses %s for the picker overlay', (locale, parent, exportLabel) => {
+    expect(pickerLabels(locale)).toMatchObject({ parent, export: exportLabel });
+});
+
 describeCapture('local fragment capture', () => {
     jest.setTimeout(120000);
     let server;

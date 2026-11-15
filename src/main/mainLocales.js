@@ -7,6 +7,8 @@ const PACK = {
         openOutputFolderFailed: 'Open output folder failed',
         previewFailed: 'Preview failed',
         invalidOutputFolder: 'Invalid output folder',
+        outputFolderOutsideRoot: 'Output folder must stay under: {{root}}',
+        folderNotFound: 'Folder not found: {{root}}',
         exportTasksZipTitle: 'Export Tasks as ZIP',
         exportZipFilterName: 'ZIP Archives',
         deleteTasksTitle: 'Delete Tasks',
@@ -22,7 +24,34 @@ const PACK = {
         playwrightBtnInstall: 'Install browser',
         playwrightInstallDone: 'Chromium installed.',
         chooseFolderTitle: 'Select Folder',
-        chooseFileTitle: 'Select File'
+        chooseFileTitle: 'Select File',
+        textFilesFilter: 'Text Files',
+        allFilesFilter: 'All Files'
+    },
+    'zh-CN': {
+        openOutputFolderFailed: '无法打开输出文件夹',
+        previewFailed: '预览失败',
+        invalidOutputFolder: '输出文件夹无效',
+        outputFolderOutsideRoot: '输出文件夹必须位于以下目录内：{{root}}',
+        folderNotFound: '找不到文件夹：{{root}}',
+        exportTasksZipTitle: '将任务导出为 ZIP',
+        exportZipFilterName: 'ZIP 压缩包',
+        deleteTasksTitle: '删除任务',
+        deleteTasksMessage: '确定要删除 {{count}} 个任务吗？',
+        deleteTasksDetail: '你也可以同时删除保存在本地的下载文件。',
+        btnCancel: '取消',
+        btnRemoveListOnly: '仅从列表中移除',
+        btnDeleteFilesAndRemove: '删除文件并移除任务',
+        playwrightBrowserMissingTitle: '缺少 Playwright 浏览器',
+        playwrightBrowserMissingMessage: '找不到下载页面所需的 Chromium 浏览器。',
+        playwrightBrowserMissingDetail: '点击“安装浏览器”可安装 AnyDownload 所需的 Chromium。',
+        playwrightBtnOk: '确定',
+        playwrightBtnInstall: '安装浏览器',
+        playwrightInstallDone: 'Chromium 已安装。',
+        chooseFolderTitle: '选择文件夹',
+        chooseFileTitle: '选择文件',
+        textFilesFilter: '文本文件',
+        allFilesFilter: '所有文件'
     },
     'zh-TW': {
         openOutputFolderFailed: '無法開啟輸出資料夾',
@@ -92,6 +121,7 @@ const PACK = {
 function normalizeLocale(loc) {
     const s = typeof loc === 'string' ? loc.trim().replace(/_/g, '-') : '';
     if (PACK[s]) return s;
+    if (/^zh-(cn|hans)(-|$)/i.test(s)) return 'zh-CN';
     if (/^zh-/i.test(s)) return 'zh-TW';
     const base = String(s.split('-')[0] || FALLBACK).toLowerCase();
     if (PACK[base]) return base;

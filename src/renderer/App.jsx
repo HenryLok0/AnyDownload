@@ -153,6 +153,7 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
+    document.documentElement.lang = i18nInstance.language;
     if (window.electronAPI?.setAppLocale) {
       window.electronAPI.setAppLocale(i18nInstance.language);
     }

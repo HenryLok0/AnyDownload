@@ -64,7 +64,7 @@ function resolveOutputPathForGui(userInput, fallbackRelName = 'downloaded_site')
     const root = getGuiDocumentOutputRoot();
     const resolved = path.normalize(path.join(root, rel));
     if (!isPathUnderRoot(root, resolved)) {
-        throw new Error(`Output folder must stay under: ${root}`);
+        throw new Error(mainT('outputFolderOutsideRoot', { root }));
     }
     return resolved;
 }
@@ -339,8 +339,8 @@ app.whenReady().then(() => {
             title: mainT('chooseFileTitle'),
             properties: ['openFile'],
             filters: [
-                { name: 'Text Files', extensions: ['txt'] },
-                { name: 'All Files', extensions: ['*'] }
+                { name: mainT('textFilesFilter'), extensions: ['txt'] },
+                { name: mainT('allFilesFilter'), extensions: ['*'] }
             ]
         });
         if (result.canceled || result.filePaths.length === 0) {
@@ -372,7 +372,7 @@ app.whenReady().then(() => {
         try {
             const root = resolveOutputPathForGui(folderPath != null ? folderPath : '', 'downloaded_site');
             await fs.promises.access(root).catch(() => {
-                throw new Error(`Folder not found: ${root}`);
+                throw new Error(mainT('folderNotFound', { root }));
             });
 
             if (previewServerInstance) {

@@ -6,6 +6,13 @@ const PICKER_TEXT = {
         cancel: 'Cancel',
         hint: 'Click a block. Parent widens it up the page structure. Child narrows it. Export stays on this computer.'
     },
+    'zh-CN': {
+        parent: '上一层',
+        child: '下一层',
+        export: '导出',
+        cancel: '取消',
+        hint: '点击选择网页区域。用“上一层”扩大选区，用“下一层”缩小选区。导出文件保存在本机。'
+    },
     'zh-TW': {
         parent: '上一層',
         child: '下一層',
@@ -30,7 +37,8 @@ const PICKER_TEXT = {
 };
 
 function pickerLabels(locale) {
-    const key = String(locale || 'en').toLowerCase();
+    const key = String(locale || 'en').trim().replace(/_/g, '-').toLowerCase();
+    if (/^zh-(cn|hans)(-|$)/.test(key)) return PICKER_TEXT['zh-CN'];
     if (key.startsWith('zh')) return PICKER_TEXT['zh-TW'];
     if (key.startsWith('ja')) return PICKER_TEXT.ja;
     if (key.startsWith('ko')) return PICKER_TEXT.ko;

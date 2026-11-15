@@ -12,6 +12,13 @@ const { FragmentSession } = require('./src/capture');
 const { setMainLocale, mainT } = require('./src/main/mainLocales');
 
 const isDev = process.env.NODE_ENV === 'development';
+const archiveErrorMessages = new Map([
+    ['ARCHIVE_INVALID_FOLDER', 'archiveInvalidFolder'],
+    ['ARCHIVE_ENTRY_MISSING', 'archiveEntryMissing'],
+    ['ARCHIVE_DOWNLOAD_INCOMPLETE', 'archiveDownloadIncomplete'],
+    ['ARCHIVE_TARGET_NOT_DIRECTORY', 'archiveTargetNotDirectory'],
+    ['ARCHIVE_BACKUP_RETAINED', 'archiveBackupRetained']
+]);
 
 /** User may type "example.com"; PathDiscovery normalizes with URL() and needs a scheme. */
 function ensureHttpScheme(url) {
@@ -67,6 +74,33 @@ function resolveOutputPathForGui(userInput, fallbackRelName = 'downloaded_site')
         throw new Error(mainT('outputFolderOutsideRoot', { root }));
     }
     return resolved;
+}
+
+function resolveOfflinePreviewPath(folderPath, options) {
+    const completed = taskManager.getTasks().filter(task =>
+        task.mode === 'download' && task.status === 'success' &&
+        typeof task.outputDir === 'string' && path.isAbsolute(task.outputDir)
+    );
+    const selected = completed.find(task => task.id === options?.taskId);
+    if (selected) return selected.outputDir;
+
+    const root = resolveOutputPathForGui(folderPath);
+    let targetHost;
+    try {
+        targetHost = new URL(ensureHttpScheme(options?.targetUrl)).host;
+    } catch {
+        return root;
+    }
+
+    const latest = completed.find(task => {
+        if (path.relative(root, path.dirname(task.outputDir)) || !fs.existsSync(task.outputDir)) return false;
+        try {
+            return new URL(task.url).host === targetHost;
+        } catch {
+            return false;
+        }
+    });
+    return latest?.outputDir ?? root;
 }
 
 function legacyOutputFallbackForMigrate(t) {
@@ -368,9 +402,9 @@ app.whenReady().then(() => {
         return { cancelledTaskIds, cancelledDiscoveryTaskIds, cancelledPickTaskIds };
     });
 
-    ipcMain.handle('start-offline-preview', async (_event, folderPath) => {
+    ipcMain.handle('start-offline-preview', async (_event, folderPath, options) => {
         try {
-            const root = resolveOutputPathForGui(folderPath != null ? folderPath : '', 'downloaded_site');
+            const root = resolveOfflinePreviewPath(folderPath, options);
             await fs.promises.access(root).catch(() => {
                 throw new Error(mainT('folderNotFound', { root }));
             });
@@ -438,6 +472,7 @@ app.whenReady().then(() => {
         if (config.mode === 'download') {
             const downloader = new SiteDownloader({
                 outputDir: downloadOutAbs,
+                storageRule: config.storageRule === 'overwrite' ? 'overwrite' : 'timestamp',
                 preset: config.preset,
                 mode: config.engineMode,
                 extraWait: config.wait,
@@ -512,10 +547,13 @@ app.whenReady().then(() => {
                     mainWindow.webContents.send('task-done', { success: true, taskId: task.id });
                 }
             } catch (err) {
+                const archiveMessage = archiveErrorMessages.get(err?.code);
                 const cancelled = Boolean(
-                    err && (err.code === 'CANCELLED' || /cancel/i.test(err.message || ''))
+                    !archiveMessage && err && (err.code === 'CANCELLED' || /cancel/i.test(err.message || ''))
                 );
-                const errMsg = err && err.message ? err.message : String(err);
+                const errMsg = archiveMessage
+                    ? mainT(archiveMessage, { count: err.count, path: err.archivePath, backup: err.backupPath })
+                    : err?.message || String(err);
                 taskManager.updateTask(task.id, {
                     status: cancelled ? 'cancelled' : 'error',
                     lastError: cancelled ? null : errMsg
@@ -527,7 +565,7 @@ app.whenReady().then(() => {
                     }
                     mainWindow.webContents.send('task-progress', {
                         status: cancelled ? 'cancelled' : 'error',
-                        url: err.message || err.toString(),
+                        url: errMsg,
                         size: '-',
                         time: '-'
                     });
@@ -535,7 +573,7 @@ app.whenReady().then(() => {
                         success: false,
                         taskId: task.id,
                         cancelled,
-                        error: cancelled ? undefined : (err.message || String(err))
+                        error: cancelled ? undefined : errMsg
                     });
                 }
             } finally {

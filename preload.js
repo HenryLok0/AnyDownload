@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openGuiDownloadFolder: (userInput) => ipcRenderer.invoke('open-gui-output-folder', userInput),
   exportTasks: (ids) => ipcRenderer.invoke('export-tasks', ids),
   deleteTasks: (ids) => ipcRenderer.invoke('delete-tasks', ids),
-  startOfflinePreview: (folderPath) => ipcRenderer.invoke('start-offline-preview', folderPath),
+  startOfflinePreview: (folderPath, options) => ipcRenderer.invoke('start-offline-preview', folderPath, options),
   cancelAllDownloads: () => ipcRenderer.invoke('cancel-all-downloads'),
   startTask: (config) => ipcRenderer.send('start-task', config),
   setAppLocale: (lng) => ipcRenderer.send('set-app-locale', lng),

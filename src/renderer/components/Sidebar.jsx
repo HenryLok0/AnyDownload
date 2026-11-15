@@ -108,6 +108,20 @@ export default function Sidebar({
 
         {config.mode === 'download' && (
           <>
+            <SelectField
+              label={t('sidebar.storageRule')}
+              disabled={isRunning}
+              value={config.storageRule}
+              onChange={(v) => update('storageRule', v)}
+              descriptionId="storage-rule-description"
+            >
+              <option value="timestamp">{t('sidebar.storageRuleTimestamp')}</option>
+              <option value="overwrite">{t('sidebar.storageRuleOverwrite')}</option>
+            </SelectField>
+            <p id="storage-rule-description" className="text-[10px] text-[var(--text-muted)] leading-snug px-0.5 font-sans">
+              {t(config.storageRule === 'overwrite' ? 'sidebar.storageRuleOverwriteHint' : 'sidebar.storageRuleTimestampHint')}
+            </p>
+
             <div className="rounded-sm border border-[var(--border-color)] bg-[var(--bg-panel)] p-1.5">
               <div className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">
                 {t('sidebar.liveDownloadActivityTitle')}
@@ -333,11 +347,12 @@ function InputField({ label, type = 'text', disabled, value, onChange, placehold
   );
 }
 
-function SelectField({ label, disabled, value, onChange, children }) {
+function SelectField({ label, disabled, value, onChange, descriptionId, children }) {
   return (
     <label className="block flex-1">
       <span className="text-[11px] font-semibold text-[var(--text-muted)] block mb-0.5">{label}</span>
       <select 
+        aria-describedby={descriptionId}
         disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}

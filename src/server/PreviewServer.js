@@ -150,14 +150,14 @@ async function resolveSiteRoot(dir) {
     if (!(await fs.pathExists(root))) {
         throw new Error(`Folder not found: ${root}`);
     }
-    if (findIndexFile(root)) return root;
+    if (findIndexFile(root) || (await readPreviewMeta(root)).entryPath) return root;
 
     const entries = await fs.readdir(root, { withFileTypes: true });
     const candidates = [];
     for (const ent of entries) {
         if (!ent.isDirectory()) continue;
         const child = path.join(root, ent.name);
-        if (findIndexFile(child)) candidates.push(child);
+        if (findIndexFile(child) || (await readPreviewMeta(child)).entryPath) candidates.push(child);
     }
     if (candidates.length === 1) return candidates[0];
     if (candidates.length > 1) {

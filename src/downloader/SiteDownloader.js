@@ -8,6 +8,7 @@ const { isValidUrl } = require('../utils/url');
 const { mergeCookieHeader, cookiesToHeader } = require('../utils/cookies');
 const { extractFromHtml } = require('./parsers/HtmlParser');
 const PathMapper = require('./storage/PathMapper');
+const { prepareArchiveStorage } = require('./storage/ArchiveStorage');
 const UrlRewriter = require('./rewrite/UrlRewriter');
 const AssetPipeline = require('./AssetPipeline');
 const Crawler = require('./Crawler');
@@ -20,6 +21,7 @@ class SiteDownloader extends EventEmitter {
     constructor(options = {}) {
         super();
         this.outputDir = options.outputDir || path.join(process.cwd(), 'downloaded_site');
+        this.storageRule = options.storageRule;
         this.userAgent = options.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
         this.engineMode = options.mode || options.engineMode ||
             (options.dynamic ? 'render' : (options.autoDynamic === false ? 'static' : 'auto'));
@@ -248,29 +250,65 @@ class SiteDownloader extends EventEmitter {
 
         const pageMapper = new PathMapper(url);
         const hostDir = pageMapper.getHostDir(url);
-        const baseDir = path.join(this.outputDir, hostDir);
-        await fs.ensureDir(baseDir);
-        await fs.writeJson(path.join(baseDir, 'anydownload.json'), {
-            sourceUrl: url,
-            entryPath: pageMapper.getPreviewPath(url)
-        }, { spaces: 2 });
-
-        await this.downloadPage(url, 0, baseDir);
-        if (this.cancelled) {
-            const err = new Error('Cancelled by user');
-            err.code = 'CANCELLED';
-            throw err;
+        let archive;
+        if (this.storageRule) {
+            const outputRoot = path.resolve(this.outputDir);
+            const archivePath = path.resolve(outputRoot, hostDir.replace(/\.+$/u, ''));
+            if (archivePath === outputRoot || path.dirname(archivePath) !== outputRoot) {
+                throw Object.assign(new Error('Invalid archive folder for this URL'), {
+                    code: 'ARCHIVE_INVALID_FOLDER'
+                });
+            }
+            archive = await prepareArchiveStorage(archivePath, this.storageRule);
         }
-        await this._writeSitemap(baseDir);
 
-        return {
-            outputDir: baseDir,
-            successCount: this.successCount,
-            failCount: this.failCount,
-            downloadedBytes: this.downloadedBytes,
-            failedResources: this.failedResources,
-            visited: [...this.visited]
+        const baseDir = archive?.directory ?? path.join(this.outputDir, hostDir);
+        const throwIfCancelled = () => {
+            if (this.cancelled) {
+                const error = new Error('Cancelled by user');
+                error.code = 'CANCELLED';
+                throw error;
+            }
         };
+        try {
+            if (!archive) await fs.ensureDir(baseDir);
+            await fs.writeJson(path.join(baseDir, 'anydownload.json'), {
+                sourceUrl: url,
+                entryPath: pageMapper.getPreviewPath(url)
+            }, { spaces: 2 });
+
+            await this.downloadPage(url, 0, baseDir);
+            throwIfCancelled();
+            if (this.storageRule === 'overwrite') {
+                const entryFile = this.legacyFlatPages
+                    ? pageMapper.getPageFilename(url)
+                    : pageMapper.getMirrorRelPagePath(url);
+                if (!await fs.pathExists(path.join(baseDir, entryFile))) {
+                    throw Object.assign(new Error('The entry page was not downloaded'), {
+                        code: 'ARCHIVE_ENTRY_MISSING'
+                    });
+                }
+                if (this.failCount > 0) {
+                    throw Object.assign(
+                        new Error(`Could not replace the archive: ${this.failCount} resources failed to download`),
+                        { code: 'ARCHIVE_DOWNLOAD_INCOMPLETE', count: this.failCount }
+                    );
+                }
+            }
+            await this._writeSitemap(baseDir);
+            throwIfCancelled();
+
+            return {
+                outputDir: archive ? await archive.commit(throwIfCancelled) : baseDir,
+                successCount: this.successCount,
+                failCount: this.failCount,
+                downloadedBytes: this.downloadedBytes,
+                failedResources: this.failedResources,
+                visited: [...this.visited]
+            };
+        } finally {
+            await archive?.dispose();
+        }
     }
 }
 

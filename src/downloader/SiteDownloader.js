@@ -22,6 +22,7 @@ class SiteDownloader extends EventEmitter {
         super();
         this.outputDir = options.outputDir || path.join(process.cwd(), 'downloaded_site');
         this.storageRule = options.storageRule;
+        this.archiveId = options.archiveId;
         this.userAgent = options.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
         this.engineMode = options.mode || options.engineMode ||
             (options.dynamic ? 'render' : (options.autoDynamic === false ? 'static' : 'auto'));
@@ -272,10 +273,12 @@ class SiteDownloader extends EventEmitter {
         };
         try {
             if (!archive) await fs.ensureDir(baseDir);
-            await fs.writeJson(path.join(baseDir, 'anydownload.json'), {
+            const manifestPath = path.join(baseDir, 'anydownload.json');
+            const manifest = {
                 sourceUrl: url,
                 entryPath: pageMapper.getPreviewPath(url)
-            }, { spaces: 2 });
+            };
+            await fs.writeJson(manifestPath, manifest, { spaces: 2 });
 
             await this.downloadPage(url, 0, baseDir);
             throwIfCancelled();
@@ -296,6 +299,9 @@ class SiteDownloader extends EventEmitter {
                 }
             }
             await this._writeSitemap(baseDir);
+            if (this.archiveId) {
+                await fs.writeJson(manifestPath, { ...manifest, archiveId: this.archiveId }, { spaces: 2 });
+            }
             throwIfCancelled();
 
             return {

@@ -1,10 +1,12 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { randomUUID } = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
 const { SiteDownloader } = require('./src/downloader');
 const PathDiscovery = require('./src/discovery/PathDiscovery');
 const PathMapper = require('./src/downloader/storage/PathMapper');
+const { withArchiveDirectoryLock } = require('./src/downloader/storage/ArchiveStorage');
 const TaskManager = require('./src/core/TaskManager');
 const { startPreview } = require('./src/server/PreviewServer');
 const { installPlaywrightChromium } = require('./src/engine/BrowserInstaller');
@@ -17,6 +19,7 @@ const archiveErrorMessages = new Map([
     ['ARCHIVE_ENTRY_MISSING', 'archiveEntryMissing'],
     ['ARCHIVE_DOWNLOAD_INCOMPLETE', 'archiveDownloadIncomplete'],
     ['ARCHIVE_TARGET_NOT_DIRECTORY', 'archiveTargetNotDirectory'],
+    ['ARCHIVE_FRAGMENT_COLLISION', 'archiveFragmentCollision'],
     ['ARCHIVE_BACKUP_RETAINED', 'archiveBackupRetained']
 ]);
 
@@ -104,8 +107,55 @@ function resolveOfflinePreviewPath(folderPath, options) {
 }
 
 function hasTaskOutput(task) {
-    // Older download records stored the shared output root until the archive succeeded.
-    return task.outputDir && (task.mode !== 'download' || task.status === 'success');
+    // Running and failed tasks can have the shared output root in their records.
+    return task.status === 'success' && typeof task.outputDir === 'string' && path.isAbsolute(task.outputDir);
+}
+
+async function hasOtherDownloadAt(tasks, taskId, directory) {
+    for (const candidate of tasks) {
+        if (candidate.id === taskId || candidate.mode !== 'download' || !hasTaskOutput(candidate)) continue;
+        const actualDirectory = await fs.promises.realpath(candidate.outputDir).catch(() => null);
+        if (actualDirectory && !path.relative(directory, actualDirectory)) return true;
+    }
+    return false;
+}
+
+async function removeTaskOutput(taskId) {
+    const task = taskManager.getTasks().find(candidate => candidate.id === taskId);
+    if (!task || !hasTaskOutput(task)) return;
+
+    const directory = task.outputDir;
+    const removeOptions = { recursive: true, force: true };
+    if (task.mode === 'discovery') {
+        await fs.promises.rm(directory, removeOptions);
+        return;
+    }
+
+    const lockDirectory = task.mode === 'pick' ? path.dirname(directory) : directory;
+    await withArchiveDirectoryLock(lockDirectory, async actualDirectory => {
+        const tasks = taskManager.getTasks();
+        const current = tasks.find(candidate => candidate.id === taskId);
+        if (!current || current.mode !== task.mode || !hasTaskOutput(current) || path.relative(directory, current.outputDir)) return;
+
+        if (current.mode === 'pick') {
+            await fs.promises.rm(path.join(actualDirectory, path.basename(directory)), removeOptions);
+            return;
+        }
+        if (current.mode !== 'download' || !(await fs.promises.lstat(actualDirectory)).isDirectory()) return;
+
+        const manifestPath = path.join(actualDirectory, 'anydownload.json');
+        const manifest = JSON.parse(await fs.promises.readFile(manifestPath, 'utf8'));
+        if (typeof manifest?.sourceUrl !== 'string' || !manifest.sourceUrl) return;
+
+        if (current.archiveId !== undefined || manifest.archiveId !== undefined) {
+            if (typeof current.archiveId !== 'string' || !current.archiveId || current.archiveId !== manifest.archiveId) return;
+        } else {
+            if (new URL(ensureHttpScheme(current.url)).href !== new URL(manifest.sourceUrl).href) return;
+            if (await hasOtherDownloadAt(tasks, taskId, actualDirectory)) return;
+        }
+
+        await fs.promises.rm(actualDirectory, removeOptions);
+    });
 }
 
 function legacyOutputFallbackForMigrate(t) {
@@ -346,15 +396,17 @@ app.whenReady().then(() => {
 
         const deleteFiles = result.response === 2;
 
-        for (const t of tasksToDelete) {
-            if (deleteFiles && hasTaskOutput(t) && fs.existsSync(t.outputDir)) {
+        if (deleteFiles) {
+            for (const { id } of tasksToDelete) {
                 try {
-                    fs.rmSync(t.outputDir, { recursive: true, force: true });
+                    await removeTaskOutput(id);
                 } catch (e) {
-                    console.error('Failed to delete folder:', e);
+                    if (e.code !== 'ENOENT') console.error('Failed to delete folder:', e);
                 }
             }
-            taskManager.removeTask(t.id);
+        }
+        for (const { id } of tasksToDelete) {
+            taskManager.removeTask(id);
         }
 
         return true;
@@ -466,11 +518,13 @@ app.whenReady().then(() => {
             discovery: discoveryBaseAbs,
             pick: downloadOutAbs
         }[config.mode];
+        const archiveId = config.mode === 'download' ? randomUUID() : null;
 
         const task = taskManager.addTask({
             url: config.url,
             mode: config.mode,
-            outputDir: initialOutputDir
+            outputDir: initialOutputDir,
+            ...(archiveId && { id: archiveId, archiveId })
         });
 
         if (mainWindow) {
@@ -480,6 +534,7 @@ app.whenReady().then(() => {
         if (config.mode === 'download') {
             const downloader = new SiteDownloader({
                 outputDir: downloadOutAbs,
+                archiveId: task.archiveId,
                 storageRule: config.storageRule === 'overwrite' ? 'overwrite' : 'timestamp',
                 preset: config.preset,
                 mode: config.engineMode,

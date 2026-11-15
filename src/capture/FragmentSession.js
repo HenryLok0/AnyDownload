@@ -1,5 +1,6 @@
 const fs = require('fs-extra');
 const path = require('path');
+const { withArchiveDirectoryLock } = require('../downloader/storage/ArchiveStorage');
 const { extractFragmentInPage } = require('./pageExtract');
 const { installPicker, pickerLabels } = require('./pickerSource');
 const {
@@ -188,22 +189,29 @@ class FragmentSession {
                 if (host) host.style.display = 'none';
             }).catch(() => {});
 
-            const dir = this._outputDir(url);
-            await fs.ensureDir(path.join(dir, 'states'));
-            const shots = await this._captureShots(page, extracted.selector, dir);
-            const written = await this._writeBundle(dir, url, extracted, shots);
-            return written;
+            const outputRoot = path.resolve(this.outputDir);
+            const hostDir = path.join(outputRoot, hostDirName(url));
+            if (path.dirname(hostDir) !== outputRoot) throw new Error('Invalid fragment folder for this URL');
+            await fs.ensureDir(outputRoot);
+            return await withArchiveDirectoryLock(hostDir, async (actualHostDir) => {
+                if (this.cancelled) throw cancelledError();
+                await fs.ensureDir(actualHostDir);
+                if (!(await fs.lstat(actualHostDir)).isDirectory()) {
+                    throw new Error(`Fragment destination is not a directory: ${actualHostDir}`);
+                }
+                const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const dir = path.join(actualHostDir, `pick-${stamp}`);
+                await fs.mkdir(dir);
+                await fs.mkdir(path.join(dir, 'states'));
+                const shots = await this._captureShots(page, extracted.selector, dir);
+                return this._writeBundle(dir, url, extracted, shots);
+            });
         } finally {
             const browser = this.browser;
             this.browser = null;
             this.context = null;
             if (browser) await browser.close().catch(() => {});
         }
-    }
-
-    _outputDir(url) {
-        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-        return path.join(path.resolve(this.outputDir), hostDirName(url), `pick-${stamp}`);
     }
 
     _waitForDecision(page) {

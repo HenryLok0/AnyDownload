@@ -1,4 +1,5 @@
 const http = require('http');
+const os = require('os');
 const path = require('path');
 const fs = require('fs-extra');
 const { SiteDownloader } = require('../src/downloader');
@@ -41,19 +42,22 @@ function startFixtureServer() {
 describe('SiteDownloader integration', () => {
     let server;
     let baseUrl;
-    /** Isolated subfolder so afterAll does not delete other suites' test-output/* dirs when Jest runs workers in parallel. */
-    const outputDir = path.join(__dirname, '..', 'test-output', 'sitedownloader-integration');
+    let outputDir;
 
     beforeAll(async () => {
+        const tempRoot = await fs.realpath(os.tmpdir());
+        const created = await fs.mkdtemp(path.join(tempRoot, 'anydownload-sitedownloader-integration-'));
+        expect(await fs.realpath(created)).toBe(created);
+        expect(path.dirname(created)).toBe(tempRoot);
+        outputDir = created;
         const started = await startFixtureServer();
         server = started.server;
         baseUrl = started.baseUrl;
-        await fs.ensureDir(outputDir);
     });
 
     afterAll(async () => {
         if (server) server.close();
-        await fs.remove(outputDir).catch(() => {});
+        if (outputDir) await fs.remove(outputDir);
     });
 
     test('downloads html, css, and images from fixture site', async () => {
@@ -72,6 +76,7 @@ describe('SiteDownloader integration', () => {
 
         const meta = await fs.readJson(path.join(siteDir, 'anydownload.json'));
         expect(meta.entryPath).toBe('/');
+        expect(meta.archiveId).toBeUndefined();
         expect(await fs.pathExists(path.join(siteDir, 'css', 'main.css'))).toBe(true);
         expect(await fs.pathExists(path.join(siteDir, 'img', 'logo.png'))).toBe(true);
     }, 30000);
@@ -104,17 +109,23 @@ describe('SiteDownloader integration', () => {
             storageRule: 'overwrite',
             delay: 1
         };
-        const first = await new SiteDownloader(options).downloadWebsite(baseUrl + '/');
+        const first = await new SiteDownloader({ ...options, archiveId: 'first-archive' }).downloadWebsite(baseUrl + '/');
         const obsolete = path.join(first.outputDir, 'old-copy.txt');
         const cachedCss = path.join(first.outputDir, 'css', 'main.css');
+        const fragmentCss = path.join(first.outputDir, 'pick-2026-11-15T15-00-01-101Z', 'fragment.css');
+        const manifestPath = path.join(first.outputDir, 'anydownload.json');
+        expect((await fs.readJson(manifestPath)).archiveId).toBe('first-archive');
         await fs.writeFile(obsolete, 'previous snapshot');
         await fs.writeFile(cachedCss, 'stale asset');
+        await fs.outputFile(fragmentCss, '.saved-fragment { color: red; }');
 
-        const second = await new SiteDownloader(options).downloadWebsite(baseUrl + '/');
+        const second = await new SiteDownloader({ ...options, archiveId: 'replacement-archive' }).downloadWebsite(baseUrl + '/');
 
         expect(second.outputDir).toBe(first.outputDir);
         expect(await fs.pathExists(obsolete)).toBe(false);
         expect(await fs.readFile(cachedCss, 'utf8')).not.toContain('stale asset');
+        expect(await fs.readFile(fragmentCss, 'utf8')).toBe('.saved-fragment { color: red; }');
+        expect((await fs.readJson(manifestPath)).archiveId).toBe('replacement-archive');
         expect(await fs.readdir(options.outputDir)).toEqual([path.basename(second.outputDir)]);
     }, 30000);
 

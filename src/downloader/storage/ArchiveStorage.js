@@ -2,7 +2,28 @@ const fs = require('fs-extra');
 const path = require('path');
 
 const operations = new Map();
-const activeBaseDownloads = new Map();
+const activeTimestampDownloads = new Map();
+const fragmentDirectoryName = /^pick-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/u;
+
+function normalizeArchiveDirectory(directory) {
+    if (!path.isAbsolute(directory)) throw new Error('Archive destination must be absolute');
+    const normalized = path.resolve(directory);
+    const parent = path.dirname(normalized);
+    const name = process.platform === 'win32'
+        ? path.basename(normalized).replace(/[. ]+$/u, '')
+        : path.basename(normalized);
+    if (parent === normalized || !name) throw new Error('Archive destination cannot be a filesystem root');
+    return path.join(parent, name);
+}
+
+async function resolveArchiveDirectory(directory) {
+    const parent = await fs.realpath(path.dirname(directory));
+    return path.join(parent, path.basename(directory));
+}
+
+function directoryKey(directory) {
+    return process.platform === 'win32' ? directory.toLowerCase() : directory;
+}
 
 async function withDestinationLock(key, work) {
     const previous = operations.get(key);
@@ -17,6 +38,15 @@ async function withDestinationLock(key, work) {
         release();
         if (operations.get(key) === current) operations.delete(key);
     }
+}
+
+async function withArchiveDirectoryLock(directory, work) {
+    const actualDirectory = await resolveArchiveDirectory(normalizeArchiveDirectory(directory));
+    const key = directoryKey(actualDirectory);
+    return withDestinationLock(key, async () => {
+        await activeTimestampDownloads.get(key);
+        return work(actualDirectory);
+    });
 }
 
 function localTimestamp(date) {
@@ -39,38 +69,37 @@ async function tryReserveDirectory(directory) {
     }
 }
 
+async function reserveTimestampedDirectory(directory, key) {
+    if (!await tryReserveDirectory(directory)) return null;
+
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    activeTimestampDownloads.set(key, pending);
+    return {
+        directory,
+        async commit(beforePublish) {
+            beforePublish?.();
+            return directory;
+        },
+        async dispose() {
+            if (activeTimestampDownloads.get(key) === pending) activeTimestampDownloads.delete(key);
+            release();
+        }
+    };
+}
+
 async function prepareTimestampedStorage(destination, key) {
     return withDestinationLock(key, async () => {
-        if (await tryReserveDirectory(destination)) {
-            let release;
-            const pending = new Promise(resolve => { release = resolve; });
-            activeBaseDownloads.set(key, pending);
-            return {
-                directory: destination,
-                async commit(beforePublish) {
-                    beforePublish?.();
-                    return destination;
-                },
-                dispose: async () => {
-                    if (activeBaseDownloads.get(key) === pending) activeBaseDownloads.delete(key);
-                    release();
-                }
-            };
-        }
+        const base = await reserveTimestampedDirectory(destination, key);
+        if (base) return base;
 
         const prefix = `${destination}_${localTimestamp(new Date())}`;
-        let directory = prefix;
-        for (let suffix = 2; !(await tryReserveDirectory(directory)); suffix++) {
-            directory = `${prefix}_${suffix}`;
+        for (let suffix = 1; ; suffix++) {
+            const directory = suffix === 1 ? prefix : `${prefix}_${suffix}`;
+            const candidateKey = directoryKey(directory);
+            const candidate = await withDestinationLock(candidateKey, () => reserveTimestampedDirectory(directory, candidateKey));
+            if (candidate) return candidate;
         }
-        return {
-            directory,
-            async commit(beforePublish) {
-                beforePublish?.();
-                return directory;
-            },
-            async dispose() {}
-        };
     });
 }
 
@@ -80,6 +109,22 @@ async function statIfExists(directory) {
     } catch (error) {
         if (error.code === 'ENOENT') return null;
         throw error;
+    }
+}
+
+async function preserveFragmentDirectories(previousArchive, replacement) {
+    const entries = await fs.readdir(previousArchive, { withFileTypes: true });
+    for (const entry of entries) {
+        if (!fragmentDirectoryName.test(entry.name) || !(entry.isDirectory() || entry.isSymbolicLink())) continue;
+        const previousFragment = path.join(previousArchive, entry.name);
+        const replacementFragment = path.join(replacement, entry.name);
+        if (await statIfExists(replacementFragment)) {
+            const error = new Error(`Cannot replace archive because a saved fragment has the same path: ${previousFragment}`);
+            error.code = 'ARCHIVE_FRAGMENT_COLLISION';
+            error.archivePath = previousFragment;
+            throw error;
+        }
+        await fs.copy(previousFragment, replacementFragment, { dereference: false, overwrite: false, errorOnExist: true });
     }
 }
 
@@ -104,7 +149,7 @@ async function prepareOverwriteStorage(destination, key) {
                 if (committed) return destination;
                 if (disposed || keepBackup) throw new Error('Archive storage is no longer available');
 
-                await activeBaseDownloads.get(key);
+                await activeTimestampDownloads.get(key);
                 const existing = await statIfExists(destination);
                 if (existing && !existing.isDirectory()) {
                     const error = new Error(`Archive destination is not a directory: ${destination}`);
@@ -116,6 +161,7 @@ async function prepareOverwriteStorage(destination, key) {
                 if (!(await fs.lstat(directory)).isDirectory()) {
                     throw new Error(`Staged archive is not a directory: ${directory}`);
                 }
+                if (existing) await preserveFragmentDirectories(destination, directory);
                 beforePublish?.();
                 if (existing) await fs.rename(destination, backup);
                 try {
@@ -152,16 +198,14 @@ async function prepareOverwriteStorage(destination, key) {
 }
 
 async function prepareArchiveStorage(destination, rule) {
-    if (!path.isAbsolute(destination)) throw new Error('Archive destination must be absolute');
-    destination = path.resolve(destination);
-    const parent = path.dirname(destination);
-    if (parent === destination) throw new Error('Archive destination cannot be a filesystem root');
+    destination = normalizeArchiveDirectory(destination);
     if (rule !== 'timestamp' && rule !== 'overwrite') throw new Error(`Unknown storage rule: ${rule}`);
 
-    await fs.ensureDir(parent);
-    const key = process.platform === 'win32' ? destination.toLowerCase() : destination;
+    await fs.ensureDir(path.dirname(destination));
+    destination = await resolveArchiveDirectory(destination);
+    const key = directoryKey(destination);
     if (rule === 'timestamp') return prepareTimestampedStorage(destination, key);
     return prepareOverwriteStorage(destination, key);
 }
 
-module.exports = { prepareArchiveStorage };
+module.exports = { prepareArchiveStorage, withArchiveDirectoryLock };

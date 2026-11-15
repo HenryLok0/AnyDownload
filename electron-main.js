@@ -103,6 +103,11 @@ function resolveOfflinePreviewPath(folderPath, options) {
     return latest?.outputDir ?? root;
 }
 
+function hasTaskOutput(task) {
+    // Older download records stored the shared output root until the archive succeeded.
+    return task.outputDir && (task.mode !== 'download' || task.status === 'success');
+}
+
 function legacyOutputFallbackForMigrate(t) {
     if (t.mode === 'discovery') return 'discovery_results';
     const o = t.outputDir != null ? String(t.outputDir).replace(/\\/g, '/').trim() : '';
@@ -306,7 +311,7 @@ app.whenReady().then(() => {
             archive.pipe(output);
 
             for (const t of tasksToExport) {
-                if (fs.existsSync(t.outputDir)) {
+                if (hasTaskOutput(t) && fs.existsSync(t.outputDir)) {
                     // Place each task's files in a subfolder named after the URL or ID
                     const folderName = t.url.replace(/[^a-z0-9]/gi, '_').substring(0, 50) + '_' + t.id.substring(0, 4);
                     archive.directory(t.outputDir, folderName);
@@ -342,7 +347,7 @@ app.whenReady().then(() => {
         const deleteFiles = result.response === 2;
 
         for (const t of tasksToDelete) {
-            if (deleteFiles && fs.existsSync(t.outputDir)) {
+            if (deleteFiles && hasTaskOutput(t) && fs.existsSync(t.outputDir)) {
                 try {
                     fs.rmSync(t.outputDir, { recursive: true, force: true });
                 } catch (e) {
@@ -456,8 +461,11 @@ app.whenReady().then(() => {
             return;
         }
 
-        const initialOutputDir =
-            config.mode === 'discovery' ? discoveryBaseAbs : downloadOutAbs;
+        const initialOutputDir = {
+            download: null,
+            discovery: discoveryBaseAbs,
+            pick: downloadOutAbs
+        }[config.mode];
 
         const task = taskManager.addTask({
             url: config.url,

@@ -86,7 +86,7 @@ export default function DataGrid({ tasks, selectedTasks, setSelectedTasks }) {
   };
 
   const openFolder = (task) => {
-    if (task.status === 'running') return;
+    if (task.status === 'running' || !task.outputDir) return;
     if (window.electronAPI?.openTaskFolder) window.electronAPI.openTaskFolder(task.outputDir);
   };
 
@@ -167,7 +167,7 @@ export default function DataGrid({ tasks, selectedTasks, setSelectedTasks }) {
                   </td>
                   <td
                     className={`px-2 py-0.5 border-r border-[var(--border-lighter)] truncate text-[var(--text-main)] flex items-center gap-2 ${
-                      task.status === 'running' ? 'cursor-default opacity-80' : 'cursor-pointer hover:underline'
+                      task.status === 'running' || !task.outputDir ? 'cursor-default opacity-80' : 'cursor-pointer hover:underline'
                     }`}
                     title={folderTitle}
                     onClick={() => openFolder(task)}

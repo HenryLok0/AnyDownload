@@ -2,6 +2,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 import en from './locales/en.json';
+import zhCN from './locales/zh-CN.json';
 import zhTW from './locales/zh-TW.json';
 import ja from './locales/ja.json';
 import ko from './locales/ko.json';
@@ -10,6 +11,7 @@ const STORAGE_KEY = 'anydownload-gui-settings-v1';
 
 const resources = {
   en: { translation: en },
+  'zh-CN': { translation: zhCN },
   'zh-TW': { translation: zhTW },
   ja: { translation: ja },
   ko: { translation: ko }

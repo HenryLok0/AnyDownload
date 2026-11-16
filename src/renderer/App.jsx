@@ -11,6 +11,7 @@ const DEFAULT_CONFIG = {
   mode: 'download',
   url: '',
   output: 'downloaded_site',
+  storageRule: 'timestamp',
   preset: 'page',
   engineMode: 'auto',
   wait: 2000,
@@ -49,7 +50,11 @@ function readStoredGui() {
 
 function mergeStoredConfig(stored) {
   if (!stored || typeof stored.config !== 'object') return { ...DEFAULT_CONFIG };
-  return { ...DEFAULT_CONFIG, ...stored.config };
+  return {
+    ...DEFAULT_CONFIG,
+    ...stored.config,
+    storageRule: stored.config?.storageRule === 'overwrite' ? 'overwrite' : DEFAULT_CONFIG.storageRule
+  };
 }
 
 function mergeWorkspaceTask(prev, updated) {
@@ -153,6 +158,7 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
+    document.documentElement.lang = i18nInstance.language;
     if (window.electronAPI?.setAppLocale) {
       window.electronAPI.setAppLocale(i18nInstance.language);
     }
@@ -367,7 +373,10 @@ export default function App() {
 
   const handleOfflinePreview = async () => {
     if (!window.electronAPI?.startOfflinePreview) return;
-    await window.electronAPI.startOfflinePreview(config.output || 'downloaded_site');
+    await window.electronAPI.startOfflinePreview(config.output || 'downloaded_site', {
+      targetUrl: config.url,
+      taskId: selectedTasks.length === 1 ? selectedTasks[0] : undefined
+    });
   };
 
   return (

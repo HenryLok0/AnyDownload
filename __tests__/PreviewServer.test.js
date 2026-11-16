@@ -190,6 +190,23 @@ describe('PreviewServer', () => {
         expect(url).toMatch(/\/$/);
     });
 
+    test('serves the recorded nested entry from a selected snapshot', async () => {
+        const snapshot = path.join(rootDir, 'example.com_2611152330');
+        await fs.outputFile(
+            path.join(snapshot, 'events', 'season', 'index.html'),
+            '<html><body>Archived season</body></html>'
+        );
+        await fs.writeJson(path.join(snapshot, 'anydownload.json'), {
+            sourceUrl: 'https://example.com/events/season/',
+            entryPath: '/events/season/'
+        });
+
+        const { server: previewServer, url } = await startPreview(snapshot, { open: false });
+        server = previewServer;
+        expect(url).toMatch(/\/events\/season\/$/);
+        expect(await fetch(url).then(res => res.text())).toContain('Archived season');
+    });
+
     test('findHostFolders locates a nested host folder', async () => {
         const nested = path.join(rootDir, 'downloaded_site', 'example.com');
         await fs.ensureDir(nested);

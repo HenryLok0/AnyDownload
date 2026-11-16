@@ -1,10 +1,12 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { randomUUID } = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
 const { SiteDownloader } = require('./src/downloader');
 const PathDiscovery = require('./src/discovery/PathDiscovery');
 const PathMapper = require('./src/downloader/storage/PathMapper');
+const { withArchiveDirectoryLock } = require('./src/downloader/storage/ArchiveStorage');
 const TaskManager = require('./src/core/TaskManager');
 const { startPreview } = require('./src/server/PreviewServer');
 const { installPlaywrightChromium } = require('./src/engine/BrowserInstaller');
@@ -12,6 +14,14 @@ const { FragmentSession } = require('./src/capture');
 const { setMainLocale, mainT } = require('./src/main/mainLocales');
 
 const isDev = process.env.NODE_ENV === 'development';
+const archiveErrorMessages = new Map([
+    ['ARCHIVE_INVALID_FOLDER', 'archiveInvalidFolder'],
+    ['ARCHIVE_ENTRY_MISSING', 'archiveEntryMissing'],
+    ['ARCHIVE_DOWNLOAD_INCOMPLETE', 'archiveDownloadIncomplete'],
+    ['ARCHIVE_TARGET_NOT_DIRECTORY', 'archiveTargetNotDirectory'],
+    ['ARCHIVE_FRAGMENT_COLLISION', 'archiveFragmentCollision'],
+    ['ARCHIVE_BACKUP_RETAINED', 'archiveBackupRetained']
+]);
 
 /** User may type "example.com"; PathDiscovery normalizes with URL() and needs a scheme. */
 function ensureHttpScheme(url) {
@@ -64,9 +74,88 @@ function resolveOutputPathForGui(userInput, fallbackRelName = 'downloaded_site')
     const root = getGuiDocumentOutputRoot();
     const resolved = path.normalize(path.join(root, rel));
     if (!isPathUnderRoot(root, resolved)) {
-        throw new Error(`Output folder must stay under: ${root}`);
+        throw new Error(mainT('outputFolderOutsideRoot', { root }));
     }
     return resolved;
+}
+
+function resolveOfflinePreviewPath(folderPath, options) {
+    const completed = taskManager.getTasks().filter(task =>
+        task.mode === 'download' && task.status === 'success' &&
+        typeof task.outputDir === 'string' && path.isAbsolute(task.outputDir)
+    );
+    const selected = completed.find(task => task.id === options?.taskId);
+    if (selected) return selected.outputDir;
+
+    const root = resolveOutputPathForGui(folderPath);
+    let targetHost;
+    try {
+        targetHost = new URL(ensureHttpScheme(options?.targetUrl)).host;
+    } catch {
+        return root;
+    }
+
+    const latest = completed.find(task => {
+        if (path.relative(root, path.dirname(task.outputDir)) || !fs.existsSync(task.outputDir)) return false;
+        try {
+            return new URL(task.url).host === targetHost;
+        } catch {
+            return false;
+        }
+    });
+    return latest?.outputDir ?? root;
+}
+
+function hasTaskOutput(task) {
+    // Running and failed tasks can have the shared output root in their records.
+    return task.status === 'success' && typeof task.outputDir === 'string' && path.isAbsolute(task.outputDir);
+}
+
+async function hasOtherDownloadAt(tasks, taskId, directory) {
+    for (const candidate of tasks) {
+        if (candidate.id === taskId || candidate.mode !== 'download' || !hasTaskOutput(candidate)) continue;
+        const actualDirectory = await fs.promises.realpath(candidate.outputDir).catch(() => null);
+        if (actualDirectory && !path.relative(directory, actualDirectory)) return true;
+    }
+    return false;
+}
+
+async function removeTaskOutput(taskId) {
+    const task = taskManager.getTasks().find(candidate => candidate.id === taskId);
+    if (!task || !hasTaskOutput(task)) return;
+
+    const directory = task.outputDir;
+    const removeOptions = { recursive: true, force: true };
+    if (task.mode === 'discovery') {
+        await fs.promises.rm(directory, removeOptions);
+        return;
+    }
+
+    const lockDirectory = task.mode === 'pick' ? path.dirname(directory) : directory;
+    await withArchiveDirectoryLock(lockDirectory, async actualDirectory => {
+        const tasks = taskManager.getTasks();
+        const current = tasks.find(candidate => candidate.id === taskId);
+        if (!current || current.mode !== task.mode || !hasTaskOutput(current) || path.relative(directory, current.outputDir)) return;
+
+        if (current.mode === 'pick') {
+            await fs.promises.rm(path.join(actualDirectory, path.basename(directory)), removeOptions);
+            return;
+        }
+        if (current.mode !== 'download' || !(await fs.promises.lstat(actualDirectory)).isDirectory()) return;
+
+        const manifestPath = path.join(actualDirectory, 'anydownload.json');
+        const manifest = JSON.parse(await fs.promises.readFile(manifestPath, 'utf8'));
+        if (typeof manifest?.sourceUrl !== 'string' || !manifest.sourceUrl) return;
+
+        if (current.archiveId !== undefined || manifest.archiveId !== undefined) {
+            if (typeof current.archiveId !== 'string' || !current.archiveId || current.archiveId !== manifest.archiveId) return;
+        } else {
+            if (new URL(ensureHttpScheme(current.url)).href !== new URL(manifest.sourceUrl).href) return;
+            if (await hasOtherDownloadAt(tasks, taskId, actualDirectory)) return;
+        }
+
+        await fs.promises.rm(actualDirectory, removeOptions);
+    });
 }
 
 function legacyOutputFallbackForMigrate(t) {
@@ -272,7 +361,7 @@ app.whenReady().then(() => {
             archive.pipe(output);
 
             for (const t of tasksToExport) {
-                if (fs.existsSync(t.outputDir)) {
+                if (hasTaskOutput(t) && fs.existsSync(t.outputDir)) {
                     // Place each task's files in a subfolder named after the URL or ID
                     const folderName = t.url.replace(/[^a-z0-9]/gi, '_').substring(0, 50) + '_' + t.id.substring(0, 4);
                     archive.directory(t.outputDir, folderName);
@@ -307,15 +396,17 @@ app.whenReady().then(() => {
 
         const deleteFiles = result.response === 2;
 
-        for (const t of tasksToDelete) {
-            if (deleteFiles && fs.existsSync(t.outputDir)) {
+        if (deleteFiles) {
+            for (const { id } of tasksToDelete) {
                 try {
-                    fs.rmSync(t.outputDir, { recursive: true, force: true });
+                    await removeTaskOutput(id);
                 } catch (e) {
-                    console.error('Failed to delete folder:', e);
+                    if (e.code !== 'ENOENT') console.error('Failed to delete folder:', e);
                 }
             }
-            taskManager.removeTask(t.id);
+        }
+        for (const { id } of tasksToDelete) {
+            taskManager.removeTask(id);
         }
 
         return true;
@@ -339,8 +430,8 @@ app.whenReady().then(() => {
             title: mainT('chooseFileTitle'),
             properties: ['openFile'],
             filters: [
-                { name: 'Text Files', extensions: ['txt'] },
-                { name: 'All Files', extensions: ['*'] }
+                { name: mainT('textFilesFilter'), extensions: ['txt'] },
+                { name: mainT('allFilesFilter'), extensions: ['*'] }
             ]
         });
         if (result.canceled || result.filePaths.length === 0) {
@@ -368,11 +459,11 @@ app.whenReady().then(() => {
         return { cancelledTaskIds, cancelledDiscoveryTaskIds, cancelledPickTaskIds };
     });
 
-    ipcMain.handle('start-offline-preview', async (_event, folderPath) => {
+    ipcMain.handle('start-offline-preview', async (_event, folderPath, options) => {
         try {
-            const root = resolveOutputPathForGui(folderPath != null ? folderPath : '', 'downloaded_site');
+            const root = resolveOfflinePreviewPath(folderPath, options);
             await fs.promises.access(root).catch(() => {
-                throw new Error(`Folder not found: ${root}`);
+                throw new Error(mainT('folderNotFound', { root }));
             });
 
             if (previewServerInstance) {
@@ -422,13 +513,18 @@ app.whenReady().then(() => {
             return;
         }
 
-        const initialOutputDir =
-            config.mode === 'discovery' ? discoveryBaseAbs : downloadOutAbs;
+        const initialOutputDir = {
+            download: null,
+            discovery: discoveryBaseAbs,
+            pick: downloadOutAbs
+        }[config.mode];
+        const archiveId = config.mode === 'download' ? randomUUID() : null;
 
         const task = taskManager.addTask({
             url: config.url,
             mode: config.mode,
-            outputDir: initialOutputDir
+            outputDir: initialOutputDir,
+            ...(archiveId && { id: archiveId, archiveId })
         });
 
         if (mainWindow) {
@@ -438,6 +534,8 @@ app.whenReady().then(() => {
         if (config.mode === 'download') {
             const downloader = new SiteDownloader({
                 outputDir: downloadOutAbs,
+                archiveId: task.archiveId,
+                storageRule: config.storageRule === 'overwrite' ? 'overwrite' : 'timestamp',
                 preset: config.preset,
                 mode: config.engineMode,
                 extraWait: config.wait,
@@ -512,10 +610,13 @@ app.whenReady().then(() => {
                     mainWindow.webContents.send('task-done', { success: true, taskId: task.id });
                 }
             } catch (err) {
+                const archiveMessage = archiveErrorMessages.get(err?.code);
                 const cancelled = Boolean(
-                    err && (err.code === 'CANCELLED' || /cancel/i.test(err.message || ''))
+                    !archiveMessage && err && (err.code === 'CANCELLED' || /cancel/i.test(err.message || ''))
                 );
-                const errMsg = err && err.message ? err.message : String(err);
+                const errMsg = archiveMessage
+                    ? mainT(archiveMessage, { count: err.count, path: err.archivePath, backup: err.backupPath })
+                    : err?.message || String(err);
                 taskManager.updateTask(task.id, {
                     status: cancelled ? 'cancelled' : 'error',
                     lastError: cancelled ? null : errMsg
@@ -527,7 +628,7 @@ app.whenReady().then(() => {
                     }
                     mainWindow.webContents.send('task-progress', {
                         status: cancelled ? 'cancelled' : 'error',
-                        url: err.message || err.toString(),
+                        url: errMsg,
                         size: '-',
                         time: '-'
                     });
@@ -535,7 +636,7 @@ app.whenReady().then(() => {
                         success: false,
                         taskId: task.id,
                         cancelled,
-                        error: cancelled ? undefined : (err.message || String(err))
+                        error: cancelled ? undefined : errMsg
                     });
                 }
             } finally {

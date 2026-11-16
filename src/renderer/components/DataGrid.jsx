@@ -2,6 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FolderOpen } from 'lucide-react';
 
+const statusLabelKeys = new Map([
+  ['running', 'dataGrid.filterRunning'],
+  ['success', 'dataGrid.filterSuccess'],
+  ['error', 'dataGrid.filterError'],
+  ['cancelled', 'dataGrid.filterCancelled']
+]);
+
 /** Build native tooltip summary for terminal task states */
 function rowStatusTooltip(task, t) {
   const parts = [];
@@ -79,7 +86,7 @@ export default function DataGrid({ tasks, selectedTasks, setSelectedTasks }) {
   };
 
   const openFolder = (task) => {
-    if (task.status === 'running') return;
+    if (task.status === 'running' || !task.outputDir) return;
     if (window.electronAPI?.openTaskFolder) window.electronAPI.openTaskFolder(task.outputDir);
   };
 
@@ -96,10 +103,9 @@ export default function DataGrid({ tasks, selectedTasks, setSelectedTasks }) {
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="all">{t('dataGrid.filterAll')}</option>
-          <option value="running">{t('dataGrid.filterRunning')}</option>
-          <option value="success">{t('dataGrid.filterSuccess')}</option>
-          <option value="error">{t('dataGrid.filterError')}</option>
-          <option value="cancelled">{t('dataGrid.filterCancelled')}</option>
+          {Array.from(statusLabelKeys, ([status, labelKey]) => (
+            <option key={status} value={status}>{t(labelKey)}</option>
+          ))}
         </select>
       </div>
       <div className="flex-1 overflow-auto">
@@ -137,6 +143,7 @@ export default function DataGrid({ tasks, selectedTasks, setSelectedTasks }) {
             {sortedFiltered.map((task, i) => {
               const tip = rowStatusTooltip(task, t);
               const needsTip = tip.length > 0;
+              const statusLabelKey = statusLabelKeys.get(task.status);
               const folderTitle =
                 task.status === 'running' ? t('dataGrid.folderOpenDisabledWhileRunning') : task.url ?? '';
               return (
@@ -160,7 +167,7 @@ export default function DataGrid({ tasks, selectedTasks, setSelectedTasks }) {
                   </td>
                   <td
                     className={`px-2 py-0.5 border-r border-[var(--border-lighter)] truncate text-[var(--text-main)] flex items-center gap-2 ${
-                      task.status === 'running' ? 'cursor-default opacity-80' : 'cursor-pointer hover:underline'
+                      task.status === 'running' || !task.outputDir ? 'cursor-default opacity-80' : 'cursor-pointer hover:underline'
                     }`}
                     title={folderTitle}
                     onClick={() => openFolder(task)}
@@ -184,7 +191,7 @@ export default function DataGrid({ tasks, selectedTasks, setSelectedTasks }) {
                     className="px-2 py-0.5 border-r border-[var(--border-lighter)] truncate text-[var(--text-muted)]"
                     title={needsTip ? tip : undefined}
                   >
-                    {new Date(task.timestamp).toLocaleString()} - {task.status}
+                    {new Date(task.timestamp).toLocaleString()} - {statusLabelKey ? t(statusLabelKey) : task.status}
                   </td>
                 </tr>
               );
